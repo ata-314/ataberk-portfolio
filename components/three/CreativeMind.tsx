@@ -13,6 +13,8 @@ export type QualityProfile = {
 // All per-frame state lives in refs/uniforms — never React state (R3F pitfall #1).
 export function CreativeMind({ profile }: { profile: QualityProfile }) {
   const material = useRef<THREE.ShaderMaterial>(null!);
+  const points = useRef<THREE.Points>(null!);
+  const parallax = useRef({ x: 0, y: 0 });
   const { size, camera, gl } = useThree();
 
   const pointerTarget = useRef(new THREE.Vector3(999, 999, 0));
@@ -73,6 +75,7 @@ export function CreativeMind({ profile }: { profile: QualityProfile }) {
       uWaveOrigin: { value: new THREE.Vector3() },
       uWaveAge: { value: -1 },
       uSize: { value: 38 },
+      uCenter: { value: new THREE.Vector3(offsetX, 0, 0) },
       uColorBase: { value: new THREE.Color("#f3efe7") },
       uColorAccent: { value: new THREE.Color("#c8ff3e") },
     };
@@ -95,6 +98,8 @@ export function CreativeMind({ profile }: { profile: QualityProfile }) {
       );
       raycaster.setFromCamera(ndc, camera);
       raycaster.ray.intersectPlane(plane, pointerTarget.current);
+      parallax.current.x = ndc.x;
+      parallax.current.y = ndc.y;
     };
 
     const onMove = (e: PointerEvent) => {
@@ -162,10 +167,20 @@ export function CreativeMind({ profile }: { profile: QualityProfile }) {
     u.uProgress.value = THREE.MathUtils.damp(u.uProgress.value, scroll.current, 5, delta);
     // gl_PointSize is in device pixels — scale by DPR and viewport height
     u.uSize.value = 38 * gl.getPixelRatio() * (size.height / 900);
+
+    // Subtle pointer parallax on the whole organism (desktop only)
+    if (profile.pointerEnabled && points.current) {
+      points.current.rotation.y = THREE.MathUtils.damp(
+        points.current.rotation.y, parallax.current.x * 0.08, 3, delta,
+      );
+      points.current.rotation.x = THREE.MathUtils.damp(
+        points.current.rotation.x, -parallax.current.y * 0.05, 3, delta,
+      );
+    }
   });
 
   return (
-    <points geometry={geometry} frustumCulled={false}>
+    <points ref={points} geometry={geometry} frustumCulled={false}>
       <shaderMaterial
         ref={material}
         uniforms={uniforms}

@@ -75,6 +75,7 @@ uniform float uHold;         // 0..1 while pressing
 uniform vec3 uWaveOrigin;
 uniform float uWaveAge;      // seconds since release, <0 = no wave
 uniform float uSize;
+uniform vec3 uCenter;        // organism centroid (rotation pivot)
 
 attribute vec3 aTarget;      // lattice position
 attribute float aSeed;
@@ -82,11 +83,19 @@ attribute float aSeed;
 varying float vEnergy;
 
 void main() {
-  // Idle breathing: curl-noise flow, calming as the structure forms
   float breathe = 1.0 - uProgress;
-  vec3 flow = curl(position * 0.35 + uTime * 0.05 + aSeed) * 0.45 * breathe;
 
-  vec3 base = mix(position, aTarget, smoothstep(0.0, 1.0, uProgress));
+  // Slow revolve around the organism's own axis — it lives, not floats
+  float ang = uTime * 0.07 * breathe;
+  vec3 pos = position - uCenter;
+  pos.xz = mat2(cos(ang), -sin(ang), sin(ang), cos(ang)) * pos.xz;
+  pos += uCenter;
+
+  // Two-octave curl: broad swells + fine filaments, calming as structure forms
+  vec3 flow = (curl(pos * 0.32 + uTime * 0.09 + aSeed * 0.07) * 0.62
+             + curl(pos * 1.15 - uTime * 0.06) * 0.30) * breathe;
+
+  vec3 base = mix(pos, aTarget, smoothstep(0.0, 1.0, uProgress));
   vec3 p = base + flow;
 
   // Magnetic pointer: repel within radius, eased falloff
@@ -96,19 +105,20 @@ void main() {
   p += normalize(toPointer + 1e-4) * magnet * (0.5 + uHold * 0.9);
 
   // Release wave: expanding ring pulse from the press point
+  float ring = 0.0;
   if (uWaveAge >= 0.0) {
     float waveR = uWaveAge * 2.4;
-    float ring = exp(-pow((distance(p, uWaveOrigin) - waveR) * 2.2, 2.0));
-    float decay = exp(-uWaveAge * 1.4);
-    p += normalize(p - uWaveOrigin + 1e-4) * ring * decay * 0.8;
+    ring = exp(-pow((distance(p, uWaveOrigin) - waveR) * 2.2, 2.0))
+         * exp(-uWaveAge * 1.4);
+    p += normalize(p - uWaveOrigin + 1e-4) * ring * 0.8;
   }
 
-  vEnergy = clamp(length(flow) * 1.4 + magnet * 1.2, 0.0, 1.0);
+  vEnergy = clamp(length(flow) * 0.5 + magnet * 1.3 + ring * 1.6, 0.0, 1.0);
 
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
-  // Fine dust: ~1.5–3 device px at the default camera distance
-  gl_PointSize = uSize * (0.6 + 0.8 * fract(aSeed * 7.31)) * (1.0 / -mv.z);
+  // Wide size variance: dust field with brighter motes
+  gl_PointSize = uSize * (0.4 + 1.2 * fract(aSeed * 7.31)) * (1.0 / -mv.z);
 }
 `;
 
@@ -125,9 +135,9 @@ void main() {
   if (r > 0.5) discard;
   float alpha = smoothstep(0.5, 0.1, r);
 
-  // Bone-white matter; lime only where energy concentrates (accent law).
-  // Additive blending stacks fast — keep per-particle alpha low.
-  vec3 color = mix(uColorBase, uColorAccent, smoothstep(0.6, 1.0, vEnergy));
-  gl_FragColor = vec4(color, alpha * (0.26 + 0.35 * vEnergy));
+  // Bone-white matter; lime where the organism's energy concentrates —
+  // visible as living veins, still never a fill. Alpha low: additive stacks.
+  vec3 color = mix(uColorBase, uColorAccent, smoothstep(0.34, 0.9, vEnergy));
+  gl_FragColor = vec4(color, alpha * (0.24 + 0.35 * vEnergy));
 }
 `;
