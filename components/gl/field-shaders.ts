@@ -147,21 +147,26 @@ void main() {
   if (uVideoOn > 0.5) {
     vidCol = texture2D(uVideoTex, aGrid).rgb;
     lum = dot(vidCol, vec3(0.299, 0.587, 0.114));
-    vec3 sheet = vec3(
-      (aGrid.x - 0.5) * 8.2 + 2.05,
-      (aGrid.y - 0.5) * 4.8 + 0.4,
-      (aGrid.y - 0.5) * -1.6
-    );
-    sheet.z += lum * 1.9;            // bright pixels surge toward the camera
-    sheet.y += lum * 0.3;
-    // The image breathes: it locks legible, melts into flow, reforms —
-    // the signature oscillation of a living data painting. At lock the
-    // displacement stays under ~2 pixel-cells so the frame truly reads.
-    float melt = pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0) * uMeltScale;
-    vec3 flow2 = curl(vec3(aGrid * 3.6, uTime * 0.1) + aSeed * 0.02)
-               * (0.015 + (1.0 - lum) * 0.06 + melt * 0.4);
+    // Full-bleed painting: the sheet overfills the stage so the matter
+    // reaches — and breaks against — the frame on every side.
+    vec2 c = aGrid - 0.5;
+    vec3 sheet = vec3(c.x * 11.8, c.y * 7.2, c.y * -1.2);
+    sheet.z += lum * 1.8;            // bright pixels surge toward the camera
+
+    // Liquid body: the image locks softly, melts, reforms — and the borders
+    // slosh: wave amplitude grows toward the edges and travels along them,
+    // like pigment washing against the walls of its frame.
+    float melt = (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0)) * uMeltScale;
+    float edge = max(smoothstep(0.26, 0.5, abs(c.x)), smoothstep(0.24, 0.5, abs(c.y)));
+    vec3 flow2 = curl(vec3(aGrid * 3.2, uTime * 0.12) + aSeed * 0.02)
+               * (0.05 + (1.0 - lum) * 0.07 + melt * 0.42);
+    flow2.xy += vec2(
+      sin(c.y * 9.0 + uTime * 0.85 + aSeed * 0.1),
+      cos(c.x * 8.0 - uTime * 0.75)
+    ) * edge * (0.28 + melt * 0.55);
+    flow2 *= 1.0 + edge * 1.7;
     field = sheet + flow2;
-    crest = lum;
+    crest = lum + edge * 0.25;
   } else {
     field = fluidField(aHome, aSeed, 1.0 - uFinale * 0.15);
     crest = smoothstep(0.3, 0.9, field.y - aHome.y);
@@ -179,7 +184,7 @@ void main() {
 
   if (aBird >= 0.0) {
     float isFlow = step(0.78, fract(aSeed * 3.1));   // ~22% free flow layer
-    float delay = seed01 * 0.04;
+    float delay = seed01 * 0.10;                     // long, liquid stagger
 
     // Baked skeletal flight — the model's own clip, no artificial deformation
     float ff = uFlap * uFrames;
@@ -190,8 +195,9 @@ void main() {
     float wingtip = smoothstep(1.0, 1.65, abs(bl.x));
     float tail = smoothstep(0.55, 1.0, bl.z) * (1.0 - wingtip);
 
-    // ── Gathering: currents bend toward the anchor, wide rising spiral ──
-    float gather = smoothstep(0.18, 0.42, uHero - delay * 0.4);
+    // ── Gathering: long overlapping streams — the painting itself flows
+    //    toward the anchor, particle by particle ──
+    float gather = smoothstep(0.15, 0.48, uHero - fract(aSeed * 6.9) * 0.14);
     vec3 anchor = uBirdMat[3].xyz;
     float ang = gather * (4.0 + seed01 * 5.0) + aSeed;
     float rad = mix(2.6, 0.7, gather) * (1.0 - gather * 0.4);
@@ -200,13 +206,14 @@ void main() {
     // ── Formation: wings first, then body/head/tail fill (staggered);
     //    every particle locked to the surface by hero ≈ 0.63 ──
     float wingFirst = mix(0.03, 0.0, wingtip);       // wing outlines lead
-    float morph = smoothstep(0.42, 0.56, uHero - delay - wingFirst);
+    float morph = smoothstep(0.38, 0.58, uHero - delay - wingFirst);
     vec3 birdWorld = (uBirdMat * vec4(bl, 1.0)).xyz;
 
-    // Curved approach: arc via curl, annealing to ZERO as the model locks
+    // Curved approach: long curl arcs — pigment streaming into anatomy,
+    // annealing to ZERO as the model locks
     float arc = morph * (1.0 - morph) * 4.0;
     vec3 path = mix(spiral, birdWorld, morph);
-    path += curl(bl * 0.8 + aSeed) * arc * 0.55;
+    path += curl(bl * 0.8 + aSeed) * arc * 0.85;
 
     // Core layer: locked to the surface — residual noise ≤ ~1.5% of span
     float anneal = smoothstep(0.75, 1.0, morph);
@@ -234,8 +241,9 @@ void main() {
     p += release;
     alpha *= 1.0 - dHere * 0.9;
   } else {
-    // Field matter recedes while the bird takes the page; returns for finale
-    float recede = smoothstep(0.5, 0.85, uHero);
+    // The painting holds the stage while the bird forms OVER it, then
+    // washes out as the page arrives; returns for the finale
+    float recede = smoothstep(0.72, 0.98, uHero);
     p += vec3(sign(aHome.x) * recede * 2.2, -recede * 1.4, -recede * 2.0);
     alpha *= 1.0 - recede * 0.94;
     // Field pointer: pressure + short orbit + speed trails
@@ -264,13 +272,9 @@ void main() {
   vBird = step(0.0, aBird);
   vVid = vidCol;
   vVidMix = uVideoOn * (1.0 - vBird) * (1.0 - uFinale);
-  // Video mode: color carries the image (high-key footage stays legible);
-  // brightness shapes gently, true darks recede. The painting feathers out
-  // toward the headline side and the stage edges — never fights the text.
-  float feather = smoothstep(0.03, 0.30, aGrid.x)
-                * smoothstep(0.0, 0.12, aGrid.y)
-                * smoothstep(1.0, 0.88, aGrid.y);
-  alpha *= mix(1.0, (0.25 + lum * 0.75) * feather, vVidMix);
+  // Video mode: color carries the image; brightness shapes gently, true
+  // darks recede. Full bleed — the text protects itself with a UI scrim.
+  alpha *= mix(1.0, 0.25 + lum * 0.75, vVidMix);
   vEnergy = clamp(energy, 0.0, 1.0);
 
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
