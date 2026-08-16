@@ -9,6 +9,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 export type BirdBake = {
   texture: THREE.DataTexture;
+  normals: THREE.DataTexture; // rest-pose surface normals (world-rotated)
   count: number; // sampled points
   frames: number; // animation frames
   rowsPerFrame: number; // texture rows used by one frame
@@ -151,8 +152,42 @@ export async function bakeBird(url: string): Promise<BirdBake> {
   texture.minFilter = THREE.NearestFilter;
   texture.needsUpdate = true;
 
+  // Surface normals (rest pose, barycentric, world rotation only) — drive
+  // mouse displacement direction and subtle shading. One frame is enough:
+  // interaction needs direction, not exact flap-time normals.
+  const nrmAttr = geo.attributes.normal as THREE.BufferAttribute;
+  const nrmData = new Float32Array(TEX_W * ROWS_PER_FRAME * 4);
+  const rotOnly = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
+  for (let i = 0; i < BIRD_SAMPLES; i++) {
+    p.set(0, 0, 0);
+    const a = barys[i * 2];
+    const b = barys[i * 2 + 1];
+    const w = [a, b, 1 - a - b];
+    for (let k = 0; k < 3; k++) {
+      sv.fromBufferAttribute(nrmAttr, samples[i * 3 + k]);
+      p.addScaledVector(sv, w[k]);
+    }
+    p.applyMatrix3(rotOnly).normalize();
+    const o = ((Math.floor(i / TEX_W)) * TEX_W + (i % TEX_W)) * 4;
+    nrmData[o] = p.x;
+    nrmData[o + 1] = p.y;
+    nrmData[o + 2] = p.z;
+    nrmData[o + 3] = 0;
+  }
+  const normals = new THREE.DataTexture(
+    nrmData,
+    TEX_W,
+    ROWS_PER_FRAME,
+    THREE.RGBAFormat,
+    THREE.FloatType,
+  );
+  normals.magFilter = THREE.NearestFilter;
+  normals.minFilter = THREE.NearestFilter;
+  normals.needsUpdate = true;
+
   return {
     texture,
+    normals,
     count: BIRD_SAMPLES,
     frames: BIRD_FRAMES,
     rowsPerFrame: ROWS_PER_FRAME,

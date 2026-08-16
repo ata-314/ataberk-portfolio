@@ -66,7 +66,7 @@ ${simplex}
 uniform float uTime;
 uniform float uReveal;       // opening: 0 dark -> 1 formed
 uniform float uHero;         // hero runway progress 0..1
-uniform float uDissolve;     // bird dissolves after the Work handoff
+uniform float uDissolve;     // wingtip-first dissolve at hero end
 uniform float uFinale;       // contact: matter returns, free
 uniform vec3 uPointer;
 uniform float uPointerActive;
@@ -74,9 +74,12 @@ uniform float uPointerVel;
 uniform vec3 uWaveOrigin;
 uniform float uWaveAge;
 uniform float uSize;
-uniform mat4 uBirdMat;       // bird local -> world (path + banking)
+uniform mat4 uBirdMat;       // bird local -> world (path + orientation + scale)
 uniform vec3 uBirdDir;       // travel direction (trail axis)
+uniform vec3 uVortexA;       // moving vortex centers of the data field
+uniform vec3 uVortexB;
 uniform sampler2D uPosTex;   // baked bird frames
+uniform sampler2D uNrmTex;   // baked rest-pose surface normals
 uniform float uTexW;
 uniform float uTexH;
 uniform float uRowsPerFrame;
@@ -98,17 +101,37 @@ vec3 birdLocal(float idx, float frame) {
   float col = mod(idx, uTexW);
   return texture2D(uPosTex, vec2((col + 0.5) / uTexW, (row + 0.5) / uTexH)).xyz;
 }
+vec3 birdNormal(float idx) {
+  float row = floor(idx / uTexW);
+  float col = mod(idx, uTexW);
+  return texture2D(uNrmTex, vec2((col + 0.5) / uTexW, (row + 0.5) / uRowsPerFrame)).xyz;
+}
+
+// Fluid data field: large swell + fine ripple + two roaming vortices +
+// lateral current with soft edge-turn. Not a terrain, not a sine sheet.
+vec3 fluidField(vec3 home, float seed, float calm) {
+  vec3 swell = curl(home * 0.22 + uTime * 0.045 + seed * 0.03) * 0.85;
+  vec3 ripple = curl(home * 1.1 - uTime * 0.09) * 0.22;
+  // Vortices: tangential swirl around two moving centers (xy plane)
+  vec2 dA = home.xy - uVortexA.xy;
+  float rA = length(dA) + 1e-3;
+  vec2 swirlA = vec2(-dA.y, dA.x) / rA * exp(-rA * 0.55) * 1.1;
+  vec2 dB = home.xy - uVortexB.xy;
+  float rB = length(dB) + 1e-3;
+  vec2 swirlB = vec2(dB.y, -dB.x) / rB * exp(-rB * 0.6) * 0.9;
+  // Lateral current, turning softly at the stage edges
+  float edge = smoothstep(3.2, 4.6, abs(home.x));
+  vec3 lateral = vec3(0.35 * (1.0 - edge * 2.0), edge * 0.25 * sign(home.y + 0.001), 0.0);
+  vec3 f = swell + ripple + vec3(swirlA + swirlB, 0.0) * 0.6 + lateral * 0.4;
+  return home + f * (0.75 + 0.25 * sin(uTime * 0.06 + seed)) * calm;
+}
 
 void main() {
   float seed01 = fract(aSeed * 5.3);
 
-  // ── Field matter: fluid flow ↔ structural order, breathing ──
-  float order = 0.28 + 0.22 * sin(uTime * 0.11 + aHome.x * 0.3);
-  vec3 lattice = floor(aHome * 1.6 + 0.5) / 1.6;      // loose structural grid
-  vec3 base = mix(aHome, lattice, order * (1.0 - uFinale * 0.7));
-  vec3 flow = curl(aHome * 0.4 + uTime * 0.05 + aSeed * 0.05)
-            * (0.55 + 0.35 * uFinale);
-  vec3 field = base + flow * (0.6 + 0.4 * sin(uTime * 0.07 + aSeed));
+  vec3 field = fluidField(aHome, aSeed, 1.0 - uFinale * 0.15);
+  // Crest lighting: rising matter glows faintly
+  float crest = smoothstep(0.3, 0.9, field.y - aHome.y);
 
   // ── Opening: characters emerge from darkness and gather ──
   float form = clamp((uReveal - seed01 * 0.35) / 0.65, 0.0, 1.0);
@@ -117,60 +140,90 @@ void main() {
   vec3 p = mix(emerge, field, form);
   float appear = form;
 
-  float energy = 0.0;
+  float energy = crest * 0.28;
   float alpha = 1.0;
 
   if (aBird >= 0.0) {
-    // ── Currents: bird-bound glyphs peel off in a rising spiral ──
-    float current = smoothstep(0.30, 0.58, uHero);
-    float ang = current * (5.0 + seed01 * 4.0) + aSeed;
-    float rad = mix(0.0, 1.6 * (1.0 - current), current);
-    vec3 spiral = mix(field, uBirdMat[3].xyz + vec3(cos(ang) * rad, (current - 0.5) * 2.2, sin(ang) * rad), current);
+    float isFlow = step(0.78, fract(aSeed * 3.1));   // ~22% free flow layer
+    float delay = seed01 * 0.04;
 
-    // ── Morph: spiral condenses into the flying form ──
+    // Baked skeletal flight — the model's own clip, no artificial deformation
     float ff = uFlap * uFrames;
     float f0 = floor(ff);
     vec3 bl = mix(birdLocal(aBird, f0), birdLocal(aBird, mod(f0 + 1.0, uFrames)), fract(ff));
+    vec3 nrm = birdNormal(aBird);
+    // Anatomy landmarks in bird-local space (wingspan along x after bake)
+    float wingtip = smoothstep(1.0, 1.65, abs(bl.x));
+    float tail = smoothstep(0.55, 1.0, bl.z) * (1.0 - wingtip);
+
+    // ── Gathering: currents bend toward the anchor, wide rising spiral ──
+    float gather = smoothstep(0.18, 0.42, uHero - delay * 0.4);
+    vec3 anchor = uBirdMat[3].xyz;
+    float ang = gather * (4.0 + seed01 * 5.0) + aSeed;
+    float rad = mix(2.6, 0.7, gather) * (1.0 - gather * 0.4);
+    vec3 spiral = mix(field, anchor + vec3(cos(ang) * rad, (gather - 0.35) * 2.6 * (0.4 + seed01), sin(ang) * rad * 0.7), gather);
+
+    // ── Formation: wings first, then body/head/tail fill (staggered);
+    //    every particle locked to the surface by hero ≈ 0.63 ──
+    float wingFirst = mix(0.03, 0.0, wingtip);       // wing outlines lead
+    float morph = smoothstep(0.42, 0.56, uHero - delay - wingFirst);
     vec3 birdWorld = (uBirdMat * vec4(bl, 1.0)).xyz;
 
-    float morph = smoothstep(0.52, 0.82, uHero - seed01 * 0.08);
-    // Trailing glyphs: a fraction lags behind the body and gets pulled back
-    float lag = step(0.86, fract(aSeed * 9.1)) * morph;
-    vec3 trail = birdWorld - uBirdDir * (0.6 + fract(aSeed * 4.3) * 2.0)
-               + vec3(snoise(vec3(aSeed, uTime * 0.6, 0.0)) * 0.2);
-    birdWorld = mix(birdWorld, trail, lag * (0.5 + 0.5 * sin(uTime * 2.0 + aSeed)));
+    // Curved approach: arc via curl, annealing to ZERO as the model locks
+    float arc = morph * (1.0 - morph) * 4.0;
+    vec3 path = mix(spiral, birdWorld, morph);
+    path += curl(bl * 0.8 + aSeed) * arc * 0.55;
 
-    p = mix(spiral, birdWorld, morph);
-    energy += current * 0.35 + morph * 0.25;
+    // Core layer: locked to the surface — residual noise ≤ ~1.5% of span
+    float anneal = smoothstep(0.75, 1.0, morph);
+    vec3 coreJitter = curl(bl * 2.0 + uTime * 0.25) * mix(0.18, 0.045, anneal);
+    // Flow layer: free energy at wingtips/tail, never breaking the silhouette
+    float flowAmp = isFlow * (0.3 + wingtip * 0.9 + tail * 0.6);
+    vec3 flowMotion = nrm * (0.12 + 0.25 * sin(uTime * 1.4 + aSeed)) * flowAmp
+                    - uBirdDir * flowAmp * (0.3 + fract(aSeed * 4.3) * 0.9) * smoothstep(0.62, 0.9, uHero);
 
-    // ── Handoff: the bird dissolves into thin data traces ──
-    vec3 scatterDir = normalize(vec3(fract(aSeed * 7.7) - 0.5, fract(aSeed * 3.9) - 0.2, fract(aSeed * 6.1) - 0.5) + 1e-3);
-    p += scatterDir * uDissolve * (2.5 + seed01 * 4.0);
-    alpha *= 1.0 - uDissolve;
+    p = path + mix(coreJitter * (1.0 - isFlow * 0.5), flowMotion + coreJitter * 0.4, isFlow);
+
+    energy += gather * 0.3 + isFlow * morph * 0.3 + wingtip * morph * 0.15;
+    alpha = mix(alpha, mix(1.0, 0.75, isFlow), morph);
+
+    // ── Pointer on the bird: local, along the surface normal, springs back ──
+    float dB2 = length(p - uPointer);
+    float touch = smoothstep(1.15, 0.0, dB2) * uPointerActive * morph;
+    p += nrm * touch * mix(0.10, 0.38, isFlow) * (0.6 + uPointerVel);
+    energy += touch * 0.5;
+
+    // ── Dissolve to Work: wingtips release first, traces stream away ──
+    float dHere = smoothstep(0.0, 1.0, uDissolve - (1.0 - max(wingtip, tail * 0.7)) * 0.25);
+    vec3 release = normalize(nrm + vec3(0.0, 0.35, 0.0)) * dHere * (1.8 + seed01 * 3.0)
+                 - uBirdDir * dHere * 2.2;
+    p += release;
+    alpha *= 1.0 - dHere * 0.96;
   } else {
-    // Field matter steps aside as the bird takes the stage, returns for the finale
-    float recede = smoothstep(0.45, 0.85, uHero);
-    p += vec3(sign(aHome.x) * recede * 1.8, -recede * 1.2, -recede * 1.5);
-    alpha *= 1.0 - recede * 0.92;
+    // Field matter recedes while the bird holds the stage; returns for finale
+    float recede = smoothstep(0.34, 0.6, uHero);
+    p += vec3(sign(aHome.x) * recede * 2.2, -recede * 1.4, -recede * 2.0);
+    alpha *= 1.0 - recede * 0.94;
+    // Field pointer: pressure + short orbit + speed trails
+    vec3 toP = p - uPointer;
+    float d = length(toP.xy);
+    float press = smoothstep(2.0, 0.0, d) * uPointerActive * (1.0 - recede);
+    vec2 away = normalize(toP.xy + 1e-4);
+    vec2 orbit = vec2(-away.y, away.x) * step(0.55, fract(aSeed * 6.7));
+    p.xy += (away * 0.35 + orbit * 0.3) * press * (0.6 + uPointerVel * 0.9);
+    energy += press * (0.35 + uPointerVel * 0.8);
   }
 
   // ── Finale: everything is matter again, free and calm ──
-  vec3 finaleP = aHome * 1.15 + curl(aHome * 0.3 - uTime * 0.04) * 0.9;
+  vec3 finaleP = fluidField(aHome * 1.12, aSeed, 0.8);
   p = mix(p, finaleP, uFinale);
   alpha = max(alpha, uFinale * 0.85);
 
-  // ── Pointer force field: soft, lagged (lag lives in JS), with flow trails ──
-  vec3 toP = p - uPointer;
-  float d = length(toP.xy);
-  float magnet = smoothstep(2.0, 0.0, d) * uPointerActive;
-  p.xy += normalize(toP.xy + 1e-4) * magnet * (0.4 + uPointerVel * 0.5);
-  energy += magnet * (0.4 + uPointerVel * 0.8);
-
-  // ── Click wave ──
+  // ── Click wave: short surface shiver, never an explosion ──
   if (uWaveAge >= 0.0) {
-    float ring = exp(-pow((length(p.xy - uWaveOrigin.xy) - uWaveAge * 3.0) * 1.9, 2.0)) * exp(-uWaveAge * 1.4);
-    p.xy += normalize(p.xy - uWaveOrigin.xy + 1e-4) * ring * 0.6;
-    energy += ring * 1.2;
+    float ring = exp(-pow((length(p.xy - uWaveOrigin.xy) - uWaveAge * 3.0) * 1.9, 2.0)) * exp(-uWaveAge * 1.6);
+    p += vec3(normalize(p.xy - uWaveOrigin.xy + 1e-4) * ring * 0.22, 0.0);
+    energy += ring * 0.9;
   }
 
   vGlyph = aGlyph;

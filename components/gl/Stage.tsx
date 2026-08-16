@@ -13,8 +13,8 @@ import { scrollState } from "../three/scroll-state";
 type Tier = "loading" | "full" | "mobile" | "static";
 
 const PROFILES: Record<"full" | "mobile", FieldProfile> = {
-  full: { count: 26000, birdCount: 11000, pointerEnabled: true },
-  mobile: { count: 8000, birdCount: 4200, pointerEnabled: true },
+  full: { count: 30000, birdCount: 15000, pointerEnabled: true },
+  mobile: { count: 9000, birdCount: 5600, pointerEnabled: true },
 };
 
 function detectTier(): Tier {
@@ -100,7 +100,7 @@ export default function Stage() {
     <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
       <Canvas
         camera={{ position: [0, 0.15, 8.2], fov: 45 }}
-        dpr={tier === "full" ? [1, 2] : [1, 1.5]}
+        dpr={tier === "full" ? [1, 1.75] : [1, 1.25]}
         frameloop={active.current && !lost ? "always" : "never"}
         gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
         onCreated={({ gl }) => {

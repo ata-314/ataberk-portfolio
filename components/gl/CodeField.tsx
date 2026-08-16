@@ -18,20 +18,40 @@ export type FieldProfile = {
   pointerEnabled: boolean;
 };
 
-// Bird flight inside the hero act: assembles center-right, crosses the
-// stage, exits toward the Work handoff. Short and purposeful — the bird
-// does not haunt the rest of the page.
+// Flight choreography over hero progress 0.45→1.0 (brief §7):
+// formation (three-quarter, center-right) → grow + drift LEFT → S-curve
+// RIGHT while growing → close-up toward camera → dissolve to Work.
+// Position spline + matching scale keys; smooth, reversible, no hard cuts.
+const FLIGHT_KEYS = [
+  { h: 0.42, pos: new THREE.Vector3(1.1, 1.05, -0.6), scale: 0.72 },
+  { h: 0.6, pos: new THREE.Vector3(0.55, 1.15, 0.0), scale: 0.9 },
+  { h: 0.72, pos: new THREE.Vector3(-1.1, 1.30, 0.5), scale: 1.04 },
+  { h: 0.84, pos: new THREE.Vector3(1.35, 1.10, 1.1), scale: 1.18 },
+  { h: 0.94, pos: new THREE.Vector3(0.4, 0.95, 1.9), scale: 1.38 },
+  { h: 1.0, pos: new THREE.Vector3(0.15, 1.30, 1.7), scale: 1.42 },
+];
 const FLIGHT = new THREE.CatmullRomCurve3(
-  [
-    new THREE.Vector3(2.8, -0.1, -1.0),
-    new THREE.Vector3(1.7, 0.6, 0.2),
-    new THREE.Vector3(-1.8, 0.9, 0.8),
-    new THREE.Vector3(-3.6, 1.6, -0.6),
-  ],
+  FLIGHT_KEYS.map((k) => k.pos),
   false,
   "catmullrom",
-  0.55,
+  0.5,
 );
+
+function flightAt(h: number, pos: THREE.Vector3, tangent: THREE.Vector3) {
+  const keys = FLIGHT_KEYS;
+  const h0 = keys[0].h;
+  const h1 = keys[keys.length - 1].h;
+  const c = THREE.MathUtils.clamp(h, h0, h1);
+  // Map hero progress to spline parameter through the key timings
+  let seg = 0;
+  while (seg < keys.length - 2 && c > keys[seg + 1].h) seg++;
+  const local = (c - keys[seg].h) / (keys[seg + 1].h - keys[seg].h);
+  const t = THREE.MathUtils.clamp((seg + local) / (keys.length - 1), 0.001, 0.999);
+  FLIGHT.getPointAt(t, pos);
+  FLIGHT.getTangentAt(t, tangent);
+  const scale = THREE.MathUtils.lerp(keys[seg].scale, keys[seg + 1].scale, local);
+  return scale;
+}
 
 // Lobed volumetric home: three depth shells, displaced by layered sines —
 // organic and layered, deliberately not a grid, sphere or height-map.
@@ -68,12 +88,15 @@ export function CodeField({
   const reveal = useRef(0);
   const flap = useRef(0);
   const pathT = useRef(0);
+  const yawRef = useRef(-1.07);
   const ndc = useMemo(() => new THREE.Vector2(), []);
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), []);
   const pos = useMemo(() => new THREE.Vector3(), []);
   const tangent = useMemo(() => new THREE.Vector3(), []);
   const quat = useMemo(() => new THREE.Quaternion(), []);
+  const quatOffset = useMemo(() => new THREE.Quaternion(), []);
+  const euler = useMemo(() => new THREE.Euler(), []);
   const mat = useMemo(() => new THREE.Matrix4(), []);
   const lookM = useMemo(() => new THREE.Matrix4(), []);
   const scl = useMemo(() => new THREE.Vector3(0.8, 0.8, 0.8), []);
@@ -132,7 +155,10 @@ export function CodeField({
       uSize: { value: 40 },
       uBirdMat: { value: new THREE.Matrix4() },
       uBirdDir: { value: new THREE.Vector3(-1, 0, 0) },
+      uVortexA: { value: new THREE.Vector3(-1.5, 0.4, 0) },
+      uVortexB: { value: new THREE.Vector3(2.5, -0.6, 0) },
       uPosTex: { value: bake?.texture ?? fallbackTex },
+      uNrmTex: { value: bake?.normals ?? fallbackTex },
       uTexW: { value: bake?.texWidth ?? 1 },
       uTexH: { value: bake?.texHeight ?? 1 },
       uRowsPerFrame: { value: bake?.rowsPerFrame ?? 1 },
@@ -205,13 +231,17 @@ export function CodeField({
     const page = scrollState.page.current;
     u.uHero.value = THREE.MathUtils.damp(u.uHero.value, hero, 6, delta);
 
-    // Bird dissolves right after the hero act ends (Work handoff)
-    const heroShare = 0.24; // hero runway ≈ this share of total page height
-    const dissolve = THREE.MathUtils.smoothstep(page, heroShare, heroShare + 0.07);
+    // Dissolve lives INSIDE the hero timeline (94→100%): wingtips release
+    // into traces exactly as the Work section arrives — one continuous move.
+    const dissolve = THREE.MathUtils.smoothstep(hero, 0.94, 1.0);
     u.uDissolve.value = THREE.MathUtils.damp(u.uDissolve.value, dissolve, 5, delta);
     // Finale: matter returns free at the contact scene
     const finale = THREE.MathUtils.smoothstep(page, 0.86, 0.97);
     u.uFinale.value = THREE.MathUtils.damp(u.uFinale.value, finale, 5, delta);
+
+    // Roaming vortex centers of the data field
+    u.uVortexA.value.set(-1.6 + Math.sin(u.uTime.value * 0.07) * 1.2, 0.5 + Math.cos(u.uTime.value * 0.05) * 0.8, 0);
+    u.uVortexB.value.set(2.4 + Math.cos(u.uTime.value * 0.06) * 1.4, -0.5 + Math.sin(u.uTime.value * 0.08) * 0.7, 0);
 
     // Pointer physics
     pointerPrev.current.copy(pointerSmoothed.current);
@@ -228,31 +258,51 @@ export function CodeField({
     }
     u.uWaveAge.value = waveAge.current;
 
-    // Bird transform along its short flight (hero 0.55 → 1)
+    // Bird transform: keyframed flight (grow → left → S-right → close-up).
+    // Orientation: gentle yaw from the travel direction blended over a stable
+    // three-quarter base so the anatomy never spins away; soft, clamped bank.
     if (bake) {
-      const t = THREE.MathUtils.smoothstep(u.uHero.value, 0.55, 1.0);
-      pathT.current = THREE.MathUtils.damp(pathT.current, t, 4, delta);
-      const tt = Math.min(Math.max(pathT.current, 0.001), 0.999);
-      FLIGHT.getPointAt(tt, pos);
-      FLIGHT.getTangentAt(tt, tangent);
-      lookM.lookAt(pos, lookTarget.copy(pos).add(tangent), THREE.Object3D.DEFAULT_UP);
-      quat.setFromRotationMatrix(lookM);
+      const h = u.uHero.value;
+      // #pose debug: identity orientation at a fixed spot to read model axes
+      if (typeof window !== "undefined" && window.location.hash.includes("pose")) {
+        pos.set(0.3, 0.1, 1.0);
+        quat.identity();
+        scl.setScalar(1.1);
+        tangent.set(-1, 0, 0);
+        mat.compose(pos, quat, scl);
+        u.uBirdMat.value.copy(mat);
+        u.uBirdDir.value.copy(tangent);
+      } else {
+      pathT.current = THREE.MathUtils.damp(pathT.current, h, 5, delta);
+      const s = flightAt(pathT.current, pos, tangent);
+      scl.setScalar(s);
+      // Stable three-quarter pose: the model faces +Z at identity, so a yaw
+      // of ±1.07 rad reads as a 3/4 profile. Heading follows travel direction
+      // with heavy damping — the bird banks and turns, never spins.
+      const yawTarget = (tangent.x >= 0 ? 1 : -1) * 1.07;
+      yawRef.current = THREE.MathUtils.damp(yawRef.current, yawTarget, 2.2, delta);
+      const bank = THREE.MathUtils.clamp(-tangent.x * 0.22, -0.28, 0.28);
+      quat.setFromEuler(euler.set(0.06, yawRef.current, bank));
       mat.compose(pos, quat, scl);
       u.uBirdMat.value.copy(mat);
-      u.uBirdDir.value.copy(tangent);
-      const speed = 1.1 + Math.abs(t - pathT.current) * 30;
+      u.uBirdDir.value.set(tangent.x, tangent.y * 0.4, tangent.z).normalize();
+      }
+      // Wing beat: the model's own clip; slightly faster while traveling
+      const speed = 1.0 + Math.min(Math.abs(h - pathT.current) * 20, 0.8);
       flap.current = (flap.current + delta * speed) % 1;
       u.uFlap.value = flap.current;
     }
 
-    // Camera: slow push-in through the hero act; still afterwards
-    const h = u.uHero.value;
+    // Camera: slightly below eye-line, slow push through the hero act,
+    // whisper of pointer parallax — never enough to bend the silhouette.
+    const h2 = u.uHero.value;
+    const px = profile.pointerEnabled ? THREE.MathUtils.clamp(pointerSmoothed.current.x * 0.02, -0.18, 0.18) : 0;
     camera.position.set(
-      Math.sin(h * Math.PI) * 0.4,
-      0.15 - h * 0.1,
-      8.2 - h * 1.8 * (1 - u.uFinale.value),
+      Math.sin(h2 * Math.PI) * 0.35 + px,
+      -0.05 - h2 * 0.05,
+      8.2 - h2 * 1.6 * (1 - u.uFinale.value),
     );
-    camera.lookAt(lookTarget.set(0.4, 0.1, 0));
+    camera.lookAt(lookTarget.set(0.35, 0.15, 0));
 
     u.uSize.value = 40 * gl.getPixelRatio() * (size.height / 900);
   });

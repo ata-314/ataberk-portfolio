@@ -47,18 +47,31 @@ export function Hero({ t }: { t: HeroStrings }) {
           scrollState.hero.current = self.progress;
         },
       });
+      // Text retreat: the headline yields the stage to the bird (hero ~40–55%)
+      // with a masked slide, then returns on reverse scroll.
+      gsap.to("[data-hero-text]", {
+        opacity: 0,
+        y: -60,
+        ease: "none",
+        scrollTrigger: {
+          trigger: wrapper.current,
+          start: "29% top", // ≈ hero progress 0.40 on the 360svh runway
+          end: "40% top", // ≈ 0.55 — gone before the bird owns the stage
+          scrub: true,
+        },
+      });
     },
     { scope: wrapper },
   );
 
   return (
-    <div ref={wrapper} className="relative h-[200svh] md:h-[300svh]">
+    <div ref={wrapper} className="relative h-[220svh] md:h-[360svh]">
       <section
         aria-label={t.name}
         className="sticky top-0 flex h-svh flex-col justify-center overflow-hidden px-6 md:px-10"
       >
         {staticMode && <StaticField />}
-        <div className="pointer-events-none relative z-10 max-w-3xl">
+        <div data-hero-text className="pointer-events-none relative z-10 max-w-3xl">
           <p className="mb-5 font-mono text-xs tracking-[0.3em] text-bone-dim uppercase [animation:heroRise_0.8s_ease_0.1s_both]">
             {t.intro}
           </p>
