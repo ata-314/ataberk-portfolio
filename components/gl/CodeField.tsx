@@ -130,6 +130,17 @@ export function CodeField({
     const v = new THREE.Vector3();
     const birdSamples = bake?.count ?? 1;
 
+    // Shuffled pixel mapping: every particle owns one cell of the source
+    // video, interleaved so the bird subset never carves a spatial hole.
+    const grid = new Float32Array(count * 2);
+    const cols = Math.round(Math.sqrt(count * (16 / 9)));
+    const rows = Math.ceil(count / cols);
+    const perm = Array.from({ length: count }, (_, i) => i);
+    for (let i = count - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [perm[i], perm[j]] = [perm[j], perm[i]];
+    }
+
     for (let i = 0; i < count; i++) {
       homePosition(i, count, v);
       homes[i * 3] = v.x;
@@ -137,6 +148,9 @@ export function CodeField({
       homes[i * 3 + 2] = v.z;
       seeds[i] = Math.random() * 100;
       glyphs[i] = Math.floor(Math.random() * GLYPHS.length);
+      const g = perm[i];
+      grid[i * 2] = ((g % cols) + 0.5 + (Math.random() - 0.5) * 0.25) / cols;
+      grid[i * 2 + 1] = 1 - ((Math.floor(g / cols) + 0.5 + (Math.random() - 0.5) * 0.25) / rows);
       // Every birdCount-th particle carries the bird; spread across samples
       birds[i] =
         bake && i < birdCount ? Math.floor((i / birdCount) * birdSamples) : -1;
@@ -145,6 +159,7 @@ export function CodeField({
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute("aHome", new THREE.BufferAttribute(homes, 3));
+    geometry.setAttribute("aGrid", new THREE.BufferAttribute(grid, 2));
     geometry.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
     geometry.setAttribute("aGlyph", new THREE.BufferAttribute(glyphs, 1));
     geometry.setAttribute("aBird", new THREE.BufferAttribute(birds, 1));
@@ -177,6 +192,12 @@ export function CodeField({
       uVortexB: { value: new THREE.Vector3(2.5, -0.6, 0) },
       uPosTex: { value: bake?.texture ?? fallbackTex },
       uNrmTex: { value: bake?.normals ?? fallbackTex },
+      uVideoTex: { value: fallbackTex as THREE.Texture },
+      uVideoOn: { value: 0 },
+      uMeltScale: {
+        value:
+          typeof window !== "undefined" && window.location.hash.includes("lock") ? 0 : 1,
+      },
       uTexW: { value: bake?.texWidth ?? 1 },
       uTexH: { value: bake?.texHeight ?? 1 },
       uRowsPerFrame: { value: bake?.rowsPerFrame ?? 1 },
@@ -208,6 +229,38 @@ export function CodeField({
     },
     [geometry, material, uniforms],
   );
+
+  // Data-painting source: the hero video feeds the field as a texture.
+  // Muted + playsInline + loop; the site never blocks on it (uVideoOn flips
+  // only once frames actually decode).
+  useEffect(() => {
+    const vid = document.createElement("video");
+    vid.src = "/media/hero-source.mp4";
+    vid.muted = true;
+    vid.loop = true;
+    vid.playsInline = true;
+    vid.preload = "auto";
+    const tex = new THREE.VideoTexture(vid);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    const onPlaying = () => {
+      uniforms.uVideoTex.value = tex;
+      uniforms.uVideoOn.value = 1;
+    };
+    vid.addEventListener("playing", onPlaying);
+    vid.play().catch(() => {
+      // Autoplay refused (rare with muted): stay in fluid mode
+      uniforms.uVideoOn.value = 0;
+    });
+    return () => {
+      vid.removeEventListener("playing", onPlaying);
+      vid.pause();
+      vid.removeAttribute("src");
+      vid.load();
+      tex.dispose();
+    };
+  }, [uniforms]);
 
   // Pointer / touch on WINDOW: the canvas is a click-through overlay, so the
   // matter reacts everywhere on the page — including around the companion bird.

@@ -80,6 +80,9 @@ uniform vec3 uVortexA;       // moving vortex centers of the data field
 uniform vec3 uVortexB;
 uniform sampler2D uPosTex;   // baked bird frames
 uniform sampler2D uNrmTex;   // baked rest-pose surface normals
+uniform sampler2D uVideoTex; // hero source video (data-painting mode)
+uniform float uVideoOn;
+uniform float uMeltScale;    // 1 = breathing cycle; 0 = image locked (debug)
 uniform float uTexW;
 uniform float uTexH;
 uniform float uRowsPerFrame;
@@ -87,6 +90,7 @@ uniform float uFrames;
 uniform float uFlap;
 
 attribute vec3 aHome;        // volumetric field home (lobed, layered)
+attribute vec2 aGrid;        // shuffled video-pixel mapping (data painting)
 attribute float aSeed;
 attribute float aGlyph;
 attribute float aBird;       // >=0: index into bake texture, -1: field-only
@@ -96,6 +100,8 @@ varying float vEnergy;
 varying float vDepth;
 varying float vAlpha;
 varying float vBird;   // 1 = bird glyph, 0 = fluid dot
+varying vec3 vVid;     // video pixel color
+varying float vVidMix; // how strongly the fragment uses the video color
 
 vec3 birdLocal(float idx, float frame) {
   float row = frame * uRowsPerFrame + floor(idx / uTexW);
@@ -130,9 +136,36 @@ vec3 fluidField(vec3 home, float seed, float calm) {
 void main() {
   float seed01 = fract(aSeed * 5.3);
 
-  vec3 field = fluidField(aHome, aSeed, 1.0 - uFinale * 0.15);
-  // Crest lighting: rising matter glows faintly
-  float crest = smoothstep(0.3, 0.9, field.y - aHome.y);
+  // ── The matter's resting form ──
+  // Video mode (data painting): each particle owns a pixel of the source
+  // video; luminance sculpts a flowing relief and feeds its light. The image
+  // never reads as a screen — it keeps dissolving through flow.
+  vec3 field;
+  float crest;
+  vec3 vidCol = vec3(0.0);
+  float lum = 0.0;
+  if (uVideoOn > 0.5) {
+    vidCol = texture2D(uVideoTex, aGrid).rgb;
+    lum = dot(vidCol, vec3(0.299, 0.587, 0.114));
+    vec3 sheet = vec3(
+      (aGrid.x - 0.5) * 8.2 + 2.05,
+      (aGrid.y - 0.5) * 4.8 + 0.4,
+      (aGrid.y - 0.5) * -1.6
+    );
+    sheet.z += lum * 1.9;            // bright pixels surge toward the camera
+    sheet.y += lum * 0.3;
+    // The image breathes: it locks legible, melts into flow, reforms —
+    // the signature oscillation of a living data painting. At lock the
+    // displacement stays under ~2 pixel-cells so the frame truly reads.
+    float melt = pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0) * uMeltScale;
+    vec3 flow2 = curl(vec3(aGrid * 3.6, uTime * 0.1) + aSeed * 0.02)
+               * (0.015 + (1.0 - lum) * 0.06 + melt * 0.4);
+    field = sheet + flow2;
+    crest = lum;
+  } else {
+    field = fluidField(aHome, aSeed, 1.0 - uFinale * 0.15);
+    crest = smoothstep(0.3, 0.9, field.y - aHome.y);
+  }
 
   // ── Opening: characters emerge from darkness and gather ──
   float form = clamp((uReveal - seed01 * 0.35) / 0.65, 0.0, 1.0);
@@ -229,14 +262,26 @@ void main() {
 
   vGlyph = aGlyph;
   vBird = step(0.0, aBird);
+  vVid = vidCol;
+  vVidMix = uVideoOn * (1.0 - vBird) * (1.0 - uFinale);
+  // Video mode: color carries the image (high-key footage stays legible);
+  // brightness shapes gently, true darks recede. The painting feathers out
+  // toward the headline side and the stage edges — never fights the text.
+  float feather = smoothstep(0.03, 0.30, aGrid.x)
+                * smoothstep(0.0, 0.12, aGrid.y)
+                * smoothstep(1.0, 0.88, aGrid.y);
+  alpha *= mix(1.0, (0.25 + lum * 0.75) * feather, vVidMix);
   vEnergy = clamp(energy, 0.0, 1.0);
 
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   vDepth = clamp((-mv.z - 3.0) / 10.0, 0.0, 1.0);
   vAlpha = alpha * appear;
   gl_Position = projectionMatrix * mv;
-  // Bird glyphs read as characters; fluid matter stays finer for density
+  // Bird glyphs read as characters; fluid matter stays finer for density.
+  // In data-painting mode the field motes grow until they almost tile —
+  // the frame fuses into a continuous painting instead of sparse speckle.
   float sizeMul = mix(0.4 + 0.5 * fract(aSeed * 7.31), 0.55 + 0.9 * fract(aSeed * 7.31), vBird);
+  sizeMul = mix(sizeMul, 1.5 + 0.5 * fract(aSeed * 7.31), vVidMix);
   gl_PointSize = uSize * sizeMul * (1.0 / -mv.z);
 }
 `;
@@ -252,6 +297,8 @@ varying float vEnergy;
 varying float vDepth;
 varying float vAlpha;
 varying float vBird;
+varying vec3 vVid;
+varying float vVidMix;
 
 void main() {
   if (vAlpha < 0.01) discard;
@@ -271,10 +318,13 @@ void main() {
 
   // Depth-graded matter: near = warm bone, far = cool steel/cyan whisper.
   vec3 color = mix(uColorBase, uColorCyan, vDepth * 0.35 + 0.08);
+  // Data-painting mode: the pixel's own color carries the image
+  color = mix(color, vVid * vec3(1.08, 1.04, 0.97), vVidMix * 0.92);
   color = mix(color, uColorAccent, smoothstep(0.35, 0.95, vEnergy));
 
   float fade = 1.0 - vDepth * 0.5;
   float base = mix(0.5, 0.72, vBird); // fluid slightly softer per-particle
+  base = mix(base, 0.85, vVidMix); // data painting: even, luminous surface
   gl_FragColor = vec4(color, shape * vAlpha * fade * (base + 0.28 * vEnergy));
 }
 `;
