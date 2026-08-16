@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n";
 import { home } from "@/content/home";
 import { Hero } from "@/components/hero/Hero";
+import { BirdCompanion } from "@/components/three/BirdCompanion";
 
 export default async function Home({
   params,
@@ -15,6 +16,8 @@ export default async function Home({
 
   return (
     <main>
+      {/* Hologram eagle — assembles from the hero streams, flies with page scroll */}
+      <BirdCompanion />
       {/* Hero — "Creative Intelligence Field / Terrain of Mind" (V2, approved) */}
       <Hero
         t={{

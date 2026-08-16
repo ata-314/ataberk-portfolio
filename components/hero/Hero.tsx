@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { scrollState } from "../three/scroll-state";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -37,6 +38,7 @@ export function Hero({ t }: { t: HeroStrings }) {
         scrub: true,
         onUpdate: (self) => {
           progress.current = self.progress;
+          scrollState.hero.current = self.progress;
         },
       });
     },
