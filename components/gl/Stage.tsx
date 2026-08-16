@@ -8,7 +8,6 @@ import { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { CodeField, type FieldProfile } from "./CodeField";
 import { bakeBird, type BirdBake } from "../three/bird-bake";
-import { scrollState } from "../three/scroll-state";
 
 type Tier = "loading" | "full" | "mobile" | "static";
 
@@ -77,19 +76,16 @@ export default function Stage() {
     };
   }, []);
 
-  // Sleep the loop mid-page where the matter is fully faded (between the
-  // bird handoff and the finale) — no invisible GPU burn.
+  // The companion bird rides the whole page — the loop stays live while the
+  // tab is visible and sleeps only when the document is hidden.
   useEffect(() => {
     if (tier === "static" || tier === "loading") return;
-    const id = setInterval(() => {
-      const page = scrollState.page.current;
-      const shouldRun = page < 0.34 || page > 0.8;
-      if (shouldRun !== active.current) {
-        active.current = shouldRun;
-        forceRender((n) => n + 1);
-      }
-    }, 250);
-    return () => clearInterval(id);
+    const onVis = () => {
+      active.current = !document.hidden;
+      forceRender((n) => n + 1);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, [tier]);
 
   if (tier === "loading") return null;
@@ -97,7 +93,9 @@ export default function Stage() {
 
   const profile = PROFILES[tier];
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+    // Click-through overlay ABOVE section backgrounds: matter and bird pass
+    // over the page; pointer events reach the content beneath.
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-20">
       <Canvas
         camera={{ position: [0, 0.15, 8.2], fov: 45 }}
         dpr={tier === "full" ? [1, 1.75] : [1, 1.25]}
@@ -111,7 +109,7 @@ export default function Stage() {
           });
           gl.domElement.addEventListener("webglcontextrestored", () => setLost(false));
         }}
-        style={{ pointerEvents: "auto" }}
+        style={{ pointerEvents: "none" }}
       >
         <CodeField profile={profile} bake={bake} />
       </Canvas>

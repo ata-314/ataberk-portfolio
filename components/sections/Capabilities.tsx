@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { SiteContent } from "@/content/site";
+import { SectionIntro } from "./SectionIntro";
 
 // Four living systems on one network spine. Approaching one (hover/focus on
 // desktop, native accordion on mobile) reveals how it feeds the others —
@@ -16,14 +17,11 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto max-w-7xl">
-        <h2 className="font-display font-semibold tracking-tight" style={{ fontSize: "var(--text-h2)" }}>
-          {t.heading}
-        </h2>
-        <p className="mt-4 max-w-xl text-bone-dim">{t.lead}</p>
+        <SectionIntro eyebrow="Systems" title={t.heading} lead={t.lead} />
 
-        {/* Desktop: network grid */}
-        <div className="relative mt-16 hidden md:block">
-          <div aria-hidden className="absolute inset-x-8 top-7 h-px bg-graphite">
+        {/* Desktop: network grid on a shared spine */}
+        <div className="relative mt-20 hidden md:block">
+          <div aria-hidden className="absolute inset-x-8 top-0 h-px bg-graphite">
             <div
               className="h-px bg-lime/70 transition-all duration-500"
               style={{
@@ -41,13 +39,14 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
                 onMouseLeave={() => setActive(null)}
                 onFocus={() => setActive(i)}
                 onBlur={() => setActive(null)}
-                className={`relative cursor-inherit text-left transition-opacity duration-400 ${
-                  active !== null && active !== i ? "opacity-35" : "opacity-100"
+                className={`glass glass-hover relative p-7 text-left transition-opacity duration-400 ${
+                  active !== null && active !== i ? "opacity-40" : "opacity-100"
                 }`}
+                data-reveal
               >
                 <span
                   aria-hidden
-                  className={`absolute top-6 left-0 h-2.5 w-2.5 rounded-full border transition-colors duration-300 ${
+                  className={`absolute -top-[5px] left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full border transition-colors duration-300 ${
                     active === i ? "border-lime bg-lime" : "border-steel bg-ink"
                   }`}
                 />

@@ -93,6 +93,26 @@ body {
   }
 }
 
+/* Futurist glass surface — used for cards and functional panels only */
+.glass {
+  background: rgba(243, 239, 231, 0.03);
+  border: 1px solid rgba(243, 239, 231, 0.07);
+  border-radius: 1.5rem;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.glass-hover {
+  transition:
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.5s ease,
+    background 0.5s ease;
+}
+.glass-hover:hover {
+  transform: translateY(-4px);
+  border-color: rgba(200, 255, 62, 0.35);
+  background: rgba(243, 239, 231, 0.05);
+}
+
 /* Custom cursor: hide the native one only on fine pointers when active */
 @media (pointer: fine) {
   body[data-cursor="on"] {

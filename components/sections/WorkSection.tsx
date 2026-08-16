@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Locale } from "@/lib/i18n";
 import { work, type WorkItem } from "@/content/work";
 import { SystemVisual } from "../work/SystemVisual";
+import { SectionIntro } from "./SectionIntro";
 
 function Meta({ item }: { item: WorkItem }) {
   return (
@@ -23,7 +24,12 @@ function CaseLink({
   className?: string;
 }) {
   return (
-    <Link href={`/${locale}/work/${slug}`} data-cursor="view" className={`group block ${className}`}>
+    <Link
+      href={`/${locale}/work/${slug}`}
+      data-cursor="view"
+      data-reveal
+      className={`group block transition-transform duration-500 ease-out hover:-translate-y-1 ${className}`}
+    >
       {children}
     </Link>
   );
@@ -42,12 +48,15 @@ export function WorkSection({ locale, visualLabel }: { locale: Locale; visualLab
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto max-w-7xl">
-        <h2
-          className="font-display font-semibold tracking-tight"
-          style={{ fontSize: "var(--text-h2)" }}
-        >
-          {t.heading}
-        </h2>
+        <SectionIntro
+          eyebrow={locale === "tr" ? "Portfolyo" : "Portfolio"}
+          title={t.heading}
+          lead={
+            locale === "tr"
+              ? "Gerçek sistemler, gerçek işler — her biri aynı yaratıcı maddeden."
+              : "Real systems, real work — each one cast from the same creative matter."
+          }
+        />
 
         {/* 01 — Featured, full width */}
         <CaseLink locale={locale} slug={featured.slug} className="mt-16">

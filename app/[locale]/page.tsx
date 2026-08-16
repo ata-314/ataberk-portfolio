@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n";
 import { site } from "@/content/site";
 import { Hero } from "@/components/hero/Hero";
+import { Reveal } from "@/components/motion/Reveal";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { WorkSection } from "@/components/sections/WorkSection";
 import { Capabilities } from "@/components/sections/Capabilities";
@@ -28,6 +29,7 @@ export default async function Home({
 
   return (
     <main id="content">
+      <Reveal />
       <Hero
         t={{
           name: t.name,

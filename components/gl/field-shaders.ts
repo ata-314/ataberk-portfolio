@@ -95,6 +95,7 @@ varying float vGlyph;
 varying float vEnergy;
 varying float vDepth;
 varying float vAlpha;
+varying float vBird;   // 1 = bird glyph, 0 = fluid dot
 
 vec3 birdLocal(float idx, float frame) {
   float row = frame * uRowsPerFrame + floor(idx / uTexW);
@@ -107,23 +108,23 @@ vec3 birdNormal(float idx) {
   return texture2D(uNrmTex, vec2((col + 0.5) / uTexW, (row + 0.5) / uRowsPerFrame)).xyz;
 }
 
-// Fluid data field: large swell + fine ripple + two roaming vortices +
-// lateral current with soft edge-turn. Not a terrain, not a sine sheet.
+// Fluid data sculpture — billowing volumetric mass in the spirit of
+// large-scale data art: domain-warped curl layers boil slowly, two roaming
+// vortices stir the volume, edges stay wispy. Never a terrain or sheet.
 vec3 fluidField(vec3 home, float seed, float calm) {
-  vec3 swell = curl(home * 0.22 + uTime * 0.045 + seed * 0.03) * 0.85;
-  vec3 ripple = curl(home * 1.1 - uTime * 0.09) * 0.22;
-  // Vortices: tangential swirl around two moving centers (xy plane)
+  // Domain warp: the field flows through a flowing space
+  vec3 q = home * 0.42 + curl(home * 0.2 + uTime * 0.03) * 0.9;
+  vec3 billow = curl(q + uTime * 0.055 + seed * 0.02) * 1.15;
+  vec3 medium = curl(home * 0.6 - uTime * 0.04) * 0.4;
+  vec3 fine = curl(home * 1.6 + uTime * 0.1) * 0.14;
   vec2 dA = home.xy - uVortexA.xy;
   float rA = length(dA) + 1e-3;
-  vec2 swirlA = vec2(-dA.y, dA.x) / rA * exp(-rA * 0.55) * 1.1;
+  vec2 swirlA = vec2(-dA.y, dA.x) / rA * exp(-rA * 0.5) * 1.2;
   vec2 dB = home.xy - uVortexB.xy;
   float rB = length(dB) + 1e-3;
-  vec2 swirlB = vec2(dB.y, -dB.x) / rB * exp(-rB * 0.6) * 0.9;
-  // Lateral current, turning softly at the stage edges
-  float edge = smoothstep(3.2, 4.6, abs(home.x));
-  vec3 lateral = vec3(0.35 * (1.0 - edge * 2.0), edge * 0.25 * sign(home.y + 0.001), 0.0);
-  vec3 f = swell + ripple + vec3(swirlA + swirlB, 0.0) * 0.6 + lateral * 0.4;
-  return home + f * (0.75 + 0.25 * sin(uTime * 0.06 + seed)) * calm;
+  vec2 swirlB = vec2(dB.y, -dB.x) / rB * exp(-rB * 0.55) * 1.0;
+  vec3 f = billow + medium + fine + vec3(swirlA + swirlB, 0.0) * 0.55;
+  return home + f * (0.8 + 0.2 * sin(uTime * 0.05 + seed)) * calm;
 }
 
 void main() {
@@ -193,15 +194,15 @@ void main() {
     p += nrm * touch * mix(0.10, 0.38, isFlow) * (0.6 + uPointerVel);
     energy += touch * 0.5;
 
-    // ── Dissolve to Work: wingtips release first, traces stream away ──
+    // ── Finale merge: at the very end the bird releases back into matter ──
     float dHere = smoothstep(0.0, 1.0, uDissolve - (1.0 - max(wingtip, tail * 0.7)) * 0.25);
     vec3 release = normalize(nrm + vec3(0.0, 0.35, 0.0)) * dHere * (1.8 + seed01 * 3.0)
                  - uBirdDir * dHere * 2.2;
     p += release;
-    alpha *= 1.0 - dHere * 0.96;
+    alpha *= 1.0 - dHere * 0.9;
   } else {
-    // Field matter recedes while the bird holds the stage; returns for finale
-    float recede = smoothstep(0.34, 0.6, uHero);
+    // Field matter recedes while the bird takes the page; returns for finale
+    float recede = smoothstep(0.5, 0.85, uHero);
     p += vec3(sign(aHome.x) * recede * 2.2, -recede * 1.4, -recede * 2.0);
     alpha *= 1.0 - recede * 0.94;
     // Field pointer: pressure + short orbit + speed trails
@@ -227,13 +228,16 @@ void main() {
   }
 
   vGlyph = aGlyph;
+  vBird = step(0.0, aBird);
   vEnergy = clamp(energy, 0.0, 1.0);
 
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   vDepth = clamp((-mv.z - 3.0) / 10.0, 0.0, 1.0);
   vAlpha = alpha * appear;
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = uSize * (0.55 + 0.9 * fract(aSeed * 7.31)) * (1.0 / -mv.z);
+  // Bird glyphs read as characters; fluid matter stays finer for density
+  float sizeMul = mix(0.4 + 0.5 * fract(aSeed * 7.31), 0.55 + 0.9 * fract(aSeed * 7.31), vBird);
+  gl_PointSize = uSize * sizeMul * (1.0 / -mv.z);
 }
 `;
 
@@ -247,20 +251,30 @@ varying float vGlyph;
 varying float vEnergy;
 varying float vDepth;
 varying float vAlpha;
+varying float vBird;
 
 void main() {
   if (vAlpha < 0.01) discard;
-  // Glyph cell lookup on the 4×4 atlas
-  vec2 cell = vec2(mod(vGlyph, 4.0), floor(vGlyph / 4.0));
-  vec2 uv = (cell + gl_PointCoord) / 4.0;
-  float glyph = texture2D(uAtlas, uv).a;
-  if (glyph < 0.12) discard;
+  float shape;
+  if (vBird > 0.5) {
+    // Bird matter = code characters (4×4 atlas)
+    vec2 cell = vec2(mod(vGlyph, 4.0), floor(vGlyph / 4.0));
+    vec2 uv = (cell + gl_PointCoord) / 4.0;
+    shape = texture2D(uAtlas, uv).a;
+    if (shape < 0.12) discard;
+  } else {
+    // Fluid matter = soft luminous motes — dense, sculptural
+    float r = length(gl_PointCoord - 0.5);
+    if (r > 0.5) discard;
+    shape = smoothstep(0.5, 0.06, r);
+  }
 
   // Depth-graded matter: near = warm bone, far = cool steel/cyan whisper.
   vec3 color = mix(uColorBase, uColorCyan, vDepth * 0.35 + 0.08);
   color = mix(color, uColorAccent, smoothstep(0.35, 0.95, vEnergy));
 
   float fade = 1.0 - vDepth * 0.5;
-  gl_FragColor = vec4(color, glyph * vAlpha * fade * (0.72 + 0.28 * vEnergy));
+  float base = mix(0.5, 0.72, vBird); // fluid slightly softer per-particle
+  gl_FragColor = vec4(color, shape * vAlpha * fade * (base + 0.28 * vEnergy));
 }
 `;

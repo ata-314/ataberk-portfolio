@@ -37,6 +37,22 @@ const FLIGHT = new THREE.CatmullRomCurve3(
   0.5,
 );
 
+// After the hero act the bird stays with the reader: a page-long companion
+// path weaving over the sections, ending centered for the contact finale.
+const PAGE_CURVE = new THREE.CatmullRomCurve3(
+  [
+    new THREE.Vector3(0.15, 1.3, 1.7), // hero close-up handoff
+    new THREE.Vector3(-2.3, 0.7, 0.1),
+    new THREE.Vector3(2.4, 1.1, -0.5),
+    new THREE.Vector3(-2.1, 0.4, 0.6),
+    new THREE.Vector3(1.8, 0.9, 0.2),
+    new THREE.Vector3(0.2, 0.7, 1.2), // finale center
+  ],
+  false,
+  "catmullrom",
+  0.55,
+);
+
 function flightAt(h: number, pos: THREE.Vector3, tangent: THREE.Vector3) {
   const keys = FLIGHT_KEYS;
   const h0 = keys[0].h;
@@ -88,6 +104,8 @@ export function CodeField({
   const reveal = useRef(0);
   const flap = useRef(0);
   const pathT = useRef(0);
+  const pageT = useRef(0);
+  const pageAtHeroEnd = useRef(0);
   const yawRef = useRef(-1.07);
   const ndc = useMemo(() => new THREE.Vector2(), []);
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
@@ -191,13 +209,12 @@ export function CodeField({
     [geometry, material, uniforms],
   );
 
-  // Pointer / touch: force field + click wave.
+  // Pointer / touch on WINDOW: the canvas is a click-through overlay, so the
+  // matter reacts everywhere on the page — including around the companion bird.
   useEffect(() => {
     if (!profile.pointerEnabled) return;
-    const el = gl.domElement;
     const toWorld = (x: number, y: number) => {
-      const rect = el.getBoundingClientRect();
-      ndc.set(((x - rect.left) / rect.width) * 2 - 1, -((y - rect.top) / rect.height) * 2 + 1);
+      ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
       raycaster.setFromCamera(ndc, camera);
       raycaster.ray.intersectPlane(plane, pointerTarget.current);
     };
@@ -211,15 +228,15 @@ export function CodeField({
       uniforms.uWaveOrigin.value.copy(pointerTarget.current);
       waveAge.current = 0;
     };
-    el.addEventListener("pointermove", onMove);
-    el.addEventListener("pointerleave", onLeave);
-    el.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onDown, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onLeave);
     return () => {
-      el.removeEventListener("pointermove", onMove);
-      el.removeEventListener("pointerleave", onLeave);
-      el.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerdown", onDown);
+      document.documentElement.removeEventListener("pointerleave", onLeave);
     };
-  }, [gl, camera, ndc, raycaster, plane, uniforms, profile.pointerEnabled]);
+  }, [camera, ndc, raycaster, plane, uniforms, profile.pointerEnabled]);
 
   useFrame((_, delta) => {
     const u = uniforms;
@@ -231,9 +248,9 @@ export function CodeField({
     const page = scrollState.page.current;
     u.uHero.value = THREE.MathUtils.damp(u.uHero.value, hero, 6, delta);
 
-    // Dissolve lives INSIDE the hero timeline (94→100%): wingtips release
-    // into traces exactly as the Work section arrives — one continuous move.
-    const dissolve = THREE.MathUtils.smoothstep(hero, 0.94, 1.0);
+    // The bird stays with the reader for the whole page; it only releases
+    // back into free matter as the contact finale arrives.
+    const dissolve = THREE.MathUtils.smoothstep(page, 0.9, 0.97);
     u.uDissolve.value = THREE.MathUtils.damp(u.uDissolve.value, dissolve, 5, delta);
     // Finale: matter returns free at the contact scene
     const finale = THREE.MathUtils.smoothstep(page, 0.86, 0.97);
@@ -274,7 +291,22 @@ export function CodeField({
         u.uBirdDir.value.copy(tangent);
       } else {
       pathT.current = THREE.MathUtils.damp(pathT.current, h, 5, delta);
-      const s = flightAt(pathT.current, pos, tangent);
+      let s: number;
+      if (h < 0.999) {
+        s = flightAt(pathT.current, pos, tangent);
+        pageAtHeroEnd.current = page;
+      } else {
+        // Companion flight: weave over the sections on page progress
+        const span = Math.max(0.9 - pageAtHeroEnd.current, 0.05);
+        const target = THREE.MathUtils.clamp((page - pageAtHeroEnd.current) / span, 0, 1);
+        pageT.current = THREE.MathUtils.damp(pageT.current, target, 4, delta);
+        const tt = THREE.MathUtils.clamp(pageT.current, 0.001, 0.999);
+        PAGE_CURVE.getPointAt(tt, pos);
+        PAGE_CURVE.getTangentAt(tt, tangent);
+        // Smaller while traveling between sections; settles for the finale
+        s = THREE.MathUtils.lerp(1.42, 0.82, THREE.MathUtils.smoothstep(pageT.current, 0.0, 0.25))
+          + THREE.MathUtils.smoothstep(pageT.current, 0.85, 1.0) * 0.2;
+      }
       scl.setScalar(s);
       // Stable three-quarter pose: the model faces +Z at identity, so a yaw
       // of ±1.07 rad reads as a 3/4 profile. Heading follows travel direction

@@ -42,9 +42,9 @@ export function Manifesto({ line, sub }: { line: string; sub: string }) {
       className="relative z-10 bg-ink px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
-      <div className="mx-auto grid max-w-7xl grid-cols-12 gap-4">
+      <div className="mx-auto max-w-5xl text-center">
         <p
-          className="font-display col-span-12 leading-[1.08] font-semibold tracking-tight text-balance md:col-span-10 md:col-start-2"
+          className="font-display leading-[1.08] font-semibold tracking-tight text-balance"
           style={{ fontSize: "var(--text-h1)" }}
         >
           {line.split(" ").map((w, i) => (
@@ -53,9 +53,7 @@ export function Manifesto({ line, sub }: { line: string; sub: string }) {
             </span>
           ))}
         </p>
-        <p className="col-span-12 mt-8 max-w-xl text-lg text-bone-dim md:col-span-6 md:col-start-6">
-          {sub}
-        </p>
+        <p className="mx-auto mt-8 max-w-xl text-lg text-bone-dim">{sub}</p>
       </div>
     </section>
   );
