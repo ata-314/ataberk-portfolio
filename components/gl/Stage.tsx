@@ -12,8 +12,8 @@ import { bakeBird, type BirdBake } from "../three/bird-bake";
 type Tier = "loading" | "full" | "mobile" | "static";
 
 const PROFILES: Record<"full" | "mobile", FieldProfile> = {
-  full: { count: 30000, birdCount: 15000, pointerEnabled: true },
-  mobile: { count: 9000, birdCount: 5600, pointerEnabled: true },
+  full: { count: 46000, birdCount: 16000, pointerEnabled: true },
+  mobile: { count: 13000, birdCount: 6000, pointerEnabled: true },
 };
 
 function detectTier(): Tier {

@@ -393,8 +393,95 @@ export function CodeField({
   });
 
   return (
-    <points geometry={geometry} frustumCulled={false}>
-      <primitive object={material} attach="material" />
-    </points>
+    <>
+      <points geometry={geometry} frustumCulled={false}>
+        <primitive object={material} attach="material" />
+      </points>
+      {profile.pointerEnabled && (
+        <LightTrail pointer={pointerSmoothed} vel={pointerVel} active={pointerActive} />
+      )}
+    </>
   );
+}
+
+// A thin streak of light that follows the pointer — a fading line, not a
+// cursor shape. Head chases the pointer, tail relaxes; brightness rides speed.
+const TRAIL_N = 28;
+
+function LightTrail({
+  pointer,
+  vel,
+  active,
+}: {
+  pointer: React.RefObject<THREE.Vector3>;
+  vel: React.RefObject<number>;
+  active: React.RefObject<number>;
+}) {
+  const { line, geometry, material, uniforms, positions } = useMemo(() => {
+    const positions = new Float32Array(TRAIL_N * 3);
+    const ages = new Float32Array(TRAIL_N);
+    for (let i = 0; i < TRAIL_N; i++) ages[i] = i / (TRAIL_N - 1);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("aT", new THREE.BufferAttribute(ages, 1));
+    const uniforms = { uIntensity: { value: 0 } };
+    const material = new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: /* glsl */ `
+        attribute float aT;
+        varying float vT;
+        void main() {
+          vT = aT;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uIntensity;
+        varying float vT;
+        void main() {
+          float a = (1.0 - vT) * uIntensity;
+          vec3 color = mix(vec3(0.784, 1.0, 0.243), vec3(0.953, 0.937, 0.906), vT);
+          gl_FragColor = vec4(color, a * 0.85);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const line = new THREE.Line(geometry, material);
+    line.frustumCulled = false;
+    return { line, geometry, material, uniforms, positions };
+  }, []);
+
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
+
+  useFrame((_, delta) => {
+    const p = pointer.current;
+    if (p.x > 500) return; // pointer hasn't entered the stage yet
+    positions[0] = p.x;
+    positions[1] = p.y;
+    positions[2] = 1.2;
+    const k = 1 - Math.exp(-26 * delta);
+    for (let i = TRAIL_N - 1; i >= 1; i--) {
+      const o = i * 3;
+      positions[o] += (positions[o - 3] - positions[o]) * k;
+      positions[o + 1] += (positions[o - 2] - positions[o + 1]) * k;
+      positions[o + 2] = 1.2;
+    }
+    (geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    uniforms.uIntensity.value = THREE.MathUtils.damp(
+      uniforms.uIntensity.value,
+      Math.min((vel.current ?? 0) * 1.6, 1) * (active.current ?? 0),
+      6,
+      delta,
+    );
+  });
+
+  return <primitive object={line} />;
 }

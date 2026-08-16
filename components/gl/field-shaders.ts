@@ -102,6 +102,8 @@ varying float vAlpha;
 varying float vBird;   // 1 = bird glyph, 0 = fluid dot
 varying vec3 vVid;     // video pixel color
 varying float vVidMix; // how strongly the fragment uses the video color
+varying float vShade;  // sculpted light/shadow from the video relief
+varying float vSpec;   // key-light specular kiss
 
 vec3 birdLocal(float idx, float frame) {
   float row = frame * uRowsPerFrame + floor(idx / uTexW);
@@ -144,29 +146,33 @@ void main() {
   float crest;
   vec3 vidCol = vec3(0.0);
   float lum = 0.0;
+  vShade = 1.0;
+  vSpec = 0.0;
   if (uVideoOn > 0.5) {
     vidCol = texture2D(uVideoTex, aGrid).rgb;
     lum = dot(vidCol, vec3(0.299, 0.587, 0.114));
-    // Full-bleed painting: the sheet overfills the stage so the matter
-    // reaches — and breaks against — the frame on every side.
-    vec2 c = aGrid - 0.5;
-    vec3 sheet = vec3(c.x * 11.8, c.y * 7.2, c.y * -1.2);
-    sheet.z += lum * 1.8;            // bright pixels surge toward the camera
+    // Composed painting: right of the headline, feathered edges — with a
+    // relief lit like a sculpture. Neighbor luminance gives a surface
+    // normal; a fixed key light carves highlights and shadow.
+    float lumR = dot(texture2D(uVideoTex, aGrid + vec2(0.006, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
+    float lumU = dot(texture2D(uVideoTex, aGrid + vec2(0.0, 0.010)).rgb, vec3(0.299, 0.587, 0.114));
+    vec3 nSurf = normalize(vec3((lum - lumR) * 6.0, (lum - lumU) * 6.0, 1.0));
+    vec3 lightDir = normalize(vec3(-0.45, 0.55, 0.75));
+    vShade = 0.45 + 0.75 * max(dot(nSurf, lightDir), 0.0);
+    vSpec = pow(max(dot(reflect(-lightDir, nSurf), vec3(0.0, 0.0, 1.0)), 0.0), 14.0);
 
-    // Liquid body: the image locks softly, melts, reforms — and the borders
-    // slosh: wave amplitude grows toward the edges and travels along them,
-    // like pigment washing against the walls of its frame.
-    float melt = (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0)) * uMeltScale;
-    float edge = max(smoothstep(0.26, 0.5, abs(c.x)), smoothstep(0.24, 0.5, abs(c.y)));
-    vec3 flow2 = curl(vec3(aGrid * 3.2, uTime * 0.12) + aSeed * 0.02)
-               * (0.05 + (1.0 - lum) * 0.07 + melt * 0.42);
-    flow2.xy += vec2(
-      sin(c.y * 9.0 + uTime * 0.85 + aSeed * 0.1),
-      cos(c.x * 8.0 - uTime * 0.75)
-    ) * edge * (0.28 + melt * 0.55);
-    flow2 *= 1.0 + edge * 1.7;
+    vec3 sheet = vec3(
+      (aGrid.x - 0.5) * 8.4 + 2.0,
+      (aGrid.y - 0.5) * 5.0 + 0.4,
+      (aGrid.y - 0.5) * -1.5
+    );
+    sheet.z += lum * 1.9;            // bright pixels surge toward the camera
+    // Liquid body: locks legible, melts, reforms — richer flow throughout
+    float melt = pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0) * uMeltScale;
+    vec3 flow2 = curl(vec3(aGrid * 3.4, uTime * 0.13) + aSeed * 0.02)
+               * (0.035 + (1.0 - lum) * 0.07 + melt * 0.5);
     field = sheet + flow2;
-    crest = lum + edge * 0.25;
+    crest = lum;
   } else {
     field = fluidField(aHome, aSeed, 1.0 - uFinale * 0.15);
     crest = smoothstep(0.3, 0.9, field.y - aHome.y);
@@ -241,11 +247,12 @@ void main() {
     p += release;
     alpha *= 1.0 - dHere * 0.9;
   } else {
-    // The painting holds the stage while the bird forms OVER it, then
-    // washes out as the page arrives; returns for the finale
-    float recede = smoothstep(0.72, 0.98, uHero);
+    // The painting holds the stage while the bird forms over it, then
+    // vanishes COMPLETELY before the sections arrive — no residue behind
+    // the page. It returns only for the contact finale.
+    float recede = smoothstep(0.6, 0.95, uHero);
     p += vec3(sign(aHome.x) * recede * 2.2, -recede * 1.4, -recede * 2.0);
-    alpha *= 1.0 - recede * 0.94;
+    alpha *= 1.0 - recede;
     // Field pointer: pressure + short orbit + speed trails
     vec3 toP = p - uPointer;
     float d = length(toP.xy);
@@ -273,8 +280,11 @@ void main() {
   vVid = vidCol;
   vVidMix = uVideoOn * (1.0 - vBird) * (1.0 - uFinale);
   // Video mode: color carries the image; brightness shapes gently, true
-  // darks recede. Full bleed — the text protects itself with a UI scrim.
-  alpha *= mix(1.0, 0.25 + lum * 0.75, vVidMix);
+  // darks recede. The painting feathers toward the headline and edges.
+  float feather = smoothstep(0.03, 0.28, aGrid.x)
+                * smoothstep(0.0, 0.1, aGrid.y)
+                * smoothstep(1.0, 0.9, aGrid.y);
+  alpha *= mix(1.0, (0.25 + lum * 0.78) * feather, vVidMix);
   vEnergy = clamp(energy, 0.0, 1.0);
 
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
@@ -303,6 +313,8 @@ varying float vAlpha;
 varying float vBird;
 varying vec3 vVid;
 varying float vVidMix;
+varying float vShade;
+varying float vSpec;
 
 void main() {
   if (vAlpha < 0.01) discard;
@@ -322,8 +334,11 @@ void main() {
 
   // Depth-graded matter: near = warm bone, far = cool steel/cyan whisper.
   vec3 color = mix(uColorBase, uColorCyan, vDepth * 0.35 + 0.08);
-  // Data-painting mode: the pixel's own color carries the image
-  color = mix(color, vVid * vec3(1.08, 1.04, 0.97), vVidMix * 0.92);
+  // Data-painting mode: vivid pixel color, sculpted by light and shadow
+  float vlum = dot(vVid, vec3(0.299, 0.587, 0.114));
+  vec3 vivid = clamp(mix(vec3(vlum), vVid, 1.45) * vec3(1.08, 1.04, 0.97), 0.0, 1.0);
+  vivid = vivid * vShade + vSpec * vec3(0.5, 0.5, 0.45);
+  color = mix(color, vivid, vVidMix * 0.95);
   color = mix(color, uColorAccent, smoothstep(0.35, 0.95, vEnergy));
 
   float fade = 1.0 - vDepth * 0.5;
