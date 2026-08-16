@@ -10,7 +10,7 @@ export type HomeContent = {
   name: string;
   title: string;
   tagline: string;
-  hero: { scrollHint: string };
+  hero: { scrollHint: string; ctaWork: string; ctaAbout: string };
   work: { heading: string; note: string; items: WorkItem[] };
   capabilities: { heading: string; systems: Capability[] };
   about: { heading: string; beats: string[]; thesis: string };
@@ -41,7 +41,7 @@ export const home: Record<Locale, HomeContent> = {
     name: "Ataberk Soylu",
     title: "Creative Technologist & Multi Designer",
     tagline: "Yapay zekâ, motion, 3D ve web arasında akıllı dijital deneyimler tasarlıyorum.",
-    hero: { scrollHint: "Kaydır — sistem kurulsun" },
+    hero: { scrollHint: "Kaydır — sistem kurulsun", ctaWork: "Seçili İşler", ctaAbout: "Hakkımda" },
     work: {
       heading: "Seçili İşler",
       note: "Vaka sayfaları hazırlanıyor",
@@ -74,7 +74,7 @@ export const home: Record<Locale, HomeContent> = {
     name: "Ataberk Soylu",
     title: "Creative Technologist & Multi Designer",
     tagline: "Designing intelligent digital experiences across AI, motion, 3D and the web.",
-    hero: { scrollHint: "Scroll — let the system assemble" },
+    hero: { scrollHint: "Scroll — let the system assemble", ctaWork: "View Selected Work", ctaAbout: "About Me" },
     work: {
       heading: "Selected Work",
       note: "Case studies in progress",

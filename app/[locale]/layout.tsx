@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
+import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import "../globals.css";
 
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"] });
@@ -54,7 +55,7 @@ export default async function LocaleLayout({
       <body
         className={`${archivo.variable} ${inter.variable} ${jbMono.variable} antialiased`}
       >
-        {children}
+        <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>
   );
