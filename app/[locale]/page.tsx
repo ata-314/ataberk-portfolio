@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n";
 import { home } from "@/content/home";
+import { Hero3D } from "@/components/three/Hero3D";
 
 export default async function Home({
   params,
@@ -15,26 +16,30 @@ export default async function Home({
 
   return (
     <main>
-      {/* Hero — the "Creative Mind" particle scene mounts here in build step 2 */}
-      <section className="relative flex min-h-svh flex-col justify-center px-6 md:px-16">
-        <nav className="absolute top-0 right-0 left-0 flex items-center justify-between px-6 py-5 md:px-16">
+      {/* Hero — "Creative Mind": generative organism, scroll organizes it into structure */}
+      <section className="relative flex min-h-svh flex-col justify-center overflow-hidden px-6 md:px-16">
+        <Hero3D />
+        <nav className="pointer-events-none absolute top-0 right-0 left-0 z-10 flex items-center justify-between px-6 py-5 md:px-16">
           <span className="font-mono text-xs tracking-widest text-bone-dim uppercase">
             AS
           </span>
           <Link
             href={`/${other}`}
-            className="font-mono text-xs tracking-widest text-bone-dim uppercase transition-colors hover:text-lime"
+            className="pointer-events-auto font-mono text-xs tracking-widest text-bone-dim uppercase transition-colors hover:text-lime"
           >
             {other.toUpperCase()}
           </Link>
         </nav>
-        <h1 className="font-display max-w-4xl text-5xl font-semibold tracking-tight text-balance md:text-7xl">
-          {t.name}
-        </h1>
-        <p className="mt-4 font-mono text-sm tracking-widest text-lime uppercase">
-          {t.title}
-        </p>
-        <p className="mt-6 max-w-xl text-lg text-bone-dim">{t.tagline}</p>
+        <div className="pointer-events-none relative z-10">
+          <h1 className="font-display max-w-4xl text-5xl font-semibold tracking-tight text-balance md:text-7xl">
+            {t.name}
+          </h1>
+          {/* lang="en": the title is English branding — TR uppercasing would render "TECHNOLOGİST" */}
+          <p lang="en" className="mt-4 font-mono text-sm tracking-widest text-lime uppercase">
+            {t.title}
+          </p>
+          <p className="mt-6 max-w-xl text-lg text-bone-dim">{t.tagline}</p>
+        </div>
       </section>
 
       {/* Section shells — content lands per build order; no placeholder fakery */}
