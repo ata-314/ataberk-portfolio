@@ -1,24 +1,36 @@
 @import "tailwindcss";
 
 /*
-  Design tokens — ataberk-portfolio
-  Direction B "Data Organism": deep black/charcoal base, warm bone white,
-  electric lime as accent ONLY (interaction, system feedback — never fills).
+  Design tokens — CODE BECOMES FORM
+  Deep black stage, warm bone matter, electric lime as directed energy,
+  a whisper of cyan. One material, one motion grammar.
 */
 :root {
   --ink: #0a0a0b;
   --coal: #131316;
   --graphite: #1e1e23;
+  --steel: #3a3a42;
   --bone: #f3efe7;
-  --bone-dim: #cfcbc2;
+  --bone-dim: #b9b5ac;
   --lime: #c8ff3e;
   --cyan: #8ae6ff;
+
+  /* Fluid editorial type scale */
+  --text-display: clamp(3rem, 9vw, 8.5rem);
+  --text-h1: clamp(2.4rem, 6vw, 5.5rem);
+  --text-h2: clamp(1.8rem, 4vw, 3.4rem);
+  --text-h3: clamp(1.25rem, 2vw, 1.75rem);
+  --text-lead: clamp(1.1rem, 1.6vw, 1.4rem);
+
+  --space-section: clamp(6rem, 14vh, 11rem);
+  --gutter: clamp(1.5rem, 5vw, 5rem);
 }
 
 @theme inline {
   --color-ink: var(--ink);
   --color-coal: var(--coal);
   --color-graphite: var(--graphite);
+  --color-steel: var(--steel);
   --color-bone: var(--bone);
   --color-bone-dim: var(--bone-dim);
   --color-lime: var(--lime);
@@ -28,10 +40,16 @@
   --font-mono: var(--font-jbmono);
 }
 
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--graphite) var(--ink);
+}
+
 body {
   background: var(--ink);
   color: var(--bone);
   font-family: var(--font-inter), system-ui, sans-serif;
+  overflow-x: clip;
 }
 
 ::selection {
@@ -39,6 +57,31 @@ body {
   color: var(--ink);
 }
 
+/* Accessibility: always-visible focus, skip link */
+:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 100;
+  transform: translateY(-300%);
+  background: var(--lime);
+  color: var(--ink);
+  padding: 0.6rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: transform 0.2s ease;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* Motion grammar — shared entrance primitives (GSAP drives the rest) */
 @keyframes heroRise {
   from {
     opacity: 0;
@@ -47,6 +90,17 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Custom cursor: hide the native one only on fine pointers when active */
+@media (pointer: fine) {
+  body[data-cursor="on"] {
+    cursor: none;
+  }
+  body[data-cursor="on"] a,
+  body[data-cursor="on"] button {
+    cursor: none;
   }
 }
 

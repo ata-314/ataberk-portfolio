@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { ReactLenis, type LenisRef } from "lenis/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { scrollState } from "../three/scroll-state";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -22,9 +23,20 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
     const lenis = lenisRef.current?.lenis;
     lenis?.on("scroll", ScrollTrigger.update);
 
+    // Whole-document progress — read by the GL stage and the nav progress bar
+    const st = ScrollTrigger.create({
+      start: 0,
+      end: "max",
+      scrub: true,
+      onUpdate: (self) => {
+        scrollState.page.current = self.progress;
+      },
+    });
+
     return () => {
       gsap.ticker.remove(update);
       lenis?.off("scroll", ScrollTrigger.update);
+      st.kill();
     };
   }, []);
 

@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
 import { notFound } from "next/navigation";
+import dynamic from "next/dynamic";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
+import { site } from "@/content/site";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
+import { Nav } from "@/components/nav/Nav";
+import { Cursor } from "@/components/cursor/Cursor";
 import "../globals.css";
+
+const Stage = dynamic(() => import("@/components/gl/Stage"));
 
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"] });
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const jbMono = JetBrains_Mono({ variable: "--font-jbmono", subsets: ["latin"] });
+
+const BASE_URL = "https://ataberk-portfolio-rho.vercel.app";
 
 const meta: Record<Locale, { description: string }> = {
   tr: {
@@ -31,11 +39,27 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const l: Locale = isLocale(locale) ? locale : "tr";
+  const title = "Ataberk Soylu — Creative Technologist & Multi Designer";
   return {
-    title: "Ataberk Soylu — Creative Technologist & Multi Designer",
+    metadataBase: new URL(BASE_URL),
+    title: { default: title, template: "%s — Ataberk Soylu" },
     description: meta[l].description,
     alternates: {
+      canonical: `/${l}`,
       languages: { tr: "/tr", en: "/en" },
+    },
+    openGraph: {
+      title,
+      description: meta[l].description,
+      url: `/${l}`,
+      siteName: "Ataberk Soylu",
+      locale: l === "tr" ? "tr_TR" : "en_US",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: meta[l].description,
     },
   };
 }
@@ -49,13 +73,42 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
+  const t = site[locale];
+
+  const personSchema = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: "Ataberk Soylu",
+    jobTitle: "Creative Technologist & Multi Designer",
+    url: `${BASE_URL}/${locale}`,
+    knowsAbout: [
+      "Creative Direction",
+      "UI/UX Design",
+      "WebGL",
+      "Motion Design",
+      "Generative AI",
+      "Multi-Agent Systems",
+    ],
+  };
 
   return (
     <html lang={locale}>
       <body
         className={`${archivo.variable} ${inter.variable} ${jbMono.variable} antialiased`}
       >
-        <SmoothScroll>{children}</SmoothScroll>
+        <a href="#content" className="skip-link">
+          {t.a11y.skip}
+        </a>
+        <SmoothScroll>
+          <Stage />
+          <Nav locale={locale} t={t.nav} />
+          {children}
+        </SmoothScroll>
+        <Cursor />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}
+        />
       </body>
     </html>
   );
