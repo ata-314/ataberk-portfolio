@@ -179,6 +179,32 @@ html[data-stage-ready="true"] .hero-static-field {
   -webkit-backdrop-filter: blur(28px) saturate(1.4);
   backdrop-filter: blur(28px) saturate(1.4);
 }
+
+/* Empty, production-ready media planes. They establish crop and rhythm now;
+   a future image or video can fill the figure without moving surrounding copy. */
+.media-stage {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.045), transparent 42%),
+    linear-gradient(145deg, #1a1a1d, #111113 64%, #161618);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: clamp(1.25rem, 2.2vw, 2.35rem);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 32px 90px -56px rgba(0, 0, 0, 0.95);
+  transition:
+    border-color 0.6s ease,
+    background-color 0.6s ease,
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .media-stage {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: scale(0.996);
+}
 .glass-hover {
   transition:
     transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),

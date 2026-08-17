@@ -7,7 +7,7 @@ export function StaticField() {
         className="absolute inset-0 opacity-60"
         style={{
           backgroundImage:
-            "radial-gradient(ellipse 55% 45% at 62% 45%, #1e1e23 0%, #131316 55%, transparent 100%)",
+            "radial-gradient(ellipse 58% 46% at 50% 48%, #1e1e23 0%, #131316 56%, transparent 100%)",
         }}
       />
       <div
@@ -16,8 +16,8 @@ export function StaticField() {
           backgroundImage:
             "radial-gradient(circle at center, rgba(243,239,231,.7) 0 1px, transparent 1.6px), linear-gradient(90deg, transparent 48%, rgba(200,255,62,.3) 50%, transparent 52%)",
           backgroundSize: "23px 23px, 113px 37px",
-          maskImage: "radial-gradient(ellipse 50% 42% at 62% 45%, black 0%, transparent 78%)",
-          WebkitMaskImage: "radial-gradient(ellipse 50% 42% at 62% 45%, black 0%, transparent 78%)",
+          maskImage: "radial-gradient(ellipse 54% 44% at 50% 48%, black 0%, transparent 80%)",
+          WebkitMaskImage: "radial-gradient(ellipse 54% 44% at 50% 48%, black 0%, transparent 80%)",
         }}
       />
     </div>

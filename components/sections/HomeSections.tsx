@@ -14,9 +14,13 @@ export function AISystems({ t }: { t: SiteContent["aiSystems"] }) {
     >
       <div className="mx-auto max-w-7xl">
         <SectionIntro eyebrow="Intelligence" title={t.heading} lead={t.lead} />
-        <div className="mt-16 grid gap-5 md:grid-cols-2">
+        <div className="mt-16 grid border-t border-white/10 md:grid-cols-2">
           {t.entries.map((e, i) => (
-            <div key={e.name} data-reveal className="glass glass-hover p-8">
+            <div
+              key={e.name}
+              data-reveal
+              className={`border-b border-white/10 py-8 md:p-8 ${i % 2 === 0 ? "md:border-r" : ""}`}
+            >
               <p className="font-mono text-[11px] tracking-widest text-bone-dim/60">
                 0{i + 1}
               </p>
@@ -82,11 +86,11 @@ export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
         >
           {t.line}
         </h2>
-        <ul className="pointer-events-auto mt-12 flex flex-wrap justify-center gap-3">
+        <ul className="pointer-events-auto mt-12 flex flex-wrap justify-center gap-x-7 gap-y-3">
           {t.intents.map((intent) => (
             <li
               key={intent}
-              className="glass rounded-full px-6 py-3 text-sm text-bone-dim"
+              className="border-b border-white/15 px-1 py-2 text-sm text-bone-dim"
             >
               {intent}
             </li>

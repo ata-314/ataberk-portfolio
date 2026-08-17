@@ -28,15 +28,51 @@ function CaseLink({
       href={`/${locale}/work/${slug}`}
       data-cursor="view"
       data-reveal
-      className={`group block transition-transform duration-500 ease-out hover:-translate-y-1 ${className}`}
+      className={`group block ${className}`}
     >
       {children}
     </Link>
   );
 }
 
-// Editorial rhythm: featured full-bleed → system diagram → wide cinematic →
-// split pair → typographic break → split. One grid, changing composition.
+function ProjectCopy({
+  item,
+  index,
+  open,
+  featured = false,
+}: {
+  item: WorkItem;
+  index: number;
+  open: string;
+  featured?: boolean;
+}) {
+  return (
+    <div className="border-t border-white/12 pt-5">
+      <div className="flex items-start justify-between gap-5">
+        <Meta item={item} />
+        <span aria-hidden className="font-mono text-[10px] tracking-[0.22em] text-bone-dim/45">
+          {String(index).padStart(2, "0")}
+        </span>
+      </div>
+      <h3
+        className={`font-display mt-4 font-semibold tracking-[-0.04em] text-balance transition-colors duration-500 group-hover:text-lime ${
+          featured ? "text-5xl md:text-7xl" : "text-3xl md:text-5xl"
+        }`}
+      >
+        {item.title}
+      </h3>
+      <p className={`mt-4 leading-relaxed text-bone-dim ${featured ? "max-w-2xl text-base md:text-lg" : "max-w-xl text-sm md:text-base"}`}>
+        {item.idea}
+      </p>
+      <span className="mt-6 inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] text-lime uppercase">
+        {open} <span aria-hidden>↗</span>
+      </span>
+    </div>
+  );
+}
+
+// Open editorial rhythm: copy and media live on the page grid rather than in
+// nested cards. Empty media stages preserve the final image/video geometry.
 export function WorkSection({ locale, visualLabel }: { locale: Locale; visualLabel: string }) {
   const t = work[locale];
   const [featured, system, wide, splitA, typo, splitB] = t.items;
@@ -58,84 +94,44 @@ export function WorkSection({ locale, visualLabel }: { locale: Locale; visualLab
           }
         />
 
-        {/* 01 — Featured, full width */}
-        <CaseLink locale={locale} slug={featured.slug} className="mt-16 md:mt-20">
-          <SystemVisual item={featured} label={visualLabel} className="aspect-[16/8] w-full" />
-          <div className="glass-strong relative z-10 mx-3 -mt-7 grid grid-cols-12 items-end gap-5 p-6 md:mx-10 md:-mt-16 md:p-9">
-            <div className="col-span-12 md:col-span-7">
-              <Meta item={featured} />
-              <h3 className="font-display mt-3 text-4xl font-semibold tracking-[-0.035em] transition-colors group-hover:text-lime md:text-6xl">
-                {featured.title}
-              </h3>
-            </div>
-            <div className="col-span-12 md:col-span-5">
-              <p className="text-base leading-relaxed text-bone-dim">{featured.idea}</p>
-              <span className="mt-5 inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] text-lime uppercase">
-                {t.open} <span aria-hidden>↗</span>
-              </span>
-            </div>
+        {/* 01 — Lead story: generous copy followed by a cinematic media plane */}
+        <CaseLink locale={locale} slug={featured.slug} className="mt-20 md:mt-28">
+          <ProjectCopy item={featured} index={1} open={t.open} featured />
+          <SystemVisual item={featured} label={visualLabel} className="mt-9 aspect-[4/3] w-full sm:aspect-[16/9]" />
+        </CaseLink>
+
+        {/* 02 — Media leads; copy rests on the same baseline */}
+        <CaseLink locale={locale} slug={system.slug} className="mt-32 grid items-end gap-8 md:mt-44 md:grid-cols-12 md:gap-12">
+          <SystemVisual item={system} label={visualLabel} className="aspect-[4/3] md:col-span-8" />
+          <div className="md:col-span-4 md:pb-4">
+            <ProjectCopy item={system} index={2} open={t.open} />
           </div>
         </CaseLink>
 
-        {/* 02 — System project, diagram-led, asymmetric */}
-        <CaseLink locale={locale} slug={system.slug} className="mt-28 grid grid-cols-12 gap-6">
-          <div className="glass col-span-12 p-6 md:col-span-5 md:p-8">
-            <Meta item={system} />
-            <h3 className="font-display mt-2 text-3xl font-semibold tracking-tight transition-colors group-hover:text-lime md:text-5xl">
-              {system.title}
-            </h3>
-            <p className="mt-4 max-w-md text-bone-dim">{system.idea}</p>
-            <span className="mt-6 inline-block font-mono text-xs tracking-widest text-lime uppercase">
-              {t.open} →
-            </span>
+        {/* 03 — Alternating composition creates a natural reading cadence */}
+        <CaseLink locale={locale} slug={wide.slug} className="mt-32 grid items-end gap-8 md:mt-44 md:grid-cols-12 md:gap-12">
+          <div className="md:col-span-4 md:pb-4">
+            <ProjectCopy item={wide} index={3} open={t.open} />
           </div>
-          <SystemVisual item={system} label={visualLabel} className="col-span-12 aspect-[4/3] md:col-span-7" />
+          <SystemVisual item={wide} label={visualLabel} className="aspect-[4/3] md:col-span-8" />
         </CaseLink>
 
-        {/* 03 — Wide cinematic band */}
-        <CaseLink locale={locale} slug={wide.slug} className="mt-28">
-          <SystemVisual item={wide} label={visualLabel} className="aspect-[21/7] w-full" />
-          <div className="glass mt-5 flex flex-wrap items-baseline justify-between gap-3 p-5 md:p-6">
-            <h3 className="font-display text-3xl font-semibold tracking-tight transition-colors group-hover:text-lime md:text-4xl">
-              {wide.title}
-            </h3>
-            <Meta item={wide} />
-          </div>
-        </CaseLink>
-
-        {/* 04+06 — Split pair */}
-        <div className="mt-28 grid grid-cols-12 gap-6">
-          {[splitA, splitB].map((item) => (
-            <CaseLink key={item.slug} locale={locale} slug={item.slug} className="col-span-12 md:col-span-6">
-              <SystemVisual item={item} label={visualLabel} className="aspect-[4/3]" />
-              <div className="glass mt-4 p-5">
-                <Meta item={item} />
-                <h3 className="font-display mt-1 text-2xl font-semibold tracking-tight transition-colors group-hover:text-lime md:text-3xl">
-                  {item.title}
-                </h3>
-                <p className="mt-2 max-w-md text-sm text-bone-dim">{item.idea}</p>
+        {/* 04 + 05 — Two independent media columns, without card shells */}
+        <div className="mt-32 grid gap-x-8 gap-y-28 md:mt-44 md:grid-cols-2 md:gap-x-12">
+          {[splitA, typo].map((item, i) => (
+            <CaseLink key={item.slug} locale={locale} slug={item.slug}>
+              <SystemVisual item={item} label={visualLabel} className={`aspect-[4/5] ${i === 1 ? "md:mt-24" : ""}`} />
+              <div className="mt-7">
+                <ProjectCopy item={item} index={i + 4} open={t.open} />
               </div>
             </CaseLink>
           ))}
         </div>
 
-        {/* 05 — Typographic break */}
-        <CaseLink locale={locale} slug={typo.slug} className="glass mt-28 p-6 md:p-10">
-          <div className="grid grid-cols-12 items-center gap-4">
-            <h3
-              className="font-display col-span-12 leading-none font-semibold tracking-tight uppercase transition-colors group-hover:text-lime md:col-span-8"
-              style={{ fontSize: "var(--text-h1)" }}
-            >
-              {typo.title}
-            </h3>
-            <div className="col-span-12 md:col-span-4">
-              <Meta item={typo} />
-              <p className="mt-3 text-sm text-bone-dim">{typo.idea}</p>
-              <span className="mt-4 inline-block font-mono text-xs tracking-widest text-lime uppercase">
-                {t.open} →
-              </span>
-            </div>
-          </div>
+        {/* 06 — A wide final plane closes the portfolio sequence */}
+        <CaseLink locale={locale} slug={splitB.slug} className="mt-32 md:mt-44">
+          <ProjectCopy item={splitB} index={6} open={t.open} />
+          <SystemVisual item={splitB} label={visualLabel} className="mt-9 aspect-[16/10] w-full md:aspect-[21/9]" />
         </CaseLink>
       </div>
     </section>

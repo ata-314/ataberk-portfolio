@@ -120,11 +120,12 @@ vec3 birdNormal(float idx) {
 // large-scale data art: domain-warped curl layers boil slowly, two roaming
 // vortices stir the volume, edges stay wispy. Never a terrain or sheet.
 vec3 fluidField(vec3 home, float seed, float calm) {
-  // Domain warp: the field flows through a flowing space
-  vec3 q = home * 0.42 + curl(home * 0.2 + uTime * 0.03) * 0.9;
-  vec3 billow = curl(q + uTime * 0.055 + seed * 0.02) * 1.15;
-  vec3 medium = curl(home * 0.6 - uTime * 0.04) * 0.4;
-  vec3 fine = curl(home * 1.6 + uTime * 0.1) * 0.14;
+  // Broad, slow currents carry the volume; high-frequency noise stays quiet
+  // so motion reads as liquid continuity instead of restless turbulence.
+  vec3 q = home * 0.4 + curl(home * 0.2 + uTime * 0.018) * 0.72;
+  vec3 billow = curl(q + uTime * 0.036 + seed * 0.02) * 0.96;
+  vec3 medium = curl(home * 0.58 - uTime * 0.026) * 0.3;
+  vec3 fine = curl(home * 1.45 + uTime * 0.065) * 0.08;
   vec2 dA = home.xy - uVortexA.xy;
   float rA = length(dA) + 1e-3;
   vec2 swirlA = vec2(-dA.y, dA.x) / rA * exp(-rA * 0.5) * 1.2;
@@ -132,7 +133,7 @@ vec3 fluidField(vec3 home, float seed, float calm) {
   float rB = length(dB) + 1e-3;
   vec2 swirlB = vec2(dB.y, -dB.x) / rB * exp(-rB * 0.55) * 1.0;
   vec3 f = billow + medium + fine + vec3(swirlA + swirlB, 0.0) * 0.55;
-  return home + f * (0.8 + 0.2 * sin(uTime * 0.05 + seed)) * calm;
+  return home + f * (0.68 + 0.12 * sin(uTime * 0.04 + seed)) * calm;
 }
 
 void main() {
@@ -151,8 +152,8 @@ void main() {
   if (uVideoOn > 0.5) {
     vidCol = texture2D(uVideoTex, aGrid).rgb;
     lum = dot(vidCol, vec3(0.299, 0.587, 0.114));
-    // Composed painting: right of the headline, feathered edges — with a
-    // relief lit like a sculpture. Neighbor luminance gives a surface
+    // Centre-composed painting with feathered edges and a relief lit like a
+    // sculpture. Neighbor luminance gives a surface
     // normal; a fixed key light carves highlights and shadow.
     float lumR = dot(texture2D(uVideoTex, aGrid + vec2(0.006, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
     float lumU = dot(texture2D(uVideoTex, aGrid + vec2(0.0, 0.010)).rgb, vec3(0.299, 0.587, 0.114));
@@ -162,10 +163,12 @@ void main() {
     vSpec = pow(max(dot(reflect(-lightDir, nSurf), vec3(0.0, 0.0, 1.0)), 0.0), 14.0);
 
     vec3 sheet = vec3(
-      (aGrid.x - 0.5) * 8.4 + 2.0,
-      (aGrid.y - 0.5) * 5.0 + 0.4,
+      (aGrid.x - 0.5) * 8.6,
+      (aGrid.y - 0.5) * 5.1,
       (aGrid.y - 0.5) * -1.5
     );
+    sheet.x += sin(aGrid.y * 6.283 + uTime * 0.11) * 0.08;
+    sheet.y += sin(aGrid.x * 6.283 - uTime * 0.09) * 0.06;
     sheet.z += lum * 1.9;            // bright pixels surge toward the camera
     // Liquid body: locks legible, melts, reforms — richer flow throughout
     float melt = pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0) * uMeltScale;
@@ -280,8 +283,9 @@ void main() {
   vVid = vidCol;
   vVidMix = uVideoOn * (1.0 - vBird) * (1.0 - uFinale);
   // Video mode: color carries the image; brightness shapes gently, true
-  // darks recede. The painting feathers toward the headline and edges.
-  float feather = smoothstep(0.03, 0.28, aGrid.x)
+  // darks recede. The painting feathers evenly on all four sides.
+  float feather = smoothstep(0.02, 0.2, aGrid.x)
+                * smoothstep(1.0, 0.8, aGrid.x)
                 * smoothstep(0.0, 0.1, aGrid.y)
                 * smoothstep(1.0, 0.9, aGrid.y);
   alpha *= mix(1.0, (0.25 + lum * 0.78) * feather, vVidMix);

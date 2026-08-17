@@ -81,9 +81,10 @@ function homePosition(i: number, count: number, out: THREE.Vector3) {
     Math.sin(u) * Math.sin(t) * r * 0.9 + Math.sin(t * 1.3) * 0.4,
     Math.cos(u) * r * 1.1,
   );
-  // Lobe displacement — asymmetric mass, offset right for the headline
-  out.x += Math.sin(out.y * 1.7 + shell) * 0.5 + 1.3;
-  out.y += Math.sin(out.x * 0.9) * 0.35;
+  // Lobe displacement — centered, with enough asymmetry to keep the mass
+  // organic without making the whole composition lean to one side.
+  out.x += Math.sin(out.y * 1.45 + shell) * 0.38;
+  out.y += Math.sin(out.x * 0.82) * 0.28;
   return out;
 }
 
@@ -189,8 +190,8 @@ export function CodeField({
       uSize: { value: 40 },
       uBirdMat: { value: new THREE.Matrix4() },
       uBirdDir: { value: new THREE.Vector3(-1, 0, 0) },
-      uVortexA: { value: new THREE.Vector3(-1.5, 0.4, 0) },
-      uVortexB: { value: new THREE.Vector3(2.5, -0.6, 0) },
+      uVortexA: { value: new THREE.Vector3(-1.35, 0.35, 0) },
+      uVortexB: { value: new THREE.Vector3(1.35, -0.35, 0) },
       uPosTex: { value: bake?.texture ?? fallbackTex },
       uNrmTex: { value: bake?.normals ?? fallbackTex },
       uVideoTex: { value: fallbackTex as THREE.Texture },
@@ -310,9 +311,10 @@ export function CodeField({
     const finale = THREE.MathUtils.smoothstep(page, 0.86, 0.97);
     u.uFinale.value = THREE.MathUtils.damp(u.uFinale.value, finale, 5, delta);
 
-    // Roaming vortex centers of the data field
-    u.uVortexA.value.set(-1.6 + Math.sin(u.uTime.value * 0.07) * 1.2, 0.5 + Math.cos(u.uTime.value * 0.05) * 0.8, 0);
-    u.uVortexB.value.set(2.4 + Math.cos(u.uTime.value * 0.06) * 1.4, -0.5 + Math.sin(u.uTime.value * 0.08) * 0.7, 0);
+    // Two slow, balanced currents keep the data field breathing around the
+    // viewport centre instead of dragging its visual weight to the right.
+    u.uVortexA.value.set(-1.35 + Math.sin(u.uTime.value * 0.045) * 0.72, 0.32 + Math.cos(u.uTime.value * 0.038) * 0.5, 0);
+    u.uVortexB.value.set(1.35 + Math.cos(u.uTime.value * 0.042) * 0.72, -0.32 + Math.sin(u.uTime.value * 0.05) * 0.5, 0);
 
     // Pointer physics
     pointerPrev.current.copy(pointerSmoothed.current);
@@ -407,16 +409,16 @@ export function CodeField({
       u.uFlap.value = flap.current;
     }
 
-    // Camera: slightly below eye-line, slow push through the hero act,
-    // whisper of pointer parallax — never enough to bend the silhouette.
+    // Camera: centre-led, slow push through the hero act, with only a whisper
+    // of pointer parallax so the data painting remains visually anchored.
     const h2 = u.uHero.value;
-    const px = profile.pointerEnabled ? THREE.MathUtils.clamp(pointerSmoothed.current.x * 0.02, -0.18, 0.18) : 0;
+    const px = profile.pointerEnabled ? THREE.MathUtils.clamp(pointerSmoothed.current.x * 0.012, -0.1, 0.1) : 0;
     camera.position.set(
-      Math.sin(h2 * Math.PI) * 0.35 + px,
-      -0.05 - h2 * 0.05,
+      Math.sin(h2 * Math.PI) * 0.18 + px,
+      -0.02 - h2 * 0.035,
       8.2 - h2 * 1.6 * (1 - u.uFinale.value),
     );
-    camera.lookAt(lookTarget.set(0.35, 0.15, 0));
+    camera.lookAt(lookTarget.set(0, 0.08, 0));
 
     u.uSize.value = 40 * gl.getPixelRatio() * (size.height / 900);
   });

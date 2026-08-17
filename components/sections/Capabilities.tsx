@@ -19,9 +19,9 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
       <div className="mx-auto max-w-7xl">
         <SectionIntro eyebrow="Systems" title={t.heading} lead={t.lead} />
 
-        {/* Desktop: network grid on a shared spine */}
-        <div className="relative mt-20 hidden md:block">
-          <div aria-hidden className="absolute inset-x-8 top-0 h-px bg-graphite">
+        {/* Desktop: open columns on a shared spine, without card shells */}
+        <div className="relative mt-20 hidden border-y border-white/10 md:block">
+          <div aria-hidden className="absolute inset-x-0 top-0 h-px">
             <div
               className="h-px bg-lime/70 transition-all duration-500"
               style={{
@@ -30,7 +30,7 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
               }}
             />
           </div>
-          <div className="grid grid-cols-4 gap-8">
+          <div className="grid grid-cols-4 divide-x divide-white/10">
             {t.systems.map((sys, i) => (
               <button
                 key={sys.key}
@@ -39,7 +39,7 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
                 onMouseLeave={() => setActive(null)}
                 onFocus={() => setActive(i)}
                 onBlur={() => setActive(null)}
-                className={`glass glass-hover relative p-7 text-left transition-opacity duration-400 ${
+                className={`relative px-6 py-10 text-left transition-opacity duration-400 ${
                   active !== null && active !== i ? "opacity-40" : "opacity-100"
                 }`}
                 data-reveal
@@ -54,7 +54,7 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
                 <h3 lang="en" className="font-display mt-4 text-xl font-semibold">
                   {sys.name}
                 </h3>
-                <ul className="mt-5 space-y-2 border-l border-graphite pl-4">
+                <ul className="mt-6 space-y-2 border-l border-white/10 pl-4">
                   {sys.items.map((item) => (
                     <li key={item} lang="en" className="text-sm text-bone-dim">
                       {item}
@@ -74,16 +74,16 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
         </div>
 
         {/* Mobile: accessible native accordion */}
-        <div className="mt-12 space-y-3 md:hidden">
+        <div className="mt-12 border-t border-white/10 md:hidden">
           {t.systems.map((sys, i) => (
-            <details key={sys.key} className="glass group overflow-hidden">
-              <summary className="flex cursor-pointer items-center justify-between px-5 py-4">
+            <details key={sys.key} className="group border-b border-white/10">
+              <summary className="flex cursor-pointer items-center justify-between py-5">
                 <span lang="en" className="font-display text-lg font-semibold">
                   {sys.name}
                 </span>
                 <span className="font-mono text-xs text-bone-dim">0{i + 1}</span>
               </summary>
-              <div className="border-t border-graphite px-5 py-4">
+              <div className="pb-6">
                 <ul className="space-y-2">
                   {sys.items.map((item) => (
                     <li key={item} lang="en" className="text-sm text-bone-dim">

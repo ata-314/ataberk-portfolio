@@ -11,7 +11,7 @@ export function SectionIntro({
 }) {
   return (
     <div data-reveal className="hero-copy mx-auto max-w-4xl text-center">
-      <p className="nav-glass inline-flex rounded-full px-4 py-2 font-mono text-[10px] tracking-[0.3em] text-lime/90 uppercase">
+      <p className="font-mono text-[10px] tracking-[0.34em] text-lime/85 uppercase">
         {eyebrow}
       </p>
       <h2
