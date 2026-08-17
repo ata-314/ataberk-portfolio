@@ -115,11 +115,15 @@ export function Hero({ t }: { t: HeroStrings }) {
           </p>
           <h1
             lang="en"
-            className="font-display leading-[0.9] font-semibold tracking-[-0.055em] text-balance"
-            style={{ fontSize: "var(--text-display)" }}
+            aria-label="Ataberk Soylu"
+            className="overflow-hidden font-mono leading-none font-semibold tracking-[-0.07em]"
+            style={{ fontSize: "clamp(2.55rem, 7.4vw, 7.25rem)" }}
           >
-            Ataberk
-            <span className="block md:inline"> Soylu</span>
+            <span aria-hidden className="hero-type-shell">
+              <span className="hero-type-prompt">&gt;</span>
+              <span className="hero-type-text">Ataberk Soylu</span>
+              <span className="hero-type-cursor" />
+            </span>
           </h1>
           <p lang="en" className="mt-6 font-mono text-[11px] tracking-[0.24em] text-lime uppercase [animation:heroRise_0.9s_ease_0.45s_both] md:text-xs">
             {t.title}
