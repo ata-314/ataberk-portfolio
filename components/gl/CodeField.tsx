@@ -113,10 +113,8 @@ export function CodeField({
   const pos = useMemo(() => new THREE.Vector3(), []);
   const tangent = useMemo(() => new THREE.Vector3(), []);
   const quat = useMemo(() => new THREE.Quaternion(), []);
-  const quatOffset = useMemo(() => new THREE.Quaternion(), []);
   const euler = useMemo(() => new THREE.Euler(), []);
   const mat = useMemo(() => new THREE.Matrix4(), []);
-  const lookM = useMemo(() => new THREE.Matrix4(), []);
   const scl = useMemo(() => new THREE.Vector3(0.8, 0.8, 0.8), []);
   const lookTarget = useMemo(() => new THREE.Vector3(), []);
 

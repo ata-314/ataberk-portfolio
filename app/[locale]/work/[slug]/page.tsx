@@ -80,15 +80,15 @@ export default async function CasePage({
             <p className="col-span-12 max-w-2xl text-lg text-bone-dim md:col-span-7">{item.idea}</p>
             <dl className="col-span-12 grid grid-cols-3 gap-4 font-mono text-xs md:col-span-5">
               <div>
-                <dt className="tracking-widest text-bone-dim/60 uppercase">{l.category}</dt>
+                <dt className="tracking-widest text-bone-dim/80 uppercase">{l.category}</dt>
                 <dd className="mt-1 text-bone">{item.category}</dd>
               </div>
               <div>
-                <dt className="tracking-widest text-bone-dim/60 uppercase">{l.year}</dt>
+                <dt className="tracking-widest text-bone-dim/80 uppercase">{l.year}</dt>
                 <dd className="mt-1 text-bone">{item.year}</dd>
               </div>
               <div>
-                <dt className="tracking-widest text-bone-dim/60 uppercase">{l.role}</dt>
+                <dt className="tracking-widest text-bone-dim/80 uppercase">{l.role}</dt>
                 <dd className="mt-1 text-bone">{item.role}</dd>
               </div>
             </dl>

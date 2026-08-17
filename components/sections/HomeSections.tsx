@@ -3,6 +3,8 @@ import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { SectionIntro } from "./SectionIntro";
 
+const CONTACT_URL = "https://github.com/ata-314";
+
 export function AISystems({ t }: { t: SiteContent["aiSystems"] }) {
   return (
     <section
@@ -84,12 +86,23 @@ export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
           {t.intents.map((intent) => (
             <li
               key={intent}
-              className="rounded-full border border-bone/15 bg-ink/50 px-6 py-3 text-sm text-bone backdrop-blur-md transition-colors hover:border-lime hover:text-lime"
+              className="rounded-full border border-bone/15 bg-ink/50 px-6 py-3 text-sm text-bone-dim backdrop-blur-md"
             >
               {intent}
             </li>
           ))}
         </ul>
+        <div className="pointer-events-auto mt-10 flex flex-col items-center gap-4">
+          <a
+            href={CONTACT_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full bg-lime px-8 py-4 font-mono text-xs font-semibold tracking-widest text-ink uppercase transition-transform duration-300 hover:-translate-y-1"
+          >
+            {t.cta} ↗
+          </a>
+          <p className="max-w-md text-sm text-bone-dim">{t.note}</p>
+        </div>
       </div>
     </section>
   );
@@ -101,7 +114,7 @@ export function Footer({ t, name }: { t: SiteContent["footer"]; name: string }) 
       <div className="mx-auto flex max-w-7xl flex-wrap items-baseline justify-between gap-4">
         <p className="font-display text-sm font-semibold">{name}</p>
         <p className="text-xs text-bone-dim">{t.built}</p>
-        <p className="font-mono text-[11px] text-bone-dim/60">
+        <p className="font-mono text-[11px] text-bone-dim/80">
           © {new Date().getFullYear()} · {t.rights}
         </p>
       </div>

@@ -38,6 +38,7 @@ export type SiteContent = {
     heading: string;
     line: string;
     intents: string[];
+    cta: string;
     note: string;
   };
   footer: { rights: string; built: string };
@@ -132,7 +133,8 @@ const tr: SiteContent = {
     heading: "İletişim",
     line: "Daha önce var olmayan bir şeyi birlikte tasarlayalım.",
     intents: ["Yeni proje", "İş birliği", "Creative technology danışmanlığı", "Pozisyon / ekip görüşmesi"],
-    note: "İletişim kanalları yakında bu sayfada.",
+    cta: "GitHub üzerinden ulaş",
+    note: "Kısa bir proje özeti, zamanlama ve hedefle başlayabiliriz.",
   },
   footer: { rights: "Tüm hakları saklıdır.", built: "Bu site, kendi geliştirdiğim web ajanının boru hattından çıktı." },
   notFound: { title: "404", body: "Bu sayfa sistemde yok — belki henüz üretilmedi.", back: "Ana sayfaya dön" },
@@ -207,7 +209,8 @@ const en: SiteContent = {
     heading: "Contact",
     line: "Let's create something that has never existed before.",
     intents: ["A new project", "Collaboration", "Creative technology consulting", "A role / team conversation"],
-    note: "Contact channels land on this page soon.",
+    cta: "Start on GitHub",
+    note: "A short project outline, timeline and objective is enough to start.",
   },
   footer: { rights: "All rights reserved.", built: "This site shipped through the web agent I build." },
   notFound: { title: "404", body: "This page doesn't exist in the system — perhaps it hasn't been generated yet.", back: "Back to home" },

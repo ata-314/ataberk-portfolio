@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
-import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
+import { Archivo } from "next/font/google";
 import { notFound } from "next/navigation";
-import dynamic from "next/dynamic";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
 import { site } from "@/content/site";
-import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { Nav } from "@/components/nav/Nav";
 import { Cursor } from "@/components/cursor/Cursor";
 import "../globals.css";
 
-const Stage = dynamic(() => import("@/components/gl/Stage"));
-
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"] });
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
-const jbMono = JetBrains_Mono({ variable: "--font-jbmono", subsets: ["latin"] });
 
 const BASE_URL = "https://ataberk-portfolio-rho.vercel.app";
 
@@ -81,6 +75,7 @@ export default async function LocaleLayout({
     name: "Ataberk Soylu",
     jobTitle: "Creative Technologist & Multi Designer",
     url: `${BASE_URL}/${locale}`,
+    sameAs: ["https://github.com/ata-314"],
     knowsAbout: [
       "Creative Direction",
       "UI/UX Design",
@@ -94,16 +89,13 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <body
-        className={`${archivo.variable} ${inter.variable} ${jbMono.variable} antialiased`}
+        className={`${archivo.variable} antialiased`}
       >
         <a href="#content" className="skip-link">
           {t.a11y.skip}
         </a>
-        <SmoothScroll>
-          <Stage />
-          <Nav locale={locale} t={t.nav} />
-          {children}
-        </SmoothScroll>
+        <Nav locale={locale} t={t.nav} />
+        {children}
         <Cursor />
         <script
           type="application/ld+json"

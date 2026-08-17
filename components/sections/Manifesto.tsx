@@ -18,10 +18,9 @@ export function Manifesto({ line, sub }: { line: string; sub: string }) {
       if (!words?.length) return;
       gsap.fromTo(
         words,
-        { clipPath: "inset(0 100% 0 0)", opacity: 0.15 },
+        { clipPath: "inset(0 100% 0 0)" },
         {
           clipPath: "inset(0 0% 0 0)",
-          opacity: 1,
           stagger: 0.08,
           ease: "none",
           scrollTrigger: {

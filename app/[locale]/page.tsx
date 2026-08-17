@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n";
 import { site } from "@/content/site";
+import StageLoader from "@/components/gl/StageLoader";
 import { Hero } from "@/components/hero/Hero";
+import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { Reveal } from "@/components/motion/Reveal";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { WorkSection } from "@/components/sections/WorkSection";
@@ -28,27 +30,30 @@ export default async function Home({
   const t = site[locale];
 
   return (
-    <main id="content">
-      <Reveal />
-      <Hero
-        t={{
-          name: t.name,
-          title: t.title,
-          tagline: t.tagline,
-          intro: t.hero.intro,
-          ctaWork: locale === "tr" ? "Seçili İşler" : "View Selected Work",
-          ctaAbout: t.nav.about,
-          scrollHint: t.hero.scrollHint,
-          locale,
-        }}
-      />
-      <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
-      <WorkSection locale={locale} visualLabel={visualLabel[locale]} />
-      <Capabilities t={t.capabilities} />
-      <AISystems t={t.aiSystems} />
-      <AboutPreview locale={locale} t={t.aboutPreview} />
-      <ContactFinale t={t.contact} />
-      <Footer t={t.footer} name={t.name} />
-    </main>
+    <SmoothScroll>
+      <main id="content">
+        <StageLoader />
+        <Reveal />
+        <Hero
+          t={{
+            name: t.name,
+            title: t.title,
+            tagline: t.tagline,
+            intro: t.hero.intro,
+            ctaWork: locale === "tr" ? "Seçili İşler" : "View Selected Work",
+            ctaAbout: t.nav.about,
+            scrollHint: t.hero.scrollHint,
+            locale,
+          }}
+        />
+        <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
+        <WorkSection locale={locale} visualLabel={visualLabel[locale]} />
+        <Capabilities t={t.capabilities} />
+        <AISystems t={t.aiSystems} />
+        <AboutPreview locale={locale} t={t.aboutPreview} />
+        <ContactFinale t={t.contact} />
+        <Footer t={t.footer} name={t.name} />
+      </main>
+    </SmoothScroll>
   );
 }

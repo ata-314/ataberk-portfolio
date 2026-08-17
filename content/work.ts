@@ -162,7 +162,7 @@ const tr: WorkContent = {
         {
           kind: "technical",
           title: "Teknik",
-          body: ["Next.js · Tailwind · framer-motion · Vercel staging boru hattı."],
+          body: ["Next.js · Tailwind · GSAP · Vercel staging boru hattı."],
         },
       ],
     },
@@ -345,7 +345,7 @@ const en: WorkContent = {
         {
           kind: "technical",
           title: "Technical",
-          body: ["Next.js · Tailwind · framer-motion · Vercel staging pipeline."],
+          body: ["Next.js · Tailwind · GSAP · Vercel staging pipeline."],
         },
       ],
     },

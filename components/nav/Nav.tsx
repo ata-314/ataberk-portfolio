@@ -4,7 +4,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { scrollState } from "../three/scroll-state";
@@ -18,6 +17,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const otherPath = pathname.replace(`/${locale}`, `/${other}`);
   const panel = useRef<HTMLDivElement>(null);
   const progress = useRef<HTMLDivElement>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
 
   const links = [
     { href: `/${locale}#work`, label: t.work },
@@ -27,22 +27,37 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
     { href: `/${locale}#contact`, label: t.contact },
   ];
 
-  // Thin page progress line under the bar
+  // Thin page progress line under the bar. Event-driven so non-home routes
+  // never need the GSAP/Lenis runtime just to report scroll position.
   useEffect(() => {
     let raf = 0;
-    const tick = () => {
-      if (progress.current)
-        progress.current.style.transform = `scaleX(${scrollState.page.current})`;
-      raf = requestAnimationFrame(tick);
+    const update = () => {
+      raf = 0;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const value = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
+      scrollState.page.current = value;
+      if (progress.current) progress.current.style.transform = `scaleX(${value})`;
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, []);
+    const requestUpdate = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("resize", requestUpdate);
+    };
+  }, [pathname]);
 
   // Menu: Escape closes, focus is trapped inside while open
   useEffect(() => {
     if (!open) return;
     const el = panel.current;
+    const trigger = menuButton.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
       if (e.key === "Tab" && el) {
@@ -60,7 +75,11 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
     };
     document.addEventListener("keydown", onKey);
     el?.querySelector<HTMLElement>("a, button")?.focus();
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+      trigger?.focus();
+    };
   }, [open]);
 
   return (
@@ -92,11 +111,13 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
           </Link>
         </nav>
         <button
+          ref={menuButton}
           type="button"
           onClick={() => setOpen(true)}
           className="text-[13px] text-bone md:hidden"
           aria-haspopup="dialog"
           aria-expanded={open}
+          aria-controls="mobile-navigation"
         >
           {t.menu}
         </button>
@@ -108,18 +129,14 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
         style={{ transform: "scaleX(0)" }}
       />
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
+      {open && (
+          <div
             ref={panel}
+            id="mobile-navigation"
             role="dialog"
             aria-modal="true"
             aria-label={t.menu}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-50 flex flex-col bg-ink/97 px-6 py-5 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex flex-col bg-ink/97 px-6 py-5 backdrop-blur-sm [animation:menuFade_0.25s_ease_both]"
           >
             <div className="flex items-center justify-between">
               <span className="font-display text-sm font-semibold">Ataberk Soylu</span>
@@ -129,11 +146,10 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
             </div>
             <nav aria-label="Main" className="mt-14 flex flex-col gap-6">
               {links.map((l, i) => (
-                <motion.div
+                <div
                   key={l.label}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.06 * i, duration: 0.35 }}
+                  className="[animation:menuRise_0.35s_ease_both]"
+                  style={{ animationDelay: `${0.06 * i}s` }}
                 >
                   <Link
                     href={l.href}
@@ -142,7 +158,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
                   >
                     {l.label}
                   </Link>
-                </motion.div>
+                </div>
               ))}
             </nav>
             <Link
@@ -152,9 +168,8 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
             >
               {other.toUpperCase()}
             </Link>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
     </header>
   );
 }

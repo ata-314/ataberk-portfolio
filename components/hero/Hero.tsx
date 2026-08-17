@@ -1,15 +1,11 @@
 "use client";
-/* eslint-disable react-hooks/set-state-in-effect --
-   R3F frame-loop idiom: per-frame state lives in refs/uniforms mutated inside
-   useFrame/raf (never React state), and GPU tier detection is a client-only
-   mount effect. These are deliberate, documented patterns. */
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { scrollState } from "../three/scroll-state";
-import { StaticField } from "../gl/Stage";
+import { StaticField } from "../gl/StaticField";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -28,13 +24,6 @@ export type HeroStrings = {
 // Text is server-rendered HTML — visible before any WebGL loads.
 export function Hero({ t }: { t: HeroStrings }) {
   const wrapper = useRef<HTMLDivElement>(null);
-  const [staticMode, setStaticMode] = useState(false);
-
-  useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const c = document.createElement("canvas");
-    setStaticMode(reduced || !c.getContext("webgl2"));
-  }, []);
 
   useGSAP(
     () => {
@@ -70,14 +59,14 @@ export function Hero({ t }: { t: HeroStrings }) {
         aria-label={t.name}
         className="sticky top-0 z-30 flex h-svh flex-col justify-center overflow-hidden px-6 md:px-10"
       >
-        {staticMode && <StaticField />}
+        <StaticField />
         <div data-hero-text className="pointer-events-none relative max-w-3xl">
           <p className="mb-5 font-mono text-xs tracking-[0.3em] text-bone-dim uppercase [animation:heroRise_0.8s_ease_0.1s_both]">
             {t.intro}
           </p>
           <h1
             lang="en"
-            className="font-display leading-[0.95] font-semibold tracking-tight uppercase [animation:heroRise_0.9s_ease_0.25s_both]"
+            className="font-display leading-[0.95] font-semibold tracking-tight uppercase"
             style={{ fontSize: "var(--text-display)" }}
           >
             Ataberk
