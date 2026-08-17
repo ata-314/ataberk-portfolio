@@ -44,7 +44,7 @@ export function WorkSection({ locale, visualLabel }: { locale: Locale; visualLab
   return (
     <section
       id="work"
-      className="relative z-10 bg-ink px-6 md:px-10"
+      className="story-surface relative z-10 px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto max-w-7xl">

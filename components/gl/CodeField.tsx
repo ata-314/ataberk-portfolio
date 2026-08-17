@@ -107,6 +107,7 @@ export function CodeField({
   const pageT = useRef(0);
   const pageAtHeroEnd = useRef(0);
   const yawRef = useRef(-1.07);
+  const followMix = useRef(0);
   const ndc = useMemo(() => new THREE.Vector2(), []);
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), []);
@@ -117,6 +118,8 @@ export function CodeField({
   const mat = useMemo(() => new THREE.Matrix4(), []);
   const scl = useMemo(() => new THREE.Vector3(0.8, 0.8, 0.8), []);
   const lookTarget = useMemo(() => new THREE.Vector3(), []);
+  const followTarget = useMemo(() => new THREE.Vector3(), []);
+  const followDirection = useMemo(() => new THREE.Vector3(), []);
 
   const { geometry, uniforms, material } = useMemo(() => {
     const { count, birdCount } = profile;
@@ -357,6 +360,34 @@ export function CodeField({
         // Smaller while traveling between sections; settles for the finale
         s = THREE.MathUtils.lerp(1.42, 0.82, THREE.MathUtils.smoothstep(pageT.current, 0.0, 0.25))
           + THREE.MathUtils.smoothstep(pageT.current, 0.85, 1.0) * 0.2;
+      }
+
+      // The scroll curve remains the bird's authored route; a fine pointer
+      // becomes a second, softer director once the anatomy has formed. The
+      // bird chases a point just inside the cursor, then returns to its route
+      // when the pointer leaves — no snapping and no loss of scroll intent.
+      const formed = THREE.MathUtils.smoothstep(h, 0.56, 0.74);
+      const desiredFollow = formed * pointerActive.current * (1 - u.uFinale.value);
+      followMix.current = THREE.MathUtils.damp(followMix.current, desiredFollow, 3.2, delta);
+      if (pointerSmoothed.current.x < 500 && followMix.current > 0.001) {
+        const aspect = size.width / Math.max(size.height, 1);
+        const side = pointerSmoothed.current.x >= 0 ? -1 : 1;
+        followTarget.copy(pointerSmoothed.current);
+        followTarget.x += side * 0.72;
+        followTarget.y += 0.32;
+        followTarget.x = THREE.MathUtils.clamp(
+          followTarget.x,
+          aspect < 1 ? -1.65 : -3.15,
+          aspect < 1 ? 1.65 : 3.15,
+        );
+        followTarget.y = THREE.MathUtils.clamp(followTarget.y, -1.55, 1.85);
+        followTarget.z = pos.z;
+        followDirection.subVectors(followTarget, pos);
+        const followStrength = (h < 0.999 ? 0.48 : 0.76) * followMix.current;
+        pos.lerp(followTarget, followStrength);
+        if (followDirection.lengthSq() > 0.0001) {
+          tangent.lerp(followDirection.normalize(), followStrength * 0.82).normalize();
+        }
       }
       scl.setScalar(s);
       // Stable three-quarter pose: the model faces +Z at identity, so a yaw

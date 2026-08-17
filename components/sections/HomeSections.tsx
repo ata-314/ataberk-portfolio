@@ -9,7 +9,7 @@ export function AISystems({ t }: { t: SiteContent["aiSystems"] }) {
   return (
     <section
       id="ai-systems"
-      className="relative z-10 border-t border-graphite bg-ink px-6 md:px-10"
+      className="story-surface relative z-10 border-t border-graphite px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto max-w-7xl">
@@ -41,7 +41,7 @@ export function AboutPreview({
 }) {
   return (
     <section
-      className="relative z-10 border-t border-graphite bg-ink px-6 md:px-10"
+      className="story-surface relative z-10 border-t border-graphite px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div data-reveal className="mx-auto max-w-4xl text-center">

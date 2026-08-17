@@ -46,8 +46,8 @@ export default async function Home({
             locale,
           }}
         />
-        <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
         <WorkSection locale={locale} visualLabel={visualLabel[locale]} />
+        <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
         <Capabilities t={t.capabilities} />
         <AISystems t={t.aiSystems} />
         <AboutPreview locale={locale} t={t.aboutPreview} />

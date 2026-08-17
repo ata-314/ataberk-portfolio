@@ -63,8 +63,8 @@ export default function Stage({ onReady }: { onReady?: () => void }) {
 
   const profile = PROFILES[tier];
   return (
-    // The field sits behind opaque content sections and reappears through the
-    // transparent hero/contact scenes. It never competes with body copy.
+    // The field sits behind every DOM layer. Semi-transparent story surfaces
+    // reveal the companion in negative space while copy remains above it.
     <div aria-hidden className="pointer-events-none fixed inset-0 z-[5]">
       <Canvas
         camera={{ position: [0, 0.15, 8.2], fov: 45 }}

@@ -38,7 +38,7 @@ export function Manifesto({ line, sub }: { line: string; sub: string }) {
   return (
     <section
       ref={root}
-      className="relative z-10 bg-ink px-6 md:px-10"
+      className="story-surface story-surface-open relative z-10 px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto max-w-5xl text-center">

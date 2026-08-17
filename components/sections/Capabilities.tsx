@@ -13,7 +13,7 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
   return (
     <section
       id="capabilities"
-      className="relative z-10 bg-ink px-6 md:px-10"
+      className="story-surface relative z-10 px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto max-w-7xl">

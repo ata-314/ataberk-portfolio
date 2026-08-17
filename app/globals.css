@@ -90,6 +90,30 @@ html[data-stage-ready="true"] .hero-static-field {
   opacity: 0;
 }
 
+.hero-copy {
+  text-shadow:
+    0 2px 28px rgba(10, 10, 11, 0.98),
+    0 0 72px rgba(10, 10, 11, 0.88);
+}
+
+/* MODD-like continuous stage: content remains readable on a dark editorial
+   surface while the scroll-led bird stays perceptible in the negative space. */
+.story-surface {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(10, 10, 11, 0.96) 0%,
+      rgba(10, 10, 11, 0.7) 14%,
+      rgba(10, 10, 11, 0.7) 86%,
+      rgba(10, 10, 11, 0.96) 100%
+    );
+}
+
+.story-surface-open {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(10, 10, 11, 0.5), rgba(10, 10, 11, 0.9) 72%);
+}
+
 /* Motion grammar — shared entrance primitives (GSAP drives the rest) */
 @keyframes heroRise {
   from {
@@ -157,5 +181,12 @@ html[data-stage-ready="true"] .hero-static-field {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .story-surface,
+  .story-surface-open {
+    background: rgba(10, 10, 11, 0.88);
   }
 }
