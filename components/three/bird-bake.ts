@@ -24,6 +24,18 @@ export const BIRD_FRAMES = 20;
 const TEX_W = 2048;
 const ROWS_PER_FRAME = Math.ceil(BIRD_SAMPLES / TEX_W); // 6
 const TEX_H = BIRD_FRAMES * ROWS_PER_FRAME; // 120
+const WORK_CHUNK = 1500;
+
+// The bake is intentionally cooperative. Yielding between small CPU chunks
+// lets input, scroll and rendering run while the model is sampled instead of
+// producing one multi-second main-thread task.
+function yieldToBrowser() {
+  const taskScheduler = (globalThis as typeof globalThis & {
+    scheduler?: { yield?: () => Promise<void> };
+  }).scheduler;
+  if (taskScheduler?.yield) return taskScheduler.yield();
+  return new Promise<void>((resolve) => setTimeout(resolve, 0));
+}
 
 export async function bakeBird(url: string): Promise<BirdBake> {
   const gltf = await new GLTFLoader().loadAsync(url);
@@ -56,6 +68,7 @@ export async function bakeBird(url: string): Promise<BirdBake> {
     vc.sub(va);
     areaSum += vb.cross(vc).length() * 0.5;
     cumAreas[t] = areaSum;
+    if ((t + 1) % (WORK_CHUNK * 2) === 0) await yieldToBrowser();
   }
   const samples = new Uint32Array(BIRD_SAMPLES * 3); // vertex indices
   const barys = new Float32Array(BIRD_SAMPLES * 2); // barycentric a,b
@@ -80,6 +93,7 @@ export async function bakeBird(url: string): Promise<BirdBake> {
     }
     barys[i * 2] = a;
     barys[i * 2 + 1] = b;
+    if ((i + 1) % WORK_CHUNK === 0) await yieldToBrowser();
   }
 
   // Drive the clip and capture skinned positions per frame.
@@ -115,6 +129,7 @@ export async function bakeBird(url: string): Promise<BirdBake> {
       data[o + 1] = p.y;
       data[o + 2] = p.z;
       data[o + 3] = Math.random(); // per-point seed
+      if ((i + 1) % WORK_CHUNK === 0) await yieldToBrowser();
     }
   }
 
@@ -139,6 +154,7 @@ export async function bakeBird(url: string): Promise<BirdBake> {
       data[o + 1] = (data[o + 1] - center.y) * scale;
       data[o + 2] = (data[o + 2] - center.z) * scale;
     }
+    await yieldToBrowser();
   }
 
   const texture = new THREE.DataTexture(
@@ -173,6 +189,7 @@ export async function bakeBird(url: string): Promise<BirdBake> {
     nrmData[o + 1] = p.y;
     nrmData[o + 2] = p.z;
     nrmData[o + 3] = 0;
+    if ((i + 1) % WORK_CHUNK === 0) await yieldToBrowser();
   }
   const normals = new THREE.DataTexture(
     nrmData,

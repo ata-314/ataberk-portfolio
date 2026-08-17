@@ -10,7 +10,7 @@ import * as THREE from "three";
 import { fieldVertex, fieldFragment } from "./field-shaders";
 import { createGlyphAtlas, GLYPHS } from "./glyph-atlas";
 import { scrollState } from "../three/scroll-state";
-import type { BirdBake } from "../three/bird-bake";
+import { BIRD_SAMPLES, type BirdBake } from "../three/bird-bake";
 
 export type FieldProfile = {
   count: number;
@@ -109,6 +109,7 @@ export function CodeField({
   const pageAtHeroEnd = useRef(0);
   const yawRef = useRef(-1.07);
   const followMix = useRef(0);
+  const birdReadyTarget = useRef(0);
   const ndc = useMemo(() => new THREE.Vector2(), []);
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), []);
@@ -122,7 +123,7 @@ export function CodeField({
   const followTarget = useMemo(() => new THREE.Vector3(), []);
   const followDirection = useMemo(() => new THREE.Vector3(), []);
 
-  const { geometry, uniforms, material } = useMemo(() => {
+  const { geometry, uniforms, material, fallbackTex } = useMemo(() => {
     const { count, birdCount } = profile;
     const positions = new Float32Array(count * 3); // required attr, unused
     const homes = new Float32Array(count * 3);
@@ -130,7 +131,7 @@ export function CodeField({
     const glyphs = new Float32Array(count);
     const birds = new Float32Array(count);
     const v = new THREE.Vector3();
-    const birdSamples = bake?.count ?? 1;
+    const birdSamples = BIRD_SAMPLES;
 
     // Shuffled pixel mapping: every particle owns one cell of the source
     // video, interleaved so the bird subset never carves a spatial hole.
@@ -155,7 +156,7 @@ export function CodeField({
       grid[i * 2 + 1] = 1 - ((Math.floor(g / cols) + 0.5 + (Math.random() - 0.5) * 0.25) / rows);
       // Every birdCount-th particle carries the bird; spread across samples
       birds[i] =
-        bake && i < birdCount ? Math.floor((i / birdCount) * birdSamples) : -1;
+        i < birdCount ? Math.floor((i / birdCount) * birdSamples) : -1;
     }
 
     const geometry = new THREE.BufferGeometry();
@@ -192,19 +193,20 @@ export function CodeField({
       uBirdDir: { value: new THREE.Vector3(-1, 0, 0) },
       uVortexA: { value: new THREE.Vector3(-1.35, 0.35, 0) },
       uVortexB: { value: new THREE.Vector3(1.35, -0.35, 0) },
-      uPosTex: { value: bake?.texture ?? fallbackTex },
-      uNrmTex: { value: bake?.normals ?? fallbackTex },
+      uPosTex: { value: fallbackTex },
+      uNrmTex: { value: fallbackTex },
       uVideoTex: { value: fallbackTex as THREE.Texture },
       uVideoOn: { value: 0 },
       uMeltScale: {
         value:
           typeof window !== "undefined" && window.location.hash.includes("lock") ? 0 : 1,
       },
-      uTexW: { value: bake?.texWidth ?? 1 },
-      uTexH: { value: bake?.texHeight ?? 1 },
-      uRowsPerFrame: { value: bake?.rowsPerFrame ?? 1 },
-      uFrames: { value: bake?.frames ?? 1 },
+      uTexW: { value: 1 },
+      uTexH: { value: 1 },
+      uRowsPerFrame: { value: 1 },
+      uFrames: { value: 1 },
       uFlap: { value: 0 },
+      uBirdReady: { value: 0 },
       uAtlas: { value: atlas },
       uColorBase: { value: new THREE.Color("#f3efe7") },
       uColorAccent: { value: new THREE.Color("#c8ff3e") },
@@ -220,16 +222,45 @@ export function CodeField({
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
-    return { geometry, uniforms, material, atlas };
-  }, [profile, bake]);
+    return { geometry, uniforms, material, atlas, fallbackTex };
+  }, [profile]);
+
+  // Geometry and material stay stable when the async bird bake arrives. Only
+  // warm textures and uniforms are swapped, avoiding a full 36k-particle
+  // rebuild and shader recompile during the hero transition.
+  useEffect(() => {
+    birdReadyTarget.current = 0;
+    if (!bake) return;
+    let cancelled = false;
+    let nextFrame = requestAnimationFrame(() => {
+      gl.initTexture(bake.texture);
+      nextFrame = requestAnimationFrame(() => {
+        if (cancelled) return;
+        gl.initTexture(bake.normals);
+        uniforms.uPosTex.value = bake.texture;
+        uniforms.uNrmTex.value = bake.normals;
+        uniforms.uTexW.value = bake.texWidth;
+        uniforms.uTexH.value = bake.texHeight;
+        uniforms.uRowsPerFrame.value = bake.rowsPerFrame;
+        uniforms.uFrames.value = bake.frames;
+        birdReadyTarget.current = 1;
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(nextFrame);
+      birdReadyTarget.current = 0;
+    };
+  }, [bake, gl, uniforms]);
 
   useEffect(
     () => () => {
       geometry.dispose();
       material.dispose();
       (uniforms.uAtlas.value as THREE.Texture).dispose();
+      fallbackTex.dispose();
     },
-    [geometry, material, uniforms],
+    [fallbackTex, geometry, material, uniforms],
   );
 
   // Data-painting source: the hero video feeds the field as a texture.
@@ -302,6 +333,12 @@ export function CodeField({
     const hero = scrollState.hero.current;
     const page = scrollState.page.current;
     u.uHero.value = THREE.MathUtils.damp(u.uHero.value, hero, 6, delta);
+    u.uBirdReady.value = THREE.MathUtils.damp(
+      u.uBirdReady.value,
+      birdReadyTarget.current,
+      4,
+      delta,
+    );
 
     // The bird stays with the reader for the whole page; it only releases
     // back into free matter as the contact finale arrives.

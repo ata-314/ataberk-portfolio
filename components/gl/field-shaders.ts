@@ -88,6 +88,7 @@ uniform float uTexH;
 uniform float uRowsPerFrame;
 uniform float uFrames;
 uniform float uFlap;
+uniform float uBirdReady;   // async bake fades in without rebuilding geometry
 
 attribute vec3 aHome;        // volumetric field home (lobed, layered)
 attribute vec2 aGrid;        // shuffled video-pixel mapping (data painting)
@@ -191,7 +192,7 @@ void main() {
   float energy = crest * 0.28;
   float alpha = 1.0;
 
-  if (aBird >= 0.0) {
+  if (aBird >= 0.0 && uBirdReady > 0.001) {
     float isFlow = step(0.78, fract(aSeed * 3.1));   // ~22% free flow layer
     float delay = seed01 * 0.10;                     // long, liquid stagger
 
@@ -206,7 +207,8 @@ void main() {
 
     // ── Gathering: long overlapping streams — the painting itself flows
     //    toward the anchor, particle by particle ──
-    float gather = smoothstep(0.15, 0.48, uHero - fract(aSeed * 6.9) * 0.14);
+    float gather = smoothstep(0.15, 0.48, uHero - fract(aSeed * 6.9) * 0.14)
+                 * smoothstep(0.0, 0.55, uBirdReady);
     vec3 anchor = uBirdMat[3].xyz;
     float ang = gather * (4.0 + seed01 * 5.0) + aSeed;
     float rad = mix(2.6, 0.7, gather) * (1.0 - gather * 0.4);
@@ -215,7 +217,8 @@ void main() {
     // ── Formation: wings first, then body/head/tail fill (staggered);
     //    every particle locked to the surface by hero ≈ 0.63 ──
     float wingFirst = mix(0.03, 0.0, wingtip);       // wing outlines lead
-    float morph = smoothstep(0.38, 0.58, uHero - delay - wingFirst);
+    float morph = smoothstep(0.38, 0.58, uHero - delay - wingFirst)
+                * smoothstep(0.0, 1.0, uBirdReady);
     vec3 birdWorld = (uBirdMat * vec4(bl, 1.0)).xyz;
 
     // Curved approach: long curl arcs — pigment streaming into anatomy,
@@ -279,7 +282,7 @@ void main() {
   }
 
   vGlyph = aGlyph;
-  vBird = step(0.0, aBird);
+  vBird = step(0.0, aBird) * smoothstep(0.15, 0.9, uBirdReady);
   vVid = vidCol;
   vVidMix = uVideoOn * (1.0 - vBird) * (1.0 - uFinale);
   // Video mode: color carries the image; brightness shapes gently, true

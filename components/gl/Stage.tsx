@@ -12,8 +12,8 @@ import { bakeBird, type BirdBake } from "../three/bird-bake";
 type Tier = "loading" | "full" | "mobile" | "static";
 
 const PROFILES: Record<"full" | "mobile", FieldProfile> = {
-  full: { count: 46000, birdCount: 16000, pointerEnabled: true },
-  mobile: { count: 13000, birdCount: 6000, pointerEnabled: true },
+  full: { count: 36000, birdCount: 12000, pointerEnabled: true },
+  mobile: { count: 11000, birdCount: 4800, pointerEnabled: true },
 };
 
 function detectTier(): Tier {
@@ -68,7 +68,7 @@ export default function Stage({ onReady }: { onReady?: () => void }) {
     <div aria-hidden className="pointer-events-none fixed inset-0 z-[15]">
       <Canvas
         camera={{ position: [0, 0.15, 8.2], fov: 45 }}
-        dpr={tier === "full" ? [1, 1.75] : [1, 1.25]}
+        dpr={tier === "full" ? [1, 1.5] : [1, 1.2]}
         frameloop={active.current && !lost ? "always" : "never"}
         gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
         onCreated={({ gl }) => {
