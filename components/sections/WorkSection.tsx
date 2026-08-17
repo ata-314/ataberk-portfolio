@@ -59,16 +59,21 @@ export function WorkSection({ locale, visualLabel }: { locale: Locale; visualLab
         />
 
         {/* 01 — Featured, full width */}
-        <CaseLink locale={locale} slug={featured.slug} className="mt-16">
+        <CaseLink locale={locale} slug={featured.slug} className="mt-16 md:mt-20">
           <SystemVisual item={featured} label={visualLabel} className="aspect-[16/8] w-full" />
-          <div className="glass mt-6 grid grid-cols-12 items-end gap-4 p-6 md:p-8">
+          <div className="glass-strong relative z-10 mx-3 -mt-7 grid grid-cols-12 items-end gap-5 p-6 md:mx-10 md:-mt-16 md:p-9">
             <div className="col-span-12 md:col-span-7">
               <Meta item={featured} />
-              <h3 className="font-display mt-2 text-4xl font-semibold tracking-tight transition-colors group-hover:text-lime md:text-6xl">
+              <h3 className="font-display mt-3 text-4xl font-semibold tracking-[-0.035em] transition-colors group-hover:text-lime md:text-6xl">
                 {featured.title}
               </h3>
             </div>
-            <p className="col-span-12 text-base text-bone-dim md:col-span-5">{featured.idea}</p>
+            <div className="col-span-12 md:col-span-5">
+              <p className="text-base leading-relaxed text-bone-dim">{featured.idea}</p>
+              <span className="mt-5 inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.22em] text-lime uppercase">
+                {t.open} <span aria-hidden>↗</span>
+              </span>
+            </div>
           </div>
         </CaseLink>
 

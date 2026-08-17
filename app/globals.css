@@ -96,6 +96,12 @@ html[data-stage-ready="true"] .hero-static-field {
     0 0 72px rgba(10, 10, 11, 0.88);
 }
 
+.hero-scrim {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(10, 10, 11, 0.2) 0%, rgba(10, 10, 11, 0.68) 42%, rgba(10, 10, 11, 0.12) 72%),
+    linear-gradient(180deg, rgba(10, 10, 11, 0.5) 0%, transparent 24%, transparent 70%, rgba(10, 10, 11, 0.42) 100%);
+}
+
 /* Motion grammar — shared entrance primitives (GSAP drives the rest) */
 @keyframes heroRise {
   from {
@@ -142,6 +148,37 @@ html[data-stage-ready="true"] .hero-static-field {
   -webkit-backdrop-filter: blur(32px) saturate(1.35);
   backdrop-filter: blur(32px) saturate(1.35);
 }
+
+/* Denser glass is reserved for focal content: the hero handoff, featured
+   project summary, and the mobile navigation sheet. */
+.glass-strong {
+  background: linear-gradient(
+    145deg,
+    rgba(28, 28, 31, 0.82),
+    rgba(14, 14, 16, 0.7) 52%,
+    rgba(25, 25, 28, 0.76)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: clamp(1.5rem, 2.5vw, 2.4rem);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.025),
+    0 32px 90px -40px rgba(0, 0, 0, 0.98);
+  -webkit-backdrop-filter: blur(44px) saturate(1.45);
+  backdrop-filter: blur(44px) saturate(1.45);
+}
+
+/* Compact control glass. Keeping this material quieter than content cards
+   makes the floating navigation feel like part of the viewport chrome. */
+.nav-glass {
+  background: linear-gradient(145deg, rgba(30, 30, 33, 0.72), rgba(15, 15, 17, 0.58));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 18px 55px -34px rgba(0, 0, 0, 0.95);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
+}
 .glass-hover {
   transition:
     transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
@@ -171,6 +208,10 @@ html[data-stage-ready="true"] .hero-static-field {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-hero-phases] {
+    display: none !important;
+  }
+
   *,
   *::before,
   *::after {

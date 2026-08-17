@@ -107,34 +107,36 @@ export function Hero({ t }: { t: HeroStrings }) {
         className="sticky top-0 z-30 flex h-svh flex-col justify-center overflow-hidden px-6 md:px-10 motion-reduce:relative motion-reduce:min-h-svh"
       >
         <StaticField />
-        <div data-hero-identity className="hero-copy pointer-events-none relative max-w-3xl origin-left">
-          <p className="mb-5 font-mono text-xs tracking-[0.3em] text-bone-dim uppercase [animation:heroRise_0.8s_ease_0.1s_both]">
+        <div aria-hidden className="hero-scrim pointer-events-none absolute inset-0" />
+
+        <div data-hero-identity className="hero-copy pointer-events-none relative z-10 mx-auto w-full max-w-5xl origin-center text-center">
+          <p className="nav-glass mb-6 inline-flex rounded-full px-4 py-2 font-mono text-[10px] tracking-[0.28em] text-bone-dim uppercase [animation:heroRise_0.8s_ease_0.1s_both] md:text-[11px]">
             {t.intro}
           </p>
           <h1
             lang="en"
-            className="font-display leading-[0.95] font-semibold tracking-tight uppercase"
+            className="font-display leading-[0.9] font-semibold tracking-[-0.055em] text-balance"
             style={{ fontSize: "var(--text-display)" }}
           >
             Ataberk
-            <br />
-            Soylu
+            <span className="block md:inline"> Soylu</span>
           </h1>
-          <p lang="en" className="mt-6 font-mono text-sm tracking-widest text-lime uppercase [animation:heroRise_0.9s_ease_0.45s_both]">
+          <p lang="en" className="mt-6 font-mono text-[11px] tracking-[0.24em] text-lime uppercase [animation:heroRise_0.9s_ease_0.45s_both] md:text-xs">
             {t.title}
           </p>
-          <div className="pointer-events-auto mt-6 hidden motion-reduce:block">
-            <p className="max-w-xl text-lg text-bone-dim">{t.tagline}</p>
-            <div className="mt-8 flex flex-wrap gap-4">
+          <div className="pointer-events-auto mx-auto mt-5 max-w-2xl [animation:heroRise_0.9s_ease_0.58s_both]">
+            <p className="text-base leading-relaxed text-bone-dim text-balance md:text-lg">{t.tagline}</p>
+            <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a
                 href="#work"
-                className="rounded-full bg-lime px-7 py-3.5 font-mono text-xs font-semibold tracking-widest text-ink uppercase"
+                data-cursor="view"
+                className="rounded-full bg-bone px-6 py-3.5 font-mono text-[11px] font-semibold tracking-widest text-ink uppercase transition-all hover:scale-[1.02] hover:bg-white"
               >
                 {t.ctaWork}
               </a>
               <a
                 href={`/${t.locale}/about`}
-                className="rounded-full border border-bone/20 px-7 py-3.5 font-mono text-xs tracking-widest text-bone uppercase"
+                className="nav-glass rounded-full px-6 py-3.5 font-mono text-[11px] tracking-widest text-bone uppercase transition-colors hover:text-white"
               >
                 {t.ctaAbout}
               </a>
@@ -144,28 +146,28 @@ export function Hero({ t }: { t: HeroStrings }) {
 
         <div
           data-hero-direction
-          className="hero-copy pointer-events-none absolute inset-x-6 bottom-[12vh] max-w-xl opacity-0 md:inset-x-auto md:right-10 md:bottom-[13vh] md:text-right motion-reduce:hidden"
+          className="glass-strong hero-copy pointer-events-none absolute inset-x-4 bottom-[10vh] z-10 mx-auto max-w-3xl p-7 text-center opacity-0 md:bottom-[12vh] md:p-11 motion-reduce:hidden"
         >
           <p className="font-mono text-[11px] tracking-[0.35em] text-lime uppercase">
             03 / {t.title}
           </p>
-          <p className="font-display mt-5 text-4xl leading-[1.02] font-semibold tracking-tight text-balance md:text-6xl">
+          <p className="font-display mx-auto mt-5 max-w-2xl text-3xl leading-[1.03] font-semibold tracking-tight text-balance md:text-5xl">
             {t.tagline}
           </p>
           <div
             data-hero-actions
-            className="pointer-events-auto mt-8 flex flex-wrap gap-4 opacity-0 md:justify-end"
+            className="pointer-events-auto mt-8 flex flex-wrap justify-center gap-3 opacity-0"
           >
             <a
               href="#work"
               data-cursor="view"
-              className="rounded-full bg-lime px-7 py-3.5 font-mono text-xs font-semibold tracking-widest text-ink uppercase transition-all hover:brightness-110"
+              className="rounded-full bg-bone px-6 py-3.5 font-mono text-[11px] font-semibold tracking-widest text-ink uppercase transition-all hover:scale-[1.02] hover:bg-white"
             >
               {t.ctaWork}
             </a>
             <a
               href={`/${t.locale}/about`}
-              className="rounded-full border border-bone/20 bg-ink/40 px-7 py-3.5 font-mono text-xs tracking-widest text-bone uppercase backdrop-blur-sm transition-colors hover:border-bone/50"
+              className="rounded-full border border-white/12 bg-white/[0.06] px-6 py-3.5 font-mono text-[11px] tracking-widest text-bone uppercase transition-colors hover:border-white/25 hover:bg-white/[0.1]"
             >
               {t.ctaAbout}
             </a>
@@ -173,8 +175,9 @@ export function Hero({ t }: { t: HeroStrings }) {
         </div>
 
         <div
+          data-hero-phases
           aria-hidden
-          className="pointer-events-none absolute right-6 top-24 hidden flex-col items-end gap-2 font-mono text-[10px] tracking-[0.28em] text-bone-dim uppercase md:flex motion-reduce:hidden"
+          className="nav-glass pointer-events-none absolute right-6 top-24 hidden flex-col items-end gap-2 rounded-2xl px-4 py-3 font-mono text-[9px] tracking-[0.24em] text-bone-dim uppercase md:flex motion-reduce:hidden"
         >
           <span data-phase="one" className="text-lime">01 · {tr ? "Kimlik" : "Identity"}</span>
           <span data-phase="two" className="opacity-30">02 · {tr ? "Madde" : "Matter"}</span>
@@ -183,11 +186,11 @@ export function Hero({ t }: { t: HeroStrings }) {
 
         <p
           data-hero-hint
-          className="pointer-events-none absolute bottom-7 left-6 font-mono text-xs tracking-widest text-bone-dim/50 uppercase md:left-10 motion-reduce:hidden"
+          className="nav-glass pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full px-4 py-2 font-mono text-[10px] tracking-widest text-bone-dim/70 uppercase motion-reduce:hidden"
         >
           {t.scrollHint} ↓
         </p>
-        <p className="pointer-events-none absolute right-6 bottom-7 hidden font-mono text-[10px] tracking-[0.25em] text-bone-dim/45 uppercase md:block motion-reduce:hidden">
+        <p className="pointer-events-none absolute right-6 bottom-7 hidden font-mono text-[9px] tracking-[0.2em] text-bone-dim/40 uppercase lg:block motion-reduce:hidden">
           {tr
             ? "Kaydırma kuşu biçimlendirir · İmleç yön verir"
             : "Scroll shapes the bird · Cursor gives direction"}

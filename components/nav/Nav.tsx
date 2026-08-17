@@ -1,5 +1,4 @@
 "use client";
- 
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -8,8 +7,8 @@ import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { scrollState } from "../three/scroll-state";
 
-// Minimal fixed navigation: monogram, five destinations, locale, menu.
-// Glass only here — a functional overlay, not a style.
+// Floating navigation: one calm glass capsule that stays legible while the
+// global bird and the page content move underneath it.
 export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -83,28 +82,29 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   }, [open]);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
-      <div className="flex items-center justify-between border-b border-bone/5 bg-ink/60 px-5 py-4 backdrop-blur-md md:px-10">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-50 px-3 md:px-6">
+      <div className="nav-glass pointer-events-auto relative mx-auto mt-3 flex max-w-6xl items-center justify-between overflow-hidden rounded-full px-4 py-3 md:mt-4 md:px-5">
         <Link
           href={`/${locale}`}
-          className="font-display text-sm font-semibold tracking-tight"
+          className="flex items-center gap-2.5 rounded-full px-2 py-1 font-display text-sm font-semibold tracking-tight transition-opacity hover:opacity-75"
           aria-label="Ataberk Soylu"
         >
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime shadow-[0_0_14px_rgba(200,255,62,0.75)]" />
           Ataberk Soylu
         </Link>
-        <nav aria-label="Main" className="hidden items-center gap-7 md:flex">
+        <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
           {links.map((l) => (
             <Link
               key={l.label}
               href={l.href}
-              className="text-[13px] text-bone-dim transition-colors hover:text-bone"
+              className="rounded-full px-3 py-2 text-[13px] text-bone-dim transition-colors hover:bg-white/[0.07] hover:text-bone"
             >
               {l.label}
             </Link>
           ))}
           <Link
             href={otherPath}
-            className="font-mono text-xs tracking-widest text-bone-dim uppercase transition-colors hover:text-lime"
+            className="ml-1 rounded-full border border-white/10 bg-white/[0.055] px-3 py-2 font-mono text-[10px] tracking-[0.18em] text-bone-dim uppercase transition-colors hover:border-white/20 hover:text-bone"
             aria-label={other === "en" ? "Switch to English" : "Türkçeye geç"}
           >
             {other.toUpperCase()}
@@ -114,20 +114,22 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
           ref={menuButton}
           type="button"
           onClick={() => setOpen(true)}
-          className="text-[13px] text-bone md:hidden"
+          className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[12px] text-bone md:hidden"
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls="mobile-navigation"
         >
           {t.menu}
         </button>
+        <div className="absolute inset-x-5 bottom-0 h-px overflow-hidden bg-white/[0.055]">
+          <div
+            ref={progress}
+            aria-hidden
+            className="h-full origin-left bg-lime/75"
+            style={{ transform: "scaleX(0)" }}
+          />
+        </div>
       </div>
-      <div
-        ref={progress}
-        aria-hidden
-        className="h-px origin-left bg-lime/70"
-        style={{ transform: "scaleX(0)" }}
-      />
 
       {open && (
           <div
@@ -136,15 +138,18 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
             role="dialog"
             aria-modal="true"
             aria-label={t.menu}
-            className="fixed inset-0 z-50 flex flex-col bg-ink/97 px-6 py-5 backdrop-blur-sm [animation:menuFade_0.25s_ease_both]"
+            className="glass-strong pointer-events-auto fixed inset-3 z-50 flex flex-col overflow-hidden rounded-[2rem] px-6 py-5 [animation:menuFade_0.25s_ease_both]"
           >
             <div className="flex items-center justify-between">
-              <span className="font-display text-sm font-semibold">Ataberk Soylu</span>
-              <button type="button" onClick={() => setOpen(false)} className="text-[13px] text-bone">
+              <span className="flex items-center gap-2.5 font-display text-sm font-semibold">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
+                Ataberk Soylu
+              </span>
+              <button type="button" onClick={() => setOpen(false)} className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[12px] text-bone">
                 {t.close}
               </button>
             </div>
-            <nav aria-label="Main" className="mt-14 flex flex-col gap-6">
+            <nav aria-label="Main" className="mt-16 flex flex-col gap-3">
               {links.map((l, i) => (
                 <div
                   key={l.label}
@@ -154,7 +159,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
                   <Link
                     href={l.href}
                     onClick={() => setOpen(false)}
-                    className="font-display text-4xl font-semibold tracking-tight"
+                    className="block border-b border-white/[0.08] py-3 font-display text-4xl font-semibold tracking-tight transition-colors hover:text-lime"
                   >
                     {l.label}
                   </Link>
@@ -164,7 +169,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
             <Link
               href={otherPath}
               onClick={() => setOpen(false)}
-              className="mt-auto font-mono text-sm tracking-widest text-lime uppercase"
+              className="mt-auto w-fit rounded-full border border-white/10 bg-white/[0.06] px-4 py-3 font-mono text-xs tracking-widest text-lime uppercase"
             >
               {other.toUpperCase()}
             </Link>
