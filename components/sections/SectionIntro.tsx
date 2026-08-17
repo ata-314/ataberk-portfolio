@@ -10,7 +10,7 @@ export function SectionIntro({
   lead?: string;
 }) {
   return (
-    <div data-reveal className="mx-auto max-w-3xl text-center">
+    <div data-reveal className="hero-copy mx-auto max-w-3xl text-center">
       <p className="font-mono text-[11px] tracking-[0.35em] text-lime/80 uppercase">
         {eyebrow}
       </p>

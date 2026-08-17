@@ -63,9 +63,9 @@ export default function Stage({ onReady }: { onReady?: () => void }) {
 
   const profile = PROFILES[tier];
   return (
-    // The field sits behind every DOM layer. Semi-transparent story surfaces
-    // reveal the companion in negative space while copy remains above it.
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-[5]">
+    // The field sits above the page background and below z-20 content.
+    // Background-free sections expose it; glass cards soften it with blur.
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-[15]">
       <Canvas
         camera={{ position: [0, 0.15, 8.2], fov: 45 }}
         dpr={tier === "full" ? [1, 1.75] : [1, 1.25]}

@@ -38,10 +38,10 @@ export function Manifesto({ line, sub }: { line: string; sub: string }) {
   return (
     <section
       ref={root}
-      className="story-surface story-surface-open relative z-10 px-6 md:px-10"
+      className="relative z-20 px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
-      <div className="mx-auto max-w-5xl text-center">
+      <div className="hero-copy mx-auto max-w-5xl text-center">
         <p
           className="font-display leading-[1.08] font-semibold tracking-tight text-balance"
           style={{ fontSize: "var(--text-h1)" }}

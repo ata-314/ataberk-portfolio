@@ -9,7 +9,7 @@ export function AISystems({ t }: { t: SiteContent["aiSystems"] }) {
   return (
     <section
       id="ai-systems"
-      className="story-surface relative z-10 border-t border-graphite px-6 md:px-10"
+      className="relative z-20 border-t border-bone/10 px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto max-w-7xl">
@@ -41,10 +41,10 @@ export function AboutPreview({
 }) {
   return (
     <section
-      className="story-surface relative z-10 border-t border-graphite px-6 md:px-10"
+      className="relative z-20 border-t border-bone/10 px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
-      <div data-reveal className="mx-auto max-w-4xl text-center">
+      <div data-reveal className="hero-copy mx-auto max-w-4xl text-center">
         <p className="font-mono text-[11px] tracking-[0.35em] text-lime/80 uppercase">
           {t.heading}
         </p>
@@ -70,9 +70,9 @@ export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
   return (
     <section
       id="contact"
-      className="pointer-events-none relative z-10 flex min-h-[90svh] flex-col justify-center px-6 md:px-10"
+      className="pointer-events-none relative z-20 flex min-h-[90svh] flex-col justify-center px-6 md:px-10"
     >
-      <div className="mx-auto w-full max-w-5xl text-center">
+      <div className="hero-copy mx-auto w-full max-w-5xl text-center">
         <p className="font-mono text-[11px] tracking-[0.35em] text-lime/80 uppercase">
           {t.heading}
         </p>
@@ -86,7 +86,7 @@ export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
           {t.intents.map((intent) => (
             <li
               key={intent}
-              className="rounded-full border border-bone/15 bg-ink/50 px-6 py-3 text-sm text-bone-dim backdrop-blur-md"
+              className="glass rounded-full px-6 py-3 text-sm text-bone-dim"
             >
               {intent}
             </li>
@@ -110,7 +110,7 @@ export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
 
 export function Footer({ t, name }: { t: SiteContent["footer"]; name: string }) {
   return (
-    <footer className="relative z-10 border-t border-graphite bg-ink px-6 py-10 md:px-10">
+    <footer className="relative z-20 border-t border-graphite bg-ink px-6 py-10 md:px-10">
       <div className="mx-auto flex max-w-7xl flex-wrap items-baseline justify-between gap-4">
         <p className="font-display text-sm font-semibold">{name}</p>
         <p className="text-xs text-bone-dim">{t.built}</p>

@@ -13,7 +13,7 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
   return (
     <section
       id="capabilities"
-      className="story-surface relative z-10 px-6 md:px-10"
+      className="relative z-20 px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto max-w-7xl">
@@ -76,7 +76,7 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
         {/* Mobile: accessible native accordion */}
         <div className="mt-12 space-y-3 md:hidden">
           {t.systems.map((sys, i) => (
-            <details key={sys.key} className="group border border-graphite">
+            <details key={sys.key} className="glass group overflow-hidden">
               <summary className="flex cursor-pointer items-center justify-between px-5 py-4">
                 <span lang="en" className="font-display text-lg font-semibold">
                   {sys.name}

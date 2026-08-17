@@ -96,24 +96,6 @@ html[data-stage-ready="true"] .hero-static-field {
     0 0 72px rgba(10, 10, 11, 0.88);
 }
 
-/* MODD-like continuous stage: content remains readable on a dark editorial
-   surface while the scroll-led bird stays perceptible in the negative space. */
-.story-surface {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(10, 10, 11, 0.96) 0%,
-      rgba(10, 10, 11, 0.7) 14%,
-      rgba(10, 10, 11, 0.7) 86%,
-      rgba(10, 10, 11, 0.96) 100%
-    );
-}
-
-.story-surface-open {
-  background:
-    radial-gradient(circle at 50% 48%, rgba(10, 10, 11, 0.5), rgba(10, 10, 11, 0.9) 72%);
-}
-
 /* Motion grammar — shared entrance primitives (GSAP drives the rest) */
 @keyframes heroRise {
   from {
@@ -142,13 +124,23 @@ html[data-stage-ready="true"] .hero-static-field {
   }
 }
 
-/* Futurist glass surface — used for cards and functional panels only */
+/* Apple-like dark glass: one quiet material for cards and controls. The
+   global bird remains visible through the surface and is softened by blur. */
 .glass {
-  background: rgba(243, 239, 231, 0.03);
-  border: 1px solid rgba(243, 239, 231, 0.07);
-  border-radius: 1.5rem;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.105),
+    rgba(255, 255, 255, 0.038) 48%,
+    rgba(255, 255, 255, 0.055)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: clamp(1.35rem, 2vw, 2rem);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.025),
+    0 26px 80px -42px rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(32px) saturate(1.35);
+  -webkit-backdrop-filter: blur(32px) saturate(1.35);
 }
 .glass-hover {
   transition:
@@ -158,8 +150,13 @@ html[data-stage-ready="true"] .hero-static-field {
 }
 .glass-hover:hover {
   transform: translateY(-4px);
-  border-color: rgba(200, 255, 62, 0.35);
-  background: rgba(243, 239, 231, 0.05);
+  border-color: rgba(200, 255, 62, 0.3);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.13),
+    rgba(200, 255, 62, 0.045) 58%,
+    rgba(255, 255, 255, 0.055)
+  );
 }
 
 /* Custom cursor: hide the native one only on fine pointers when active */
@@ -181,12 +178,5 @@ html[data-stage-ready="true"] .hero-static-field {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-}
-
-@media (max-width: 767px) {
-  .story-surface,
-  .story-surface-open {
-    background: rgba(10, 10, 11, 0.88);
   }
 }

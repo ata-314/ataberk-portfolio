@@ -40,7 +40,7 @@ export function SystemVisual({
 
   return (
     <figure
-      className={`group relative overflow-hidden rounded-3xl border border-bone/[0.07] bg-coal/80 ${className}`}
+      className={`glass group relative overflow-hidden ${className}`}
     >
       <svg
         viewBox="0 0 100 100"
