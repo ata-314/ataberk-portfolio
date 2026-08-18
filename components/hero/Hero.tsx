@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -24,7 +24,89 @@ export type HeroStrings = {
 // Text is server-rendered HTML — visible before any WebGL loads.
 export function Hero({ t }: { t: HeroStrings }) {
   const wrapper = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLSpanElement>(null);
   const tr = t.locale === "tr";
+
+  // Matrix-style decode: the name resolves out of cycling code glyphs when
+  // the opening flight lands, then rests with rare single-character flickers.
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    const FINAL = "Ataberk Soylu";
+    const CODE = "01<>{}/*+=:;#|";
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.textContent = FINAL;
+      return;
+    }
+    const timers: number[] = [];
+    let decodeInterval = 0;
+    let started = false;
+    const glyph = () => CODE[Math.floor(Math.random() * CODE.length)];
+    const restFlicker = () => {
+      timers.push(
+        window.setTimeout(() => {
+          const idx = Math.floor(Math.random() * FINAL.length);
+          if (FINAL[idx] !== " ") {
+            let frames = 0;
+            const flick = window.setInterval(() => {
+              const chars = FINAL.split("");
+              chars[idx] = frames < 3 ? glyph() : FINAL[idx];
+              el.textContent = chars.join("");
+              if (++frames > 3) clearInterval(flick);
+            }, 55);
+            timers.push(flick);
+          }
+          restFlicker();
+        }, 4200 + Math.random() * 3800),
+      );
+    };
+    const start = () => {
+      if (started) return;
+      started = true;
+      const t0 = performance.now();
+      decodeInterval = window.setInterval(() => {
+        const elapsed = performance.now() - t0;
+        let out = "";
+        let done = true;
+        for (let i = 0; i < FINAL.length; i++) {
+          if (FINAL[i] === " ") {
+            out += " ";
+          } else if (elapsed >= 260 + i * 95) {
+            out += FINAL[i];
+          } else {
+            out += glyph();
+            done = false;
+          }
+        }
+        el.textContent = out;
+        if (done) {
+          clearInterval(decodeInterval);
+          restFlicker();
+        }
+      }, 46);
+    };
+    const html = document.documentElement;
+    const ready = () =>
+      html.dataset.stageIntro === "done" || html.dataset.stageStatic === "true";
+    if (ready()) start();
+    const observer = new MutationObserver(() => {
+      if (ready()) start();
+    });
+    observer.observe(html, {
+      attributes: true,
+      attributeFilter: ["data-stage-intro", "data-stage-static"],
+    });
+    timers.push(window.setTimeout(start, 9500));
+    return () => {
+      observer.disconnect();
+      clearInterval(decodeInterval);
+      timers.forEach((timer) => {
+        clearTimeout(timer);
+        clearInterval(timer);
+      });
+      el.textContent = FINAL;
+    };
+  }, []);
 
   useGSAP(
     () => {
@@ -95,12 +177,14 @@ export function Hero({ t }: { t: HeroStrings }) {
           <h1
             lang="en"
             aria-label="Ataberk Soylu"
-            className="overflow-hidden font-mono leading-none font-semibold tracking-[-0.07em]"
-            style={{ fontSize: "clamp(2.55rem, 7.4vw, 7.25rem)" }}
+            className="hero-title overflow-hidden leading-none"
+            style={{ fontSize: "clamp(1.9rem, 5.4vw, 5.4rem)" }}
           >
             <span aria-hidden className="hero-type-shell">
               <span className="hero-type-prompt">&gt;</span>
-              <span className="hero-type-text">Ataberk Soylu</span>
+              <span ref={titleRef} className="hero-type-text">
+                Ataberk Soylu
+              </span>
               <span className="hero-type-cursor" />
             </span>
           </h1>
@@ -116,7 +200,7 @@ export function Hero({ t }: { t: HeroStrings }) {
               </a>
               <a
                 href={`/${t.locale}/about`}
-                className="rounded-full border border-white/12 bg-white/[0.055] px-6 py-3.5 font-mono text-[11px] tracking-widest text-bone uppercase transition-colors hover:border-white/25 hover:bg-white/[0.09]"
+                className="rounded-full border border-white/15 bg-white/[0.07] px-6 py-3.5 font-mono text-[11px] tracking-widest text-bone uppercase backdrop-blur-xl backdrop-saturate-150 transition-colors hover:border-white/30 hover:bg-white/[0.12]"
               >
                 {t.ctaAbout}
               </a>
@@ -162,7 +246,7 @@ export function Hero({ t }: { t: HeroStrings }) {
 
         <p
           data-hero-hint
-          className="pointer-events-none absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 py-2 font-mono text-[10px] tracking-widest text-bone-dim/70 uppercase motion-reduce:hidden"
+          className="pointer-events-none absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 font-mono text-[10px] tracking-widest text-bone-dim/80 uppercase backdrop-blur-xl backdrop-saturate-150 motion-reduce:hidden"
         >
           {t.scrollHint} <span aria-hidden className="text-lime">↓</span>
         </p>

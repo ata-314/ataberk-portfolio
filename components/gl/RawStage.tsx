@@ -197,17 +197,75 @@ function createAtlas(gl: WebGL2RenderingContext) {
   return texture;
 }
 
-function homePosition(index: number, count: number) {
-  const shell = index % 3;
-  const t = (index / count) * Math.PI * 2 * 13.37;
-  const u = Math.acos(2 * ((index * 0.61803) % 1) - 1);
-  const radius = 1.1 + shell * 0.65 + Math.sin(t * 2.7) * 0.25;
-  let x = Math.sin(u) * Math.cos(t) * radius * 1.9;
-  let y = Math.sin(u) * Math.sin(t) * radius * 0.9 + Math.sin(t * 1.3) * 0.4;
-  const z = Math.cos(u) * radius * 1.1;
-  x += Math.sin(y * 1.45 + shell) * 0.38;
-  y += Math.sin(x * 0.82) * 0.28;
-  return [x, y, z] as Vec3;
+// The sculpture's rest geometry: a vertical spindle filled by momentum-walk
+// filaments (fibres and veins) plus a soft cloud fill. Density is the radial
+// envelope — dense and bright at the core, loose and translucent at the rim.
+function buildSculpture(
+  count: number,
+  mobile: boolean,
+  random: () => number,
+  home: Float32Array,
+  data: Float32Array,
+) {
+  const aspect = innerWidth / Math.max(innerHeight, 1);
+  const xR = 2.3 * Math.min(Math.max(aspect / 1.6, 0.6), 1.15);
+  const yR = 3.3;
+  const zR = 1.35;
+  const envelope = (x: number, y: number, z: number) => {
+    const radial = Math.sqrt((x / xR) ** 2 + (z / zR) ** 2);
+    const taper = 1 - Math.min(1, (Math.abs(y) / (yR * 1.15)) ** 2);
+    return Math.max(0, 1 - radial * 0.85) * (0.45 + 0.55 * taper);
+  };
+  const filamentCount = mobile ? 64 : 130;
+  const filamentTotal = Math.floor(count * 0.58);
+  const perFilament = Math.max(8, Math.floor(filamentTotal / filamentCount));
+  let index = 0;
+  for (let f = 0; f < filamentCount && index < filamentTotal; f++) {
+    const vein = random() < 0.12 ? 1 : 0;
+    let px = (random() * 2 - 1) * xR * 0.55 * Math.sqrt(random());
+    let py = -yR * (0.35 + random() * 0.7);
+    let pz = (random() * 2 - 1) * zR * 0.5;
+    let dx = (random() - 0.5) * 0.5;
+    let dy = 0.75 + random() * 0.5;
+    let dz = (random() - 0.5) * 0.4;
+    const step = (yR * (1.35 + random() * 0.7)) / perFilament;
+    for (let s = 0; s < perFilament && index < filamentTotal; s++, index++) {
+      dx += (random() - 0.5) * 0.24;
+      dy += (random() - 0.5) * 0.13;
+      dz += (random() - 0.5) * 0.22;
+      const length = Math.hypot(dx, dy, dz) || 1;
+      dx /= length;
+      dy /= length;
+      dz /= length;
+      px = px * 0.995 + dx * step;
+      py += dy * step;
+      pz = pz * 0.995 + dz * step;
+      const jitter = 0.03 + random() * 0.1;
+      const angle = random() * Math.PI * 2;
+      const hx = px + Math.cos(angle) * jitter;
+      const hy = py + (random() - 0.5) * jitter * 1.6;
+      const hz = pz + Math.sin(angle) * jitter;
+      home[index * 3] = hx;
+      home[index * 3 + 1] = hy;
+      home[index * 3 + 2] = hz;
+      data[index * 3] = Math.min(1, envelope(hx, hy, hz) + 0.3);
+      data[index * 3 + 1] = vein;
+      data[index * 3 + 2] = s / perFilament;
+    }
+  }
+  for (; index < count; index++) {
+    const angle = random() * Math.PI * 2;
+    const radial = Math.pow(random(), 0.6) * (0.75 + random() * 0.45);
+    const hx = Math.cos(angle) * xR * radial;
+    const hy = (random() * 2 - 1) * yR * (0.8 + random() * 0.3);
+    const hz = Math.sin(angle) * zR * radial * (0.75 + random() * 0.45);
+    home[index * 3] = hx;
+    home[index * 3 + 1] = hy;
+    home[index * 3 + 2] = hz;
+    data[index * 3] = envelope(hx, hy, hz);
+    data[index * 3 + 1] = 0;
+    data[index * 3 + 2] = random();
+  }
 }
 
 export function RawStage({ onReady }: { onReady?: () => void }) {
@@ -230,7 +288,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     document.documentElement.dataset.stageIntro = skipIntro ? "done" : "flying";
     const introSafety = setTimeout(() => {
       document.documentElement.dataset.stageIntro = "done";
-    }, 7000);
+    }, 9000);
     void (async () => {
     const program = await createProgram(gl);
     if (disposed) {
@@ -253,25 +311,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       return (randomState >>> 0) / 4294967296;
     };
     const home = new Float32Array(count * 3);
-    const grid = new Float32Array(count * 2);
+    const data = new Float32Array(count * 3);
     const seeds = new Float32Array(count);
     const glyphs = new Float32Array(count);
     const birds = new Float32Array(count);
-    const columns = Math.round(Math.sqrt(count * (16 / 9)));
-    const rows = Math.ceil(count / columns);
-    const permutation = Array.from({ length: count }, (_, index) => index);
-    for (let i = count - 1; i > 0; i--) {
-      const j = Math.floor(random() * (i + 1));
-      [permutation[i], permutation[j]] = [permutation[j], permutation[i]];
-    }
+    buildSculpture(count, mobile, random, home, data);
     for (let i = 0; i < count; i++) {
-      const point = homePosition(i, count);
-      home.set(point, i * 3);
       seeds[i] = random() * 100;
       glyphs[i] = Math.floor(random() * GLYPHS.length);
-      const cell = permutation[i];
-      grid[i * 2] = ((cell % columns) + 0.5 + (random() - 0.5) * 0.25) / columns;
-      grid[i * 2 + 1] = 1 - (Math.floor(cell / columns) + 0.5 + (random() - 0.5) * 0.25) / rows;
       birds[i] = i < birdCount ? Math.floor((i / birdCount) * BIRD_SAMPLES) : -1;
     }
 
@@ -287,19 +334,22 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
     };
     attribute("aHome", home, 3);
-    attribute("aGrid", grid, 2);
+    attribute("aData", data, 3);
     attribute("aSeed", seeds, 1);
     attribute("aGlyph", glyphs, 1);
     attribute("aBird", birds, 1);
 
-    // Short-lived data links: particles adjacent in grid space are paired
-    // into a LINES index buffer and redrawn as a second pass over the fluid
-    // painting. The element binding lives on the VAO; drawArrays ignores it.
+    // Short-lived data links: particles adjacent in sculpture space are
+    // paired into a LINES index buffer and redrawn as a second pass. The
+    // element binding lives on the VAO; drawArrays ignores it.
     const maxLinks = mobile ? 150 : 420;
     const linkIndices: number[] = [];
     const linkBuckets = new Map<number, number>();
     for (let i = 0; i < count && linkIndices.length < maxLinks * 2; i++) {
-      const key = Math.floor(grid[i * 2] * 34) * 64 + Math.floor(grid[i * 2 + 1] * 20);
+      const key =
+        Math.floor((home[i * 3] + 3.5) * 4.5) * 512 +
+        Math.floor((home[i * 3 + 1] + 4.5) * 4.5) * 16 +
+        Math.floor((home[i * 3 + 2] + 2) * 2.5);
       const partner = linkBuckets.get(key);
       if (partner === undefined) {
         linkBuckets.set(key, i);
@@ -324,7 +374,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
     const positionTexture = gl.createTexture();
     const normalTexture = gl.createTexture();
-    const videoTexture = gl.createTexture();
     const atlasTexture = createAtlas(gl);
     const setupTexture = (
       unit: number,
@@ -367,7 +416,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
     setupTexture(0, positionTexture, "uPosTex", true);
     setupTexture(1, normalTexture, "uNrmTex", true);
-    setupTexture(2, videoTexture, "uVideoTex");
     gl.activeTexture(gl.TEXTURE3);
     gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
     gl.uniform1i(u("uAtlas"), 3);
@@ -396,64 +444,15 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       console.error("bird texture failed:", error);
     }
 
-    // The original full-bleed liquid data painting stays visible while the
-    // bird gathers. GPU uploads stop on scroll, while the last uploaded frame
-    // keeps flowing in the shader so video work never competes with the morph.
-    const video = document.createElement("video");
-    video.src = "/media/hero-source.mp4";
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.preload = "auto";
-    const videoSurface = document.createElement("canvas");
-    videoSurface.width = 800;
-    videoSurface.height = 450;
-    const videoContext = videoSurface.getContext("2d", { alpha: false });
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, videoTexture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      videoSurface.width,
-      videoSurface.height,
-      0,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      null,
-    );
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    let videoReady = 0;
-    let videoUploadsSuspended = false;
-    let scrollIntent = false;
-    let lastVideoUpload = -1;
-    video.addEventListener("playing", () => {
-      videoReady = 1;
-      videoUploadsSuspended = false;
-    });
-    void video.play().catch(() => {
-      videoReady = 0;
-    });
-    const onScrollIntent = () => {
-      scrollIntent = window.scrollY > 1;
-    };
-    addEventListener("scroll", onScrollIntent, { passive: true });
-
     const pointer: Vec3 = [999, 999, 0];
     const pointerSmooth: Vec3 = [999, 999, 0];
     let pointerActive = 0;
     let waveAge = -1;
 
-    // Living palette: four Unsupervised-style pigment sets, each a ramp of
-    // deep → mid → bright → peak stops. The CPU crossfades between them and
-    // uploads the blended ramp every frame.
+    // The sculpture's material ramp: graphite → smoke → silver bone → warm
+    // bone. One monochrome family — lime lives only in veins and scans.
     const PALETTES: number[][][] = [
-      [[0.01, 0.024, 0.075], [0.031, 0.196, 0.53], [0.164, 0.72, 0.95], [0.83, 0.97, 1.0]],
-      [[0.055, 0.012, 0.11], [0.36, 0.06, 0.52], [0.93, 0.22, 0.6], [1.0, 0.86, 0.93]],
-      [[0.078, 0.024, 0.012], [0.69, 0.17, 0.055], [1.0, 0.58, 0.14], [1.0, 0.93, 0.74]],
-      [[0.006, 0.055, 0.05], [0.02, 0.35, 0.31], [0.2, 0.88, 0.66], [0.88, 1.0, 0.94]],
+      [[0.045, 0.047, 0.052], [0.23, 0.235, 0.245], [0.62, 0.615, 0.59], [0.953, 0.937, 0.906]],
     ];
     const PALETTE_PERIOD = 16;
     const gradient = new Float32Array(12);
@@ -518,7 +517,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.uniform1f(u("uTexH"), TEX_H);
     gl.uniform1f(u("uRowsPerFrame"), ROWS_PER_FRAME);
     gl.uniform1f(u("uFrames"), BIRD_FRAMES);
-    gl.uniform1f(u("uMeltScale"), 1);
     gl.uniform3f(u("uColorBase"), 0.953, 0.937, 0.906);
     gl.uniform3f(u("uColorAccent"), 0.784, 1, 0.243);
     gl.uniform3f(u("uColorCyan"), 0.541, 0.902, 1);
@@ -547,7 +545,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       last = now;
       time += delta;
       reveal = Math.min(1, reveal + delta / 2.2);
-      intro = Math.min(1, intro + delta / 3.2);
+      intro = Math.min(1, intro + delta / 4.8);
       const introEase = 1 - Math.pow(1 - intro, 3);
       const scanBoost = 1 - smoothstep(intro, 0.72, 1);
       if (!introMarked && intro >= 0.8) {
@@ -588,26 +586,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         }
       }
 
-      const targetVideo = videoReady * (1 - smoothstep(hero, 0.14, 0.38));
-      videoMix = damp(videoMix, targetVideo, 12, delta);
-      if (scrollIntent || hero > 0.025) {
-        videoUploadsSuspended = true;
-      } else if (hero < 0.006) {
-        videoUploadsSuspended = false;
-      }
-      if (
-        videoContext &&
-        !videoUploadsSuspended &&
-        video.readyState >= 2 &&
-        video.currentTime - lastVideoUpload >= 1 / 20
-      ) {
-        lastVideoUpload = video.currentTime;
-        videoContext.drawImage(video, 0, 0, videoSurface.width, videoSurface.height);
-        gl.activeTexture(gl.TEXTURE2);
-        gl.bindTexture(gl.TEXTURE_2D, videoTexture);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, videoSurface);
-      }
+      // The sculpture is the rest state: fully present until the scroll act
+      // hands the particles to the bird.
+      videoMix = damp(videoMix, 1 - smoothstep(hero, 0.14, 0.38), 12, delta);
 
       const flight = flightAt(hero, scrollState.page.current, pointerSmooth, pointerActive);
       const directionLength = Math.hypot(...flight.direction) || 1;
@@ -620,7 +601,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const camera: Vec3 = [
         Math.sin(hero * Math.PI) * 0.14,
         -0.02 - hero * 0.03,
-        mix(26, 8.2 - hero * 1.5 * (1 - finale), introEase),
+        mix(40, 8.2 - hero * 1.5 * (1 - finale), introEase),
       ];
       lookAt(view, camera, [0, 0.08, 0]);
       gl.useProgram(program);
@@ -648,8 +629,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uSize"), 40 * pixelRatio * (innerHeight / 900));
       gl.uniform3f(u("uBirdDir"), direction[0], direction[1], direction[2]);
       gl.uniform1f(u("uVideoOn"), videoMix);
-      gl.uniform3f(u("uVortexA"), -1.35 + Math.sin(time * 0.045) * 0.72, 0.32 + Math.cos(time * 0.038) * 0.5, 0);
-      gl.uniform3f(u("uVortexB"), 1.35 + Math.cos(time * 0.042) * 0.72, -0.32 + Math.sin(time * 0.05) * 0.5, 0);
       gl.uniform1f(u("uFlap"), flap);
       gl.uniform1f(u("uBirdReady"), readyMix);
       gl.uniform1f(u("uIntro"), intro);
@@ -678,17 +657,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       clearTimeout(introSafety);
       delete document.documentElement.dataset.stageIntro;
       removeEventListener("resize", resize);
-      removeEventListener("scroll", onScrollIntent);
       removeEventListener("pointermove", onPointerMove);
       removeEventListener("pointerdown", onPointerDown);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
       gl.deleteTexture(normalTexture);
-      gl.deleteTexture(videoTexture);
       gl.deleteTexture(atlasTexture);
       gl.deleteVertexArray(vao);
       gl.deleteProgram(program);

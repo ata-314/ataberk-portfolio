@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo } from "next/font/google";
+import { Archivo, Orbitron } from "next/font/google";
 import { notFound } from "next/navigation";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
 import { site } from "@/content/site";
@@ -8,6 +8,11 @@ import { Cursor } from "@/components/cursor/Cursor";
 import "../globals.css";
 
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"] });
+const orbitron = Orbitron({
+  variable: "--font-orbitron",
+  subsets: ["latin"],
+  weight: ["500", "700", "800"],
+});
 
 const BASE_URL = "https://ataberk-portfolio-rho.vercel.app";
 
@@ -89,7 +94,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <body
-        className={`${archivo.variable} antialiased`}
+        className={`${archivo.variable} ${orbitron.variable} antialiased`}
       >
         <a href="#content" className="skip-link">
           {t.a11y.skip}

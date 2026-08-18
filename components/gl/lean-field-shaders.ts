@@ -17,11 +17,7 @@ uniform mat4 uBirdMat;
 uniform vec3 uBirdDir;
 uniform sampler2D uPosTex;
 uniform sampler2D uNrmTex;
-uniform sampler2D uVideoTex;
 uniform float uVideoOn;
-uniform float uMeltScale;
-uniform vec3 uVortexA;
-uniform vec3 uVortexB;
 uniform float uTexW;
 uniform float uTexH;
 uniform float uRowsPerFrame;
@@ -34,7 +30,9 @@ uniform float uIntro;
 uniform float uLineMode;
 
 attribute vec3 aHome;
-attribute vec2 aGrid;
+// aData: x = density (radial envelope of the spindle), y = vein flag,
+// z = position along the particle's filament (0..1).
+attribute vec3 aData;
 attribute float aSeed;
 attribute float aGlyph;
 attribute float aBird;
@@ -44,7 +42,7 @@ varying float vBird;
 varying float vAlpha;
 varying float vEnergy;
 varying float vDepth;
-varying vec3 vVideo;
+varying float vVein;
 varying float vVideoMix;
 varying float vLight;
 varying float vElectric;
@@ -79,88 +77,77 @@ void main() {
     sin((aHome.x + aHome.y) * 0.43 + phase * 0.65)
   ) * 0.28;
   vec3 field = aHome + flow;
-  vVideo = vec3(0.0);
-  float luminance = 0.0;
-  float pigmentDensity = 0.0;
+  vVein = 0.0;
+  float density = 0.0;
+  float sculptLight = 1.0;
   float edgeGlow = 0.0;
-  // Uniform branch: once the liquid painting has handed off, integrated GPUs
-  // skip every video sample, exp and liquid-wave operation during bird flight.
+  // The living data sculpture. Filament homes are advected by three octaves
+  // of domain-warped flow: a large folding current that breathes mass apart
+  // and back together, a fibre-scale shear, and fine turbulence. Integrated
+  // GPUs skip all of it during bird flight.
   if (uVideoOn > 0.015) {
-    vVideo = texture2D(uVideoTex, aGrid).rgb;
-    luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
-    float chroma = max(vVideo.r, max(vVideo.g, vVideo.b))
-      - min(vVideo.r, min(vVideo.g, vVideo.b));
-    pigmentDensity = smoothstep(0.035, 0.88, luminance + chroma * 0.28);
-    vec2 centered = aGrid - 0.5;
-    vec3 sheet = vec3(
-      centered.x * 10.8,
-      centered.y * 6.4,
-      centered.y * -1.2 + luminance * 1.8 + (seed - 0.5) * (0.6 + (1.0 - pigmentDensity) * 0.65)
+    float t = uTime;
+    vec3 p = aHome;
+    // whole-body revolve, slightly faster near the core
+    float yawA = t * (0.022 + aData.x * 0.014);
+    float cy = cos(yawA);
+    float sy = sin(yawA);
+    p.xz = vec2(p.x * cy - p.z * sy, p.x * sy + p.z * cy);
+    // large folding octave — domain-warped so masses curl into themselves
+    vec3 w1 = vec3(
+      sin(p.y * 0.55 + t * 0.11 + sin(p.z * 0.7 + t * 0.07) * 1.7),
+      sin(p.z * 0.5 - t * 0.09 + sin(p.x * 0.6 + t * 0.08) * 1.6),
+      sin(p.x * 0.6 + t * 0.1 + sin(p.y * 0.5 - t * 0.06) * 1.8)
     );
-    float melt = (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0)) * uMeltScale;
-    float edge = max(
-      smoothstep(0.26, 0.5, abs(centered.x)),
-      smoothstep(0.24, 0.5, abs(centered.y))
+    // cohesion cycle: regions loosen, drift apart and re-congeal
+    float breathe = 0.55 + 0.45 * sin(t * 0.045 + aHome.y * 0.5 + aHome.x * 0.3);
+    // fibre-scale shear, phase-locked along each filament so strands stay
+    // legible while they wander
+    vec3 w2 = vec3(
+      sin(p.y * 1.6 - t * 0.22 + aData.z * 6.28318),
+      sin(p.z * 1.5 + t * 0.19 + aData.z * 4.2),
+      sin(p.x * 1.4 - t * 0.17)
     );
-    float lowBand = sin(aGrid.y * 19.0 + uTime * 0.31 + aSeed * 0.07);
-    float crossBand = cos(aGrid.x * 17.0 - uTime * 0.27 + aSeed * 0.05);
-    float pigmentFold = sin(
-      centered.x * 5.2
-      + centered.y * 7.4
-      + sin(centered.y * 3.0 - uTime * 0.21) * 1.8
-      + uTime * 0.3
+    // fine turbulence
+    vec3 w3 = vec3(
+      sin(p.y * 4.2 + t * 0.6 + aSeed),
+      sin(p.z * 3.8 - t * 0.5 + aSeed * 1.3),
+      sin(p.x * 4.5 + t * 0.55)
     );
-    float slowSwell = sin(
-      centered.y * 4.2
-      - uTime * 0.31
-      + sin(centered.x * 3.1 + uTime * 0.16) * 1.4
-    );
-    vec2 liquid = vec2(lowBand, crossBand) * (0.045 + (1.0 - luminance) * 0.075 + melt * 0.34);
-    liquid += vec2(pigmentFold, -pigmentFold) * (0.05 + pigmentDensity * 0.095);
-    liquid += vec2(
-      cos(centered.y * 3.6 - uTime * 0.23),
-      slowSwell
-    ) * (0.075 + pigmentDensity * 0.08);
-    liquid += vec2(
-      sin(centered.y * 9.0 + uTime * 0.85 + aSeed * 0.1),
-      cos(centered.x * 8.0 - uTime * 0.75)
-    ) * edge * (0.28 + melt * 0.55);
-    // Domain-warped advection: nested sines approximate curl noise, so the
-    // pigment streams shear and fold instead of oscillating in place.
-    vec2 warp = vec2(
-      sin(sheet.y * 1.9 + uTime * 0.5 + sin(sheet.x * 1.1 + uTime * 0.23) * 2.1),
-      cos(sheet.x * 1.6 - uTime * 0.44 + sin(sheet.y * 1.35 - uTime * 0.31) * 1.9)
-    );
-    liquid += warp * (0.085 + pigmentDensity * 0.08);
-    vec2 vortexA = sheet.xy - uVortexA.xy;
-    vec2 vortexB = sheet.xy - uVortexB.xy;
-    float distanceA = length(vortexA) + 0.001;
-    float distanceB = length(vortexB) + 0.001;
-    liquid += vec2(-vortexA.y, vortexA.x) / distanceA * exp(-distanceA * 0.55) * 0.3;
-    liquid += vec2(vortexB.y, -vortexB.x) / distanceB * exp(-distanceB * 0.6) * 0.26;
-    sheet.xy += liquid * (1.0 + edge * 1.65);
-    sheet.z += (lowBand + crossBand) * 0.055 * melt
-      + pigmentFold * (0.08 + pigmentDensity * 0.15)
-      + slowSwell * (0.07 + pigmentDensity * 0.12);
-    // Slosh: the whole fluid body leans with a slow tide and piles up against
-    // the frame; when it strikes an edge the CPU fires that edge's wave and a
-    // ring travels back through the pigment.
-    sheet.xy += uTide * (0.3 + pigmentDensity * 0.25);
-    vec4 edgeDist = vec4(sheet.x + 5.4, 5.4 - sheet.x, sheet.y + 3.2, 3.2 - sheet.y);
+    vec3 sculpt = p
+      + w1 * (0.55 * breathe + 0.22)
+      + w2 * (0.16 + 0.1 * (1.0 - aData.x))
+      + w3 * 0.055;
+    // slow internal updraft, strongest along the dense core
+    sculpt.y += sin(t * 0.05 + aData.z * 12.566 + aSeed * 0.3) * 0.35 * aData.x;
+    // gentle pointer response: the mass yields around the cursor
+    vec2 toPointer = sculpt.xy - uPointer.xy;
+    float push = exp(-dot(toPointer, toPointer) * 0.55) * uPointerActive;
+    sculpt.xy += normalize(toPointer + 0.0001) * push * 0.2;
+    // tide lean and edge waves, kept from the fluid era
+    sculpt.xy += uTide * 0.12;
+    vec4 edgeDist = vec4(sculpt.x + 5.4, 5.4 - sculpt.x, sculpt.y + 3.2, 3.2 - sculpt.y);
     for (int i = 0; i < 4; i++) {
       float age = uEdgeAges[i];
       if (age >= 0.0) {
         float ring = exp(-pow((edgeDist[i] - age * 3.3) * 1.12, 2.0)) * exp(-age * 1.05);
-        sheet.xy += EDGE_INWARD[i] * ring * 0.5;
-        sheet.z += ring * 0.34;
+        sculpt.xy += EDGE_INWARD[i] * ring * 0.4;
+        sculpt.z += ring * 0.28;
         edgeGlow += ring;
       }
     }
-    field = mix(field, sheet, smoothstep(0.0, 0.72, uVideoOn));
+    density = aData.x * (0.55 + 0.45 * breathe);
+    // lime lives only in veins: pulses of energy travelling along filaments,
+    // fading out toward the loose rim so green stays inside the mass
+    vVein = aData.y * aData.x
+      * (0.2 + 0.8 * pow(0.5 + 0.5 * sin(aData.z * 18.0 - t * 1.1 + aSeed * 0.2), 3.0));
+    // folds read through light: the large octave's direction against a key
+    sculptLight = 0.58 + 0.42 * dot(normalize(w1 + 0.001), normalize(vec3(-0.4, 0.65, 0.7)));
+    field = mix(field, sculpt, smoothstep(0.0, 0.72, uVideoOn));
   }
   vec3 point = field;
   float alpha = 1.0;
-  float energy = 0.08 + luminance * uVideoOn * 0.22 + 0.1 * sin(aSeed + uTime * 0.08)
+  float energy = 0.08 + density * uVideoOn * 0.24 + 0.1 * sin(aSeed + uTime * 0.08)
     + edgeGlow * 0.85;
   float light = 1.0;
   float electric = 0.0;
@@ -259,12 +246,12 @@ void main() {
     vec3 tunnel = vec3(
       cos(lane) * bore + flow.x * 0.7,
       sin(lane) * bore * 0.62 + flow.y * 0.7,
-      6.0 - fract(aSeed * 9.271) * 36.0
+      6.0 - fract(aSeed * 9.271) * 52.0
     );
     point = mix(point, tunnel, introLife);
     float lime = 0.0;
     for (int k = 0; k < 2; k++) {
-      float sweep = mix(-30.0, 9.0, fract(uTime * 0.5 + float(k) * 0.5));
+      float sweep = mix(-46.0, 9.0, fract(uTime * 0.42 + float(k) * 0.5));
       lime += exp(-pow((point.z - sweep) * 0.45, 2.0));
     }
     vScanLime = lime * introLife * 1.2;
@@ -277,7 +264,9 @@ void main() {
   vGlyph = aGlyph;
   vBird = bird;
   vVideoMix = uVideoOn * (1.0 - bird) * (1.0 - uFinale);
-  alpha *= mix(1.0, 0.22 + luminance * 0.82, vVideoMix);
+  // Rim particles stay loose and translucent; the core is full but never so
+  // hot that it fights the hero copy sitting in front of it.
+  alpha *= mix(1.0, 0.2 + density * 0.6, vVideoMix);
   vAlpha = alpha * appear;
   // Link pass: the same particles redrawn as line pairs. Each endpoint pulses
   // on a short offset cycle, so thin connections surface briefly between
@@ -289,19 +278,18 @@ void main() {
   }
   vEnergy = clamp(energy, 0.0, 1.0);
   vDepth = clamp((-view.z - 3.0) / 10.0, 0.0, 1.0);
-  vLight = mix(1.0, light, bird);
+  vLight = mix(sculptLight, light, bird);
   vElectric = electric;
   vPigment = fract(
-    luminance * 0.72
-    + seed * 0.2
+    density * 0.6
+    + seed * 0.25
     + 0.08 * sin(uTime * 0.22 + aSeed * 0.17)
   );
-  vPigmentDensity = pigmentDensity;
+  vPigmentDensity = density;
   float size = mix(0.5 + seed * 0.45, 0.7 + seed * 0.8, bird);
-  // Compact particles keep the fluid field crisp; darker matter remains just
-  // large enough to build depth without turning into low-resolution blobs.
-  float pigmentSize = mix(2.6 + seed * 0.5, 1.7 + seed * 0.4, pigmentDensity);
-  size = mix(size, pigmentSize, vVideoMix);
+  // Dense core matter is large and voluminous; rim threads stay fine.
+  float sculptSize = mix(1.25 + seed * 0.4, 2.3 + seed * 0.45, density);
+  size = mix(size, sculptSize, vVideoMix);
   size *= 1.0 + electric * 0.75;
   gl_PointSize = uSize * size / -view.z;
 }
@@ -328,7 +316,7 @@ varying float vBird;
 varying float vAlpha;
 varying float vEnergy;
 varying float vDepth;
-varying vec3 vVideo;
+varying float vVein;
 varying float vVideoMix;
 varying float vLight;
 varying float vElectric;
@@ -369,26 +357,27 @@ void main() {
     if (shape < 0.12) discard;
   } else {
     // Soft volumetric droplet: a gaussian body with a brighter core, sized to
-    // overlap its neighbours so the field reads as one continuous fluid mass
-    // instead of discrete pixels.
+    // overlap its neighbours so the mass reads as continuous matter. Depth
+    // controls focus — near particles are tight and bright, far ones dissolve
+    // into a soft out-of-focus haze.
     float radius = length(gl_PointCoord - 0.5);
     if (radius > 0.5) discard;
-    float fall = exp(-radius * radius * 10.0) - exp(-2.5);
-    float core = exp(-radius * radius * 30.0);
-    shape = fall * mix(0.3, 0.44, vPigmentDensity)
-      + core * mix(0.3, 0.5, vPigmentDensity);
+    float sharp = mix(12.0, 6.5, vDepth);
+    float fall = exp(-radius * radius * sharp) - exp(-sharp * 0.25);
+    float core = exp(-radius * radius * sharp * 3.0) * (1.0 - vDepth * 0.45);
+    shape = fall * mix(0.3, 0.46, vPigmentDensity)
+      + core * mix(0.28, 0.5, vPigmentDensity);
   }
   vec3 color = mix(uColorBase, uColorCyan, vDepth * 0.3 + 0.06);
-  float luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
-  // The source RGB becomes a density field graded through the living palette:
-  // deep tones in quiet pockets, the peak stop at the energetic crests. The
+  // Density and fold-light grade the monochrome material ramp: graphite in
+  // the loose rim threads, warm bone at the lit crests of the core. The
   // per-particle pigment phase spreads neighbours across the ramp so the
-  // fluid shimmers with hue variation instead of banding.
+  // matter shimmers instead of banding.
   float rampLevel = clamp(
-    luminance * 0.82
-    + vPigmentDensity * 0.2
-    + (1.0 - vDepth) * 0.05
-    + (vPigment - 0.5) * 0.16,
+    vPigmentDensity * 0.62
+    + vLight * 0.28 * vVideoMix
+    + (1.0 - vDepth) * 0.08
+    + (vPigment - 0.5) * 0.14,
     0.0, 1.0);
   vec3 videoColor = mix(uGradA, uGradB, smoothstep(0.015, 0.3, rampLevel));
   videoColor = mix(videoColor, uGradC, smoothstep(0.3, 0.68, rampLevel));
@@ -417,8 +406,10 @@ void main() {
   color = mix(color, uColorAccent, smoothstep(0.38, 1.0, vEnergy) * (1.0 - vVideoMix));
   // Edge waves and pointer ripples flare toward the palette's peak stop.
   color = mix(color, uGradD, smoothstep(0.42, 1.0, vEnergy) * vVideoMix * 0.85);
-  // The opening scan planes light passing data points in acid lime, and link
-  // segments carry the same identity color.
+  // Acid lime is reserved for directed energy: vein pulses running along
+  // filaments, the opening scan planes, and the link segments.
+  color = mix(color, uColorAccent, clamp(vVein, 0.0, 1.0) * 0.8 * vVideoMix);
+  color += uColorAccent * vVein * 0.22 * vVideoMix;
   color = mix(color, uColorAccent, clamp(vScanLime * 0.9, 0.0, 0.85));
   if (uLineMode > 0.5) color = mix(color, uColorAccent, 0.45);
   color *= mix(1.0, vLight, vBird * (1.0 - vElectric * 0.45));
@@ -427,7 +418,7 @@ void main() {
   color += electricColor * vElectric * 0.42;
   float depthFade = 1.0 - vDepth * 0.48;
   float body = mix(0.5, 0.72, vBird);
-  body = mix(body, 0.48 + vPigmentDensity * 0.22 + scan * 0.24, vVideoMix);
+  body = mix(body, 0.42 + vPigmentDensity * 0.22 + scan * 0.24 + vVein * 0.2, vVideoMix);
   gl_FragColor = vec4(color, shape * vAlpha * depthFade * (body + vEnergy * 0.26 + vElectric * 0.34));
 }
 `;
