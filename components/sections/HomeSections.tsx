@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { SectionIntro } from "./SectionIntro";
+import { HologramBust } from "../gl/HologramBust";
 
 const CONTACT_URL = "https://github.com/ata-314";
 
@@ -36,34 +37,46 @@ export function AISystems({ t }: { t: SiteContent["aiSystems"] }) {
   );
 }
 
+// Second act of the page: the About story, fronted by the holographic scan
+// of Ataberk that materializes and turns as the section scrolls through.
 export function AboutPreview({
   locale,
   t,
+  about,
 }: {
   locale: Locale;
   t: SiteContent["aboutPreview"];
+  about: SiteContent["about"];
 }) {
   return (
     <section
       className="relative z-20 border-t border-bone/10 px-6 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
-      <div data-reveal className="hero-copy mx-auto max-w-4xl text-center">
-        <p className="font-mono text-[11px] tracking-[0.35em] text-lime/80 uppercase">
-          {t.heading}
-        </p>
-        <p
-          className="font-display mt-6 leading-[1.1] font-semibold tracking-tight text-balance"
-          style={{ fontSize: "var(--text-h1)" }}
-        >
-          {t.line}
-        </p>
-        <Link
-          href={`/${locale}/about`}
-          className="mt-9 inline-block rounded-full border border-bone/15 px-7 py-3 font-mono text-xs tracking-widest text-bone-dim uppercase transition-colors hover:border-lime hover:text-lime"
-        >
-          {t.cta} →
-        </Link>
+      <div className="mx-auto grid max-w-7xl items-center gap-10 md:grid-cols-2 md:gap-6">
+        <div data-reveal className="hero-copy order-2 md:order-1">
+          <p className="font-mono text-[11px] tracking-[0.35em] text-lime/80 uppercase">
+            {about.heading}
+          </p>
+          <p
+            className="font-display mt-6 leading-[1.08] font-semibold tracking-tight text-balance"
+            style={{ fontSize: "var(--text-h2)" }}
+          >
+            {t.line}
+          </p>
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-bone-dim md:text-lg">
+            {about.intro}
+          </p>
+          <Link
+            href={`/${locale}/about`}
+            className="mt-9 inline-block rounded-full border border-white/15 bg-white/[0.06] px-7 py-3 font-mono text-xs tracking-widest text-bone uppercase backdrop-blur-xl backdrop-saturate-150 transition-colors hover:border-lime hover:text-lime"
+          >
+            {t.cta} →
+          </Link>
+        </div>
+        <div data-reveal aria-hidden className="order-1 h-[46svh] md:order-2 md:h-[68svh]">
+          <HologramBust />
+        </div>
       </div>
     </section>
   );

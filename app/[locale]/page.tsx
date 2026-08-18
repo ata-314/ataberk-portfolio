@@ -46,11 +46,11 @@ export default async function Home({
             locale,
           }}
         />
+        <AboutPreview locale={locale} t={t.aboutPreview} about={t.about} />
         <WorkSection locale={locale} visualLabel={visualLabel[locale]} />
         <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
         <Capabilities t={t.capabilities} />
         <AISystems t={t.aiSystems} />
-        <AboutPreview locale={locale} t={t.aboutPreview} />
         <ContactFinale t={t.contact} />
         <Footer t={t.footer} name={t.name} />
       </main>

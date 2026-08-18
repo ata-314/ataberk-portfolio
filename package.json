@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit --incremental false",
     "bake:bird": "node scripts/bake-bird.mjs",
+    "bake:model": "node scripts/bake-model.mjs",
     "qa": "node scripts/qa.mjs /private/tmp/ataberk-portfolio-qa"
   },
   "dependencies": {
