@@ -12,7 +12,9 @@ export function SectionIntro({
   const words = title.split(" ");
   return (
     <div className="hero-copy mx-auto max-w-4xl text-center">
-      <p data-reveal className="font-mono text-[10px] tracking-[0.34em] text-lime/85 uppercase">
+      {/* Eyebrows are English brand labels; lang pins uppercase to ASCII so a
+          Turkish page doesn't render INTELLİGENCE with a dotted capital. */}
+      <p data-reveal lang="en" className="font-mono text-[10px] tracking-[0.34em] text-lime/85 uppercase">
         {eyebrow}
       </p>
       <h2

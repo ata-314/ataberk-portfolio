@@ -67,6 +67,7 @@ void main() {
 const FRAGMENT = `#version 300 es
 precision highp float;
 uniform float uTime;
+uniform float uGain;
 in float vAlpha;
 in float vRim;
 in float vGlow;
@@ -90,7 +91,7 @@ void main() {
   vec3 color = mix(deep, pale, vLit);
   color = mix(color, lime, clamp(vRim * 0.55 + 0.08 * sin(vRnd * 6.28318 + uTime * 0.4), 0.0, 0.75));
   color += lime * vGlow * 1.2;
-  float alpha = disc * vAlpha * (0.12 + vLit * 0.2 + vRim * 0.32 + vGlow * 0.35) * scan * flick * vSlice;
+  float alpha = disc * vAlpha * (0.12 + vLit * 0.2 + vRim * 0.32 + vGlow * 0.35) * scan * flick * vSlice * uGain;
   outColor = vec4(color, alpha);
 }`;
 
@@ -250,7 +251,11 @@ export function HologramBust() {
         // the silhouette always reads as the scan
         gl.uniform1f(u("uSpin"), -0.45 + progress * 0.95 + Math.sin(time * 0.24) * 0.07);
         gl.uniform2f(u("uPointer"), pointerSmooth[0], pointerSmooth[1]);
-        gl.uniform1f(u("uSize"), 15 * pixelRatio * (canvas.clientHeight / 640));
+        // small viewports get bigger, brighter points: fewer pixels per point
+        // would otherwise leave the bust too faint on phones
+        const compact = Math.max(canvas.clientHeight / 640, 0.95);
+        gl.uniform1f(u("uSize"), 15 * pixelRatio * compact);
+        gl.uniform1f(u("uGain"), mobile ? 1.4 : 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
         // samples are area-weighted random, so a prefix is a uniform subset
         gl.drawArrays(gl.POINTS, 0, mobile ? 16000 : SAMPLES);

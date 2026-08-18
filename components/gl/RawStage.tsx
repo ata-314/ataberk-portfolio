@@ -513,7 +513,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const resize = () => {
       // Full-resolution rendering keeps the droplets pixel-crisp on retina
       // displays; the point budget is small enough that fill cost stays low.
-      pixelRatio = Math.min(devicePixelRatio, mobile ? 1.5 : 2);
+      pixelRatio = Math.min(devicePixelRatio, mobile ? 1.4 : 2);
       const width = Math.round(innerWidth * pixelRatio);
       const height = Math.round(innerHeight * pixelRatio);
       if (canvas.width !== width || canvas.height !== height) {

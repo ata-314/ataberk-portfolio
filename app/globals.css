@@ -296,6 +296,16 @@ header {
   backdrop-filter: blur(22px) saturate(1.6);
 }
 
+/* Live backdrop sampling over an animated canvas is the main mobile repaint
+   cost; touch devices trade the glass for a denser gradient instead. */
+@media (hover: none) {
+  .nav-shell {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: linear-gradient(180deg, rgba(33, 33, 37, 0.94), rgba(15, 15, 17, 0.9));
+  }
+}
+
 .work-intro-shell {
   position: relative;
   overflow: hidden;
