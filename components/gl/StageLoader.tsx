@@ -37,10 +37,20 @@ export default function StageLoader() {
       timer = setTimeout(warm, 700);
     }
 
+    // Content is hidden until the intro reports done; if the WebGL chunk
+    // never arrives (network failure), release it rather than leave a blank
+    // page.
+    const contentSafety = setTimeout(() => {
+      if (!document.documentElement.dataset.stageIntro) {
+        document.documentElement.dataset.stageIntro = "done";
+      }
+    }, 9000);
+
     return () => {
       cancelled = true;
       if (idleId !== undefined) window.cancelIdleCallback(idleId);
       clearTimeout(timer);
+      clearTimeout(contentSafety);
       cancelAnimationFrame(mountFrame);
       delete document.documentElement.dataset.stageReady;
       delete document.documentElement.dataset.stageStatic;

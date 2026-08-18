@@ -109,10 +109,11 @@ html:not([data-stage-intro="done"]):not([data-stage-static="true"])
   animation-play-state: paused !important;
 }
 
-/* Nothing but the tunnel during the opening flight: site chrome and hero copy
-   hold at zero opacity while the stage reports "flying", then return through
-   their own entrance animations when the flight lands. */
-html[data-stage-intro="flying"]
+/* Nothing on screen before the tunnel flight lands: site chrome and hero
+   copy are hidden from the very first paint and only return once the stage
+   reports the intro done (or the static fallback engages). A <noscript>
+   override in the layout restores everything for no-JS visitors. */
+html:not([data-stage-intro="done"]):not([data-stage-static="true"])
   :is(header, [data-hero-identity], [data-hero-hint], [data-hero-corner]) {
   opacity: 0 !important;
   pointer-events: none !important;

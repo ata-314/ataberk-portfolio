@@ -96,6 +96,9 @@ export default async function LocaleLayout({
       <body
         className={`${archivo.variable} ${orbitron.variable} antialiased`}
       >
+        <noscript>
+          <style>{`header, [data-hero-identity], [data-hero-hint], [data-hero-corner] { opacity: 1 !important; pointer-events: auto !important; }`}</style>
+        </noscript>
         <a href="#content" className="skip-link">
           {t.a11y.skip}
         </a>

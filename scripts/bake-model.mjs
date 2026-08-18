@@ -18,7 +18,7 @@ if (typeof URL.createObjectURL !== "function") {
   URL.revokeObjectURL = () => {};
 }
 
-const SAMPLES = 9000;
+const SAMPLES = 36000;
 const TEX_W = 2048;
 const ROWS_PER_FRAME = Math.ceil(SAMPLES / TEX_W);
 const source = new URL("../public/models/ataberk_soylu_model.glb", import.meta.url);
