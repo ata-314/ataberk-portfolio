@@ -226,7 +226,7 @@ export function CodeField({
   }, [profile]);
 
   // Geometry and material stay stable when the async bird bake arrives. Only
-  // warm textures and uniforms are swapped, avoiding a full 36k-particle
+  // warm textures and uniforms are swapped, avoiding a full 28k-particle
   // rebuild and shader recompile during the hero transition.
   useEffect(() => {
     birdReadyTarget.current = 0;

@@ -18,12 +18,12 @@ export type BirdBake = {
   duration: number; // clip seconds
 };
 
-export const BIRD_SAMPLES = 12000;
-export const BIRD_FRAMES = 20;
+export const BIRD_SAMPLES = 9000;
+export const BIRD_FRAMES = 16;
 // Max-texture-size safe packing (4096 is the floor on old mobile GPUs).
 const TEX_W = 2048;
-const ROWS_PER_FRAME = Math.ceil(BIRD_SAMPLES / TEX_W); // 6
-const TEX_H = BIRD_FRAMES * ROWS_PER_FRAME; // 120
+const ROWS_PER_FRAME = Math.ceil(BIRD_SAMPLES / TEX_W); // 5
+const TEX_H = BIRD_FRAMES * ROWS_PER_FRAME; // 80
 const WORK_CHUNK = 1500;
 
 // The bake is intentionally cooperative. Yielding between small CPU chunks

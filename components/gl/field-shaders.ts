@@ -171,10 +171,15 @@ void main() {
     sheet.x += sin(aGrid.y * 6.283 + uTime * 0.11) * 0.08;
     sheet.y += sin(aGrid.x * 6.283 - uTime * 0.09) * 0.06;
     sheet.z += lum * 1.9;            // bright pixels surge toward the camera
-    // Liquid body: locks legible, melts, reforms — richer flow throughout
+    // Liquid body: analytic waves keep the data painting fluid without a
+    // six-sample simplex curl on every particle and every frame.
     float melt = pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0) * uMeltScale;
-    vec3 flow2 = curl(vec3(aGrid * 3.4, uTime * 0.13) + aSeed * 0.02)
-               * (0.035 + (1.0 - lum) * 0.07 + melt * 0.5);
+    float flowPhase = aGrid.x * 11.0 + aGrid.y * 7.0 + uTime * 0.13 + aSeed * 0.02;
+    vec3 flow2 = vec3(
+      sin(flowPhase),
+      cos(flowPhase * 0.83 + 1.2),
+      sin(flowPhase * 0.61 + 2.1)
+    ) * (0.035 + (1.0 - lum) * 0.07 + melt * 0.34);
     field = sheet + flow2;
     crest = lum;
   } else {
@@ -221,15 +226,25 @@ void main() {
                 * smoothstep(0.0, 1.0, uBirdReady);
     vec3 birdWorld = (uBirdMat * vec4(bl, 1.0)).xyz;
 
-    // Curved approach: long curl arcs — pigment streaming into anatomy,
-    // annealing to ZERO as the model locks
+    // Curved approach: low-cost phase waves stream pigment into anatomy and
+    // anneal to zero as the model locks.
     float arc = morph * (1.0 - morph) * 4.0;
     vec3 path = mix(spiral, birdWorld, morph);
-    path += curl(bl * 0.8 + aSeed) * arc * 0.85;
+    vec3 arcFlow = vec3(
+      sin(bl.y * 2.1 + aSeed),
+      cos(bl.x * 1.7 + aSeed * 0.7),
+      sin((bl.x + bl.z) * 1.3 + aSeed)
+    );
+    path += arcFlow * arc * 0.48;
 
-    // Core layer: locked to the surface — residual noise ≤ ~1.5% of span
+    // Core layer: a tiny analytic shimmer replaces another expensive curl.
     float anneal = smoothstep(0.75, 1.0, morph);
-    vec3 coreJitter = curl(bl * 2.0 + uTime * 0.25) * mix(0.18, 0.045, anneal);
+    float shimmer = uTime * 0.24 + aSeed;
+    vec3 coreJitter = vec3(
+      sin(bl.y * 3.0 + shimmer),
+      cos(bl.x * 2.6 + shimmer * 0.9),
+      sin(bl.z * 2.8 + shimmer * 1.1)
+    ) * mix(0.13, 0.035, anneal);
     // Flow layer: free energy at wingtips/tail, never breaking the silhouette
     float flowAmp = isFlow * (0.3 + wingtip * 0.9 + tail * 0.6);
     vec3 flowMotion = nrm * (0.12 + 0.25 * sin(uTime * 1.4 + aSeed)) * flowAmp
@@ -270,9 +285,11 @@ void main() {
   }
 
   // ── Finale: everything is matter again, free and calm ──
-  vec3 finaleP = fluidField(aHome * 1.12, aSeed, 0.8);
-  p = mix(p, finaleP, uFinale);
-  alpha = max(alpha, uFinale * 0.85);
+  if (uFinale > 0.001) {
+    vec3 finaleP = fluidField(aHome * 1.12, aSeed, 0.8);
+    p = mix(p, finaleP, uFinale);
+    alpha = max(alpha, uFinale * 0.85);
+  }
 
   // ── Click wave: short surface shiver, never an explosion ──
   if (uWaveAge >= 0.0) {

@@ -150,7 +150,7 @@ export function Hero({ t }: { t: HeroStrings }) {
 
         <div
           data-hero-direction
-          className="glass-strong hero-copy pointer-events-none absolute inset-x-4 bottom-[10vh] z-10 mx-auto max-w-3xl p-7 text-center opacity-0 md:bottom-[12vh] md:p-11 motion-reduce:hidden"
+          className="hero-panel hero-copy pointer-events-none absolute inset-x-4 bottom-[10vh] z-10 mx-auto max-w-3xl p-7 text-center opacity-0 md:bottom-[12vh] md:p-11 motion-reduce:hidden"
         >
           <p className="font-mono text-[11px] tracking-[0.35em] text-lime uppercase">
             03 / {t.title}
