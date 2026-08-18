@@ -53,25 +53,9 @@ export function Hero({ t }: { t: HeroStrings }) {
       timeline
         .to("[data-hero-hint]", { autoAlpha: 0, duration: 0.06 }, 0.06)
         .to(
-          "[data-phase='one']",
-          { color: "#b9b5ac", opacity: 0.28, duration: 0.05 },
-          0.14,
-        )
-        .to(
           "[data-hero-identity]",
           { autoAlpha: 0, y: -72, scale: 0.94, duration: 0.16 },
           0.2,
-        )
-        .fromTo(
-          "[data-phase='two']",
-          { color: "#b9b5ac", opacity: 0.28 },
-          { color: "#c8ff3e", opacity: 1, duration: 0.05 },
-          0.26,
-        )
-        .to(
-          "[data-phase='two']",
-          { color: "#b9b5ac", opacity: 0.28, duration: 0.05 },
-          0.48,
         )
         .fromTo(
           "[data-hero-direction]",
@@ -85,14 +69,7 @@ export function Hero({ t }: { t: HeroStrings }) {
           { autoAlpha: 1, y: 0, duration: 0.08, ease: "power2.out" },
           0.58,
         )
-        .fromTo(
-          "[data-phase='three']",
-          { color: "#b9b5ac", opacity: 0.28 },
-          { color: "#c8ff3e", opacity: 1, duration: 0.05 },
-          0.52,
-        )
-        .to("[data-hero-direction]", { autoAlpha: 0, y: -42, duration: 0.12 }, 0.84)
-        .to("[data-phase='three']", { opacity: 0.28, duration: 0.05 }, 0.88);
+        .to("[data-hero-direction]", { autoAlpha: 0, y: -42, duration: 0.12 }, 0.84);
     },
     { scope: wrapper },
   );
@@ -181,16 +158,6 @@ export function Hero({ t }: { t: HeroStrings }) {
               {t.ctaAbout}
             </a>
           </div>
-        </div>
-
-        <div
-          data-hero-phases
-          aria-hidden
-          className="hero-panel pointer-events-none absolute right-8 top-24 hidden flex-col items-end gap-2 rounded-2xl px-4 py-3 font-mono text-[9px] tracking-[0.24em] text-bone-dim uppercase lg:flex motion-reduce:hidden"
-        >
-          <span data-phase="one" className="text-lime">01 · {tr ? "Kimlik" : "Identity"}</span>
-          <span data-phase="two" className="opacity-30">02 · {tr ? "Madde" : "Matter"}</span>
-          <span data-phase="three" className="opacity-30">03 · {tr ? "Yön" : "Direction"}</span>
         </div>
 
         <p

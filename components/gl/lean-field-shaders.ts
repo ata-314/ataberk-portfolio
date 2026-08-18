@@ -30,6 +30,8 @@ uniform float uFlap;
 uniform float uBirdReady;
 uniform vec2 uTide;
 uniform vec4 uEdgeAges;
+uniform float uIntro;
+uniform float uLineMode;
 
 attribute vec3 aHome;
 attribute vec2 aGrid;
@@ -48,6 +50,7 @@ varying float vLight;
 varying float vElectric;
 varying float vPigment;
 varying float vPigmentDensity;
+varying float vScanLime;
 
 // Inward directions for the frame edges: left, right, bottom, top. Edge waves
 // travel along these when the fluid body strikes the border of the viewport.
@@ -104,20 +107,20 @@ void main() {
     float pigmentFold = sin(
       centered.x * 5.2
       + centered.y * 7.4
-      + sin(centered.y * 3.0 - uTime * 0.16) * 1.8
-      + uTime * 0.22
+      + sin(centered.y * 3.0 - uTime * 0.21) * 1.8
+      + uTime * 0.3
     );
     float slowSwell = sin(
       centered.y * 4.2
-      - uTime * 0.24
-      + sin(centered.x * 3.1 + uTime * 0.12) * 1.4
+      - uTime * 0.31
+      + sin(centered.x * 3.1 + uTime * 0.16) * 1.4
     );
     vec2 liquid = vec2(lowBand, crossBand) * (0.045 + (1.0 - luminance) * 0.075 + melt * 0.34);
-    liquid += vec2(pigmentFold, -pigmentFold) * (0.035 + pigmentDensity * 0.075);
+    liquid += vec2(pigmentFold, -pigmentFold) * (0.05 + pigmentDensity * 0.095);
     liquid += vec2(
-      cos(centered.y * 3.6 - uTime * 0.18),
+      cos(centered.y * 3.6 - uTime * 0.23),
       slowSwell
-    ) * (0.055 + pigmentDensity * 0.06);
+    ) * (0.075 + pigmentDensity * 0.08);
     liquid += vec2(
       sin(centered.y * 9.0 + uTime * 0.85 + aSeed * 0.1),
       cos(centered.x * 8.0 - uTime * 0.75)
@@ -128,13 +131,13 @@ void main() {
       sin(sheet.y * 1.9 + uTime * 0.5 + sin(sheet.x * 1.1 + uTime * 0.23) * 2.1),
       cos(sheet.x * 1.6 - uTime * 0.44 + sin(sheet.y * 1.35 - uTime * 0.31) * 1.9)
     );
-    liquid += warp * (0.05 + pigmentDensity * 0.055);
+    liquid += warp * (0.07 + pigmentDensity * 0.07);
     vec2 vortexA = sheet.xy - uVortexA.xy;
     vec2 vortexB = sheet.xy - uVortexB.xy;
     float distanceA = length(vortexA) + 0.001;
     float distanceB = length(vortexB) + 0.001;
-    liquid += vec2(-vortexA.y, vortexA.x) / distanceA * exp(-distanceA * 0.55) * 0.24;
-    liquid += vec2(vortexB.y, -vortexB.x) / distanceB * exp(-distanceB * 0.6) * 0.2;
+    liquid += vec2(-vortexA.y, vortexA.x) / distanceA * exp(-distanceA * 0.55) * 0.3;
+    liquid += vec2(vortexB.y, -vortexB.x) / distanceB * exp(-distanceB * 0.6) * 0.26;
     sheet.xy += liquid * (1.0 + edge * 1.65);
     sheet.z += (lowBand + crossBand) * 0.055 * melt
       + pigmentFold * (0.08 + pigmentDensity * 0.15)
@@ -243,6 +246,31 @@ void main() {
     energy += ring;
   }
 
+  // Opening flight: the field starts stretched into a deep data bore the
+  // camera flies through; particles anneal into the painting as uIntro eases
+  // to 1. Two lime scan planes sweep the bore and briefly light passing data.
+  vScanLime = 0.0;
+  // uIntro is the raw flight progress: the bore holds its shape for the first
+  // third of the flight, then anneals into the painting as the camera slows.
+  float introLife = 1.0 - smoothstep(0.3, 1.0, uIntro);
+  if (introLife > 0.001) {
+    float lane = fract(aSeed * 3.917) * 6.28318;
+    float bore = 1.55 + fract(aSeed * 6.31) * 3.6;
+    vec3 tunnel = vec3(
+      cos(lane) * bore + flow.x * 0.7,
+      sin(lane) * bore * 0.62 + flow.y * 0.7,
+      6.0 - fract(aSeed * 9.271) * 36.0
+    );
+    point = mix(point, tunnel, introLife);
+    float lime = 0.0;
+    for (int k = 0; k < 2; k++) {
+      float sweep = mix(-30.0, 9.0, fract(uTime * 0.5 + float(k) * 0.5));
+      lime += exp(-pow((point.z - sweep) * 0.45, 2.0));
+    }
+    vScanLime = lime * introLife * 1.2;
+    energy += vScanLime * 0.9;
+  }
+
   float appear = smoothstep(seed * 0.7, seed * 0.7 + 0.22, uReveal);
   vec4 view = modelViewMatrix * vec4(point, 1.0);
   gl_Position = projectionMatrix * view;
@@ -251,6 +279,14 @@ void main() {
   vVideoMix = uVideoOn * (1.0 - bird) * (1.0 - uFinale);
   alpha *= mix(1.0, 0.22 + luminance * 0.82, vVideoMix);
   vAlpha = alpha * appear;
+  // Link pass: the same particles redrawn as line pairs. Each endpoint pulses
+  // on a short offset cycle, so thin connections surface briefly between
+  // neighbouring data points and dissolve again. Fluid state only.
+  if (uLineMode > 0.5) {
+    float cycle = fract(aSeed * 0.173 + uTime * (0.08 + fract(aSeed * 2.9) * 0.12));
+    float pulse = smoothstep(0.0, 0.1, cycle) * (1.0 - smoothstep(0.16, 0.3, cycle));
+    vAlpha *= pulse * vVideoMix * 0.55 * smoothstep(0.85, 1.0, uIntro);
+  }
   vEnergy = clamp(energy, 0.0, 1.0);
   vDepth = clamp((-view.z - 3.0) / 10.0, 0.0, 1.0);
   vLight = mix(1.0, light, bird);
@@ -278,6 +314,8 @@ uniform vec2 uResolution;
 uniform vec3 uColorBase;
 uniform vec3 uColorAccent;
 uniform vec3 uColorCyan;
+uniform float uLineMode;
+uniform float uScanBoost;
 // Living gradient for the fluid state — four stops (deep, mid, bright, peak)
 // crossfaded on the CPU between curated palettes, Unsupervised-style.
 uniform vec3 uGradA;
@@ -296,6 +334,7 @@ varying float vLight;
 varying float vElectric;
 varying float vPigment;
 varying float vPigmentDensity;
+varying float vScanLime;
 
 float hash1(float n) { return fract(sin(n) * 43758.5453); }
 
@@ -310,8 +349,8 @@ vec4 scanColumn(vec2 screen, float pixelY, float head, float dir, float rowHash)
   float wake = exp(-max(-ahead, 0.0) * 13.0) * step(ahead, 0.0) * (1.0 - front);
   float micro = 0.5 + 0.5 * sin(pixelY * 1.7 + uTime * 26.0);
   float tick = 0.22 + 0.78 * step(0.55, rowHash);
-  vec3 fringe = vec3(0.25, 0.95, 1.0) * exp(-pow((ahead - 0.006) * 150.0, 2.0))
-    + vec3(1.0, 0.3, 0.9) * exp(-pow((ahead + 0.009) * 130.0, 2.0));
+  vec3 fringe = vec3(0.86, 1.0, 0.42) * exp(-pow((ahead - 0.006) * 150.0, 2.0))
+    + vec3(0.32, 0.9, 0.5) * exp(-pow((ahead + 0.009) * 130.0, 2.0));
   float body = front + wake * micro * tick * 0.8;
   return vec4(fringe, body);
 }
@@ -319,7 +358,10 @@ vec4 scanColumn(vec2 screen, float pixelY, float head, float dir, float rowHash)
 void main() {
   if (vAlpha < 0.01) discard;
   float shape;
-  if (vBird > 0.5) {
+  if (uLineMode > 0.5) {
+    // Link segments have no point sprite; render as a thin uniform stroke.
+    shape = 0.85;
+  } else if (vBird > 0.5) {
     vec2 cell = vec2(mod(vGlyph, 4.0), floor(vGlyph / 4.0));
     shape = texture2D(uAtlas, (cell + gl_PointCoord) / 4.0).a;
     float electricHalo = smoothstep(0.5, 0.05, length(gl_PointCoord - 0.5));
@@ -361,22 +403,26 @@ void main() {
   vec2 screen = gl_FragCoord.xy / max(uResolution, vec2(1.0));
   float rowBand = floor(screen.y * 40.0);
   float rowHash = hash1(rowBand * 12.9898 + floor(uTime * 9.0) * 0.173);
-  float gateA = smoothstep(0.5, 0.88, 0.5 + 0.5 * sin(uTime * 0.52));
-  float gateB = smoothstep(0.55, 0.9, 0.5 + 0.5 * sin(uTime * 0.34 + 2.6));
+  float gateA = max(smoothstep(0.5, 0.88, 0.5 + 0.5 * sin(uTime * 0.52)), uScanBoost);
+  float gateB = max(smoothstep(0.55, 0.9, 0.5 + 0.5 * sin(uTime * 0.34 + 2.6)), uScanBoost * 0.8);
   float flicker = 0.82 + 0.18 * sin(uTime * 31.0 + rowBand * 0.7);
   vec4 colA = scanColumn(screen, gl_FragCoord.y, fract(uTime * 0.058), 1.0, rowHash);
   vec4 colB = scanColumn(screen, gl_FragCoord.y, 1.0 - fract(uTime * 0.041 + 0.37), -1.0, rowHash);
   float scan = (colA.a * gateA + colB.a * gateB) * flicker * vVideoMix;
   vec3 scanChroma = (colA.rgb * gateA + colB.rgb * gateB) * flicker * vVideoMix;
-  // Thin-film iridescence drifts down the column so the wake refracts like a
-  // hologram instead of printing a flat white bar.
+  // The columns carry the site's acid-lime identity: a lime core with a faint
+  // thin-film shimmer so the wake still refracts like a hologram.
   vec3 iridescence = 0.5 + 0.5 * cos(6.28318 * (screen.y * 1.4 + vec3(0.0, 0.33, 0.66)) + uTime * 0.4);
-  videoColor += (uGradD * 0.4 + vec3(0.18) + iridescence * 0.38) * scan + scanChroma * 1.35;
+  videoColor += (uColorAccent * 0.66 + vec3(0.12) + iridescence * 0.18) * scan + scanChroma * 1.2;
 
   color = mix(color, videoColor, vVideoMix * 0.98);
   color = mix(color, uColorAccent, smoothstep(0.38, 1.0, vEnergy) * (1.0 - vVideoMix));
   // Edge waves and pointer ripples flare toward the palette's peak stop.
   color = mix(color, uGradD, smoothstep(0.42, 1.0, vEnergy) * vVideoMix * 0.85);
+  // The opening scan planes light passing data points in acid lime, and link
+  // segments carry the same identity color.
+  color = mix(color, uColorAccent, clamp(vScanLime * 0.9, 0.0, 0.85));
+  if (uLineMode > 0.5) color = mix(color, uColorAccent, 0.45);
   color *= mix(1.0, vLight, vBird * (1.0 - vElectric * 0.45));
   vec3 electricColor = mix(uColorCyan, uColorAccent, 0.35 + 0.35 * sin(vGlyph));
   color = mix(color, electricColor, clamp(vElectric * 0.92, 0.0, 0.92));

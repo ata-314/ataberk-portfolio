@@ -98,9 +98,10 @@ html[data-stage-ready="true"] .hero-static-field {
 }
 
 /* Keep entrance animations at their authored first frame while WebGL performs
-   its one-time GPU setup. They begin only after the stage is ready, so shader
-   initialization can never present as a frozen typing or rise animation. */
-html:not([data-stage-ready="true"]):not([data-stage-static="true"])
+   its setup and the opening tunnel flight plays. The copy begins typing as the
+   camera eases into the hero position (data-stage-intro), so neither shader
+   initialization nor the intro can present as a frozen typing animation. */
+html:not([data-stage-intro="done"]):not([data-stage-static="true"])
   [data-hero-identity]
   * {
   animation-play-state: paused !important;

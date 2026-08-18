@@ -283,6 +283,30 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     attribute("aGlyph", glyphs, 1);
     attribute("aBird", birds, 1);
 
+    // Short-lived data links: particles adjacent in grid space are paired
+    // into a LINES index buffer and redrawn as a second pass over the fluid
+    // painting. The element binding lives on the VAO; drawArrays ignores it.
+    const maxLinks = mobile ? 150 : 420;
+    const linkIndices: number[] = [];
+    const linkBuckets = new Map<number, number>();
+    for (let i = 0; i < count && linkIndices.length < maxLinks * 2; i++) {
+      const key = Math.floor(grid[i * 2] * 34) * 64 + Math.floor(grid[i * 2 + 1] * 20);
+      const partner = linkBuckets.get(key);
+      if (partner === undefined) {
+        linkBuckets.set(key, i);
+      } else {
+        linkIndices.push(partner, i);
+        linkBuckets.delete(key);
+      }
+    }
+    const linkCount = linkIndices.length;
+    const linkBuffer = gl.createBuffer();
+    if (linkBuffer) {
+      buffers.push(linkBuffer);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, linkBuffer);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(linkIndices), gl.STATIC_DRAW);
+    }
+
     const location = (name: string) => gl.getUniformLocation(program, name);
     const uniforms = new Map<string, WebGLUniformLocation | null>();
     const u = (name: string) => {
@@ -493,6 +517,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let last = performance.now();
     let time = 0;
     let reveal = 0;
+    // Opening tunnel flight. Skipped when the page restores an existing
+    // scroll position, so mid-page reloads never replay the intro.
+    let intro = window.scrollY > 40 ? 1 : 0;
+    let introMarked = false;
     let hero = 0;
     let readyMix = 0;
     let videoMix = 0;
@@ -503,10 +531,22 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const render = (now: number) => {
       if (disposed) return;
       frameId = requestAnimationFrame(render);
-      const delta = Math.min((now - last) / 1000, 0.05);
+      // The rAF timestamp marks the frame's start and can predate the
+      // performance.now() captured at setup, so the first delta must clamp at
+      // zero — a negative time once indexed PALETTES[-1] and crashed a frame.
+      const delta = Math.min(Math.max(now - last, 0) / 1000, 0.05);
       last = now;
       time += delta;
       reveal = Math.min(1, reveal + delta / 2.2);
+      intro = Math.min(1, intro + delta / 3.2);
+      const introEase = 1 - Math.pow(1 - intro, 3);
+      const scanBoost = 1 - smoothstep(intro, 0.72, 1);
+      if (!introMarked && intro >= 0.8) {
+        introMarked = true;
+        // Hero entrance animations wait on this flag; the copy starts typing
+        // while the camera is still easing into its resting position.
+        document.documentElement.dataset.stageIntro = "done";
+      }
       hero = damp(hero, scrollState.hero.current, 24, delta);
       readyMix = damp(readyMix, birdReady, 5, delta);
       dissolve = damp(dissolve, smoothstep(scrollState.page.current, 0.9, 0.97), 5, delta);
@@ -567,7 +607,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       compose(birdMatrix, flight.position, flight.scale, yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)));
       flap = (flap + delta) % 1;
 
-      const camera: Vec3 = [Math.sin(hero * Math.PI) * 0.14, -0.02 - hero * 0.03, 8.2 - hero * 1.5 * (1 - finale)];
+      const camera: Vec3 = [
+        Math.sin(hero * Math.PI) * 0.14,
+        -0.02 - hero * 0.03,
+        mix(26, 8.2 - hero * 1.5 * (1 - finale), introEase),
+      ];
       lookAt(view, camera, [0, 0.08, 0]);
       gl.useProgram(program);
       gl.bindVertexArray(vao);
@@ -598,13 +642,20 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform3f(u("uVortexB"), 1.35 + Math.cos(time * 0.042) * 0.72, -0.32 + Math.sin(time * 0.05) * 0.5, 0);
       gl.uniform1f(u("uFlap"), flap);
       gl.uniform1f(u("uBirdReady"), readyMix);
+      gl.uniform1f(u("uIntro"), intro);
+      gl.uniform1f(u("uScanBoost"), scanBoost);
       gl.clear(gl.COLOR_BUFFER_BIT);
       // Use undamped scroll intent for workload shedding: the dense opening
       // remains rich at rest, then drops its draw budget before the cinematic
       // interpolation catches up, avoiding a heavy first-scroll frame.
       const flightLoad = smoothstep(scrollState.hero.current, 0.015, 0.2);
       const drawCount = Math.round(mix(count, flightCount, flightLoad));
+      gl.uniform1f(u("uLineMode"), 0);
       gl.drawArrays(gl.POINTS, 0, drawCount);
+      if (linkCount > 0 && videoMix > 0.03 && intro > 0.9) {
+        gl.uniform1f(u("uLineMode"), 1);
+        gl.drawElements(gl.LINES, linkCount, gl.UNSIGNED_SHORT, 0);
+      }
       if (firstFrame) {
         firstFrame = false;
         onReady?.();
@@ -614,6 +665,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
 
     runtimeCleanup = () => {
       cancelAnimationFrame(frameId);
+      delete document.documentElement.dataset.stageIntro;
       removeEventListener("resize", resize);
       removeEventListener("scroll", onScrollIntent);
       removeEventListener("pointermove", onPointerMove);

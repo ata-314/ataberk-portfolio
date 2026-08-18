@@ -44,6 +44,7 @@ export default function StageLoader() {
       cancelAnimationFrame(mountFrame);
       delete document.documentElement.dataset.stageReady;
       delete document.documentElement.dataset.stageStatic;
+      delete document.documentElement.dataset.stageIntro;
     };
   }, []);
 
