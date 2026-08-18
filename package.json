@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit --incremental false",
+    "bake:bird": "node scripts/bake-bird.mjs",
     "qa": "node scripts/qa.mjs /private/tmp/ataberk-portfolio-qa"
   },
   "dependencies": {

@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Locale } from "@/lib/i18n";
 import { work, type WorkItem } from "@/content/work";
 import { SystemVisual } from "../work/SystemVisual";
-import { SectionIntro } from "./SectionIntro";
 
 function Meta({ item }: { item: WorkItem }) {
   return (
@@ -84,18 +83,43 @@ export function WorkSection({ locale, visualLabel }: { locale: Locale; visualLab
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto max-w-7xl">
-        <SectionIntro
-          eyebrow={locale === "tr" ? "Portfolyo" : "Portfolio"}
-          title={t.heading}
-          lead={
-            locale === "tr"
-              ? "Gerçek sistemler, gerçek işler — her biri aynı yaratıcı maddeden."
-              : "Real systems, real work — each one cast from the same creative matter."
-          }
-        />
+        <div data-reveal className="work-intro-shell grid gap-10 p-7 md:grid-cols-12 md:p-12 lg:p-16">
+          <div className="md:col-span-7">
+            <div className="flex items-center gap-3">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime shadow-[0_0_14px_rgba(200,255,62,0.65)]" />
+              <p className="font-mono text-[10px] tracking-[0.34em] text-lime uppercase">
+                01 / {locale === "tr" ? "Seçki" : "Selection"}
+              </p>
+            </div>
+            <h2
+              className="font-display mt-7 leading-[0.95] font-semibold tracking-[-0.055em] text-balance"
+              style={{ fontSize: "clamp(3rem, 7vw, 7.5rem)" }}
+            >
+              {t.heading}
+            </h2>
+          </div>
+          <div className="flex flex-col justify-between gap-10 md:col-span-5 md:border-l md:border-white/10 md:pl-10">
+            <p className="max-w-md text-base leading-relaxed text-bone-dim text-balance md:text-lg">
+              {locale === "tr"
+                ? "Gerçek sistemler, çalışan ürünler ve hareketli kimlikler — fikirden yayına uzanan seçili işler."
+                : "Real systems, working products and moving identities — selected work from idea to release."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {["AI Systems", "Creative Development", "Motion + 3D"].map((label) => (
+                <span key={label} className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 font-mono text-[9px] tracking-[0.14em] text-bone-dim uppercase">
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="col-span-full flex items-center justify-between border-t border-white/10 pt-5 font-mono text-[9px] tracking-[0.22em] text-bone-dim/55 uppercase">
+            <span>{locale === "tr" ? "Altı seçili sistem" : "Six selected systems"}</span>
+            <span aria-hidden>01 — 06</span>
+          </div>
+        </div>
 
         {/* 01 — Lead story: generous copy followed by a cinematic media plane */}
-        <CaseLink locale={locale} slug={featured.slug} className="mt-20 md:mt-28">
+        <CaseLink locale={locale} slug={featured.slug} className="mt-20 md:mt-24">
           <ProjectCopy item={featured} index={1} open={t.open} featured />
           <SystemVisual item={featured} label={visualLabel} className="mt-9 aspect-[4/3] w-full sm:aspect-[16/9]" />
         </CaseLink>

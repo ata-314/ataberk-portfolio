@@ -1,7 +1,9 @@
 // CODE BECOMES FORM — one matter, many forms.
 // Simplex noise: Ashima Arts / Ian McEwan (webgl-noise), MIT license.
 
-const simplex = /* glsl */ `
+// Retained as an exported reference for archived shader studies; the live
+// field deliberately avoids compiling simplex/curl code on visitor devices.
+export const simplexReference = /* glsl */ `
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 permute(vec4 x) { return mod289(((x * 34.0) + 10.0) * x); }
@@ -61,8 +63,6 @@ vec3 curl(vec3 p) {
 `;
 
 export const fieldVertex = /* glsl */ `
-${simplex}
-
 uniform float uTime;
 uniform float uReveal;       // opening: 0 dark -> 1 formed
 uniform float uHero;         // hero runway progress 0..1
@@ -117,24 +117,29 @@ vec3 birdNormal(float idx) {
   return texture2D(uNrmTex, vec2((col + 0.5) / uTexW, (row + 0.5) / uRowsPerFrame)).xyz;
 }
 
-// Fluid data sculpture — billowing volumetric mass in the spirit of
-// large-scale data art: domain-warped curl layers boil slowly, two roaming
-// vortices stir the volume, edges stay wispy. Never a terrain or sheet.
+// Fluid data sculpture using analytic waves. This preserves slow, organic
+// movement while avoiding a large simplex program and 18 noise evaluations
+// per point, dramatically reducing shader compile and GPU cost.
 vec3 fluidField(vec3 home, float seed, float calm) {
-  // Broad, slow currents carry the volume; high-frequency noise stays quiet
-  // so motion reads as liquid continuity instead of restless turbulence.
-  vec3 q = home * 0.4 + curl(home * 0.2 + uTime * 0.018) * 0.72;
-  vec3 billow = curl(q + uTime * 0.036 + seed * 0.02) * 0.96;
-  vec3 medium = curl(home * 0.58 - uTime * 0.026) * 0.3;
-  vec3 fine = curl(home * 1.45 + uTime * 0.065) * 0.08;
+  float phase = seed * 0.11 + uTime * 0.045;
+  vec3 billow = vec3(
+    sin(home.y * 0.72 + phase) + cos(home.z * 0.48 - phase * 0.7),
+    cos(home.x * 0.64 - phase * 0.82) + sin(home.z * 0.55 + phase),
+    sin((home.x + home.y) * 0.42 + phase * 0.65)
+  ) * 0.42;
+  vec3 detail = vec3(
+    sin(home.y * 1.7 - phase * 1.4),
+    cos(home.x * 1.45 + phase * 1.2),
+    sin(home.z * 1.6 + phase)
+  ) * 0.09;
   vec2 dA = home.xy - uVortexA.xy;
   float rA = length(dA) + 1e-3;
-  vec2 swirlA = vec2(-dA.y, dA.x) / rA * exp(-rA * 0.5) * 1.2;
+  vec2 swirlA = vec2(-dA.y, dA.x) / rA * exp(-rA * 0.5);
   vec2 dB = home.xy - uVortexB.xy;
   float rB = length(dB) + 1e-3;
-  vec2 swirlB = vec2(dB.y, -dB.x) / rB * exp(-rB * 0.55) * 1.0;
-  vec3 f = billow + medium + fine + vec3(swirlA + swirlB, 0.0) * 0.55;
-  return home + f * (0.68 + 0.12 * sin(uTime * 0.04 + seed)) * calm;
+  vec2 swirlB = vec2(dB.y, -dB.x) / rB * exp(-rB * 0.55);
+  vec3 flow = billow + detail + vec3(swirlA + swirlB, 0.0) * 0.36;
+  return home + flow * (0.72 + 0.08 * sin(uTime * 0.04 + seed)) * calm;
 }
 
 void main() {

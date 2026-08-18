@@ -17,7 +17,9 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
       lenisRef.current?.lenis?.raf(time * 1000);
     };
     gsap.ticker.add(update);
-    gsap.ticker.lagSmoothing(0);
+    // Keep GSAP's lag guard active. Disabling it makes one slow frame advance
+    // Lenis by the full delayed delta, which reads as a jump in the bird morph.
+    gsap.ticker.lagSmoothing(500, 33);
 
     const lenis = lenisRef.current?.lenis;
     lenis?.on("scroll", ScrollTrigger.update);
@@ -29,7 +31,11 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ReactLenis root options={{ autoRaf: false, anchors: true }} ref={lenisRef}>
+    <ReactLenis
+      root
+      options={{ autoRaf: false, anchors: true, lerp: 0.16, wheelMultiplier: 0.92 }}
+      ref={lenisRef}
+    >
       {children}
     </ReactLenis>
   );

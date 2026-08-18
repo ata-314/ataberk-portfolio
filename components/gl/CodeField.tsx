@@ -110,6 +110,9 @@ export function CodeField({
   const yawRef = useRef(-1.07);
   const followMix = useRef(0);
   const birdReadyTarget = useRef(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoReady = useRef(0);
+  const videoPausedForScroll = useRef(false);
   const ndc = useMemo(() => new THREE.Vector2(), []);
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), []);
@@ -273,18 +276,20 @@ export function CodeField({
     vid.loop = true;
     vid.playsInline = true;
     vid.preload = "auto";
+    videoRef.current = vid;
     const tex = new THREE.VideoTexture(vid);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.minFilter = THREE.LinearFilter;
     tex.magFilter = THREE.LinearFilter;
     const onPlaying = () => {
       uniforms.uVideoTex.value = tex;
-      uniforms.uVideoOn.value = 1;
+      videoReady.current = 1;
+      videoPausedForScroll.current = false;
     };
     vid.addEventListener("playing", onPlaying);
     vid.play().catch(() => {
       // Autoplay refused (rare with muted): stay in fluid mode
-      uniforms.uVideoOn.value = 0;
+      videoReady.current = 0;
     });
     return () => {
       vid.removeEventListener("playing", onPlaying);
@@ -292,6 +297,8 @@ export function CodeField({
       vid.removeAttribute("src");
       vid.load();
       tex.dispose();
+      videoRef.current = null;
+      videoReady.current = 0;
     };
   }, [uniforms]);
 
@@ -332,13 +339,29 @@ export function CodeField({
 
     const hero = scrollState.hero.current;
     const page = scrollState.page.current;
-    u.uHero.value = THREE.MathUtils.damp(u.uHero.value, hero, 6, delta);
+    u.uHero.value = THREE.MathUtils.damp(u.uHero.value, hero, 11, delta);
     u.uBirdReady.value = THREE.MathUtils.damp(
       u.uBirdReady.value,
       birdReadyTarget.current,
       4,
       delta,
     );
+
+    // The video painting belongs only to the opening state. Fade and pause its
+    // decoder before bird formation so video upload and the morph never fight
+    // for the same frame budget.
+    const videoTarget = videoReady.current * (1 - THREE.MathUtils.smoothstep(hero, 0.07, 0.2));
+    u.uVideoOn.value = THREE.MathUtils.damp(u.uVideoOn.value, videoTarget, 12, delta);
+    const video = videoRef.current;
+    if (video && hero > 0.24 && !videoPausedForScroll.current) {
+      video.pause();
+      videoPausedForScroll.current = true;
+    } else if (video && hero < 0.035 && videoPausedForScroll.current) {
+      videoPausedForScroll.current = false;
+      video.play().catch(() => {
+        videoReady.current = 0;
+      });
+    }
 
     // The bird stays with the reader for the whole page; it only releases
     // back into free matter as the contact finale arrives.

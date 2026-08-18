@@ -7,8 +7,8 @@ import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { scrollState } from "../three/scroll-state";
 
-// Floating navigation: one calm glass capsule that stays legible while the
-// global bird and the page content move underneath it.
+// Compact floating navigation: an Apple-like control island with one clear
+// hierarchy. Its small blur footprint stays inexpensive over the WebGL stage.
 export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -83,28 +83,34 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-50 px-3 md:px-6">
-      <div className="nav-glass pointer-events-auto relative mx-auto mt-3 flex max-w-6xl items-center justify-between overflow-hidden rounded-full px-4 py-3 md:mt-4 md:px-5">
+      <div className="nav-shell pointer-events-auto relative mx-auto mt-3 flex max-w-5xl items-center justify-between overflow-hidden rounded-full px-2.5 py-2 md:mt-4 md:pl-3 md:pr-2">
         <Link
           href={`/${locale}`}
-          className="flex items-center gap-2.5 rounded-full px-2 py-1 font-display text-sm font-semibold tracking-tight transition-opacity hover:opacity-75"
+          className="flex items-center gap-2.5 rounded-full px-2 py-1.5 font-display text-sm font-semibold tracking-tight transition-opacity hover:opacity-75"
           aria-label="Ataberk Soylu"
         >
-          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime shadow-[0_0_14px_rgba(200,255,62,0.75)]" />
-          Ataberk Soylu
+          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-full border border-lime/25 bg-lime/[0.08] font-mono text-[9px] tracking-[-0.08em] text-lime shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+            AS
+          </span>
+          <span className="hidden sm:inline">Ataberk Soylu</span>
         </Link>
-        <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
-          {links.map((l) => (
+        <nav aria-label="Main" className="hidden items-center gap-0.5 md:flex">
+          {links.map((l, i) => (
             <Link
               key={l.label}
               href={l.href}
-              className="rounded-full px-3 py-2 text-[13px] text-bone-dim transition-colors hover:bg-white/[0.07] hover:text-bone"
+              className={`rounded-full px-3 py-2 text-[12px] transition-colors ${
+                i === links.length - 1
+                  ? "ml-1 bg-bone text-ink hover:bg-white"
+                  : "text-bone-dim hover:bg-white/[0.07] hover:text-bone"
+              }`}
             >
               {l.label}
             </Link>
           ))}
           <Link
             href={otherPath}
-            className="ml-1 rounded-full border border-white/10 bg-white/[0.055] px-3 py-2 font-mono text-[10px] tracking-[0.18em] text-bone-dim uppercase transition-colors hover:border-white/20 hover:text-bone"
+            className="ml-1 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 font-mono text-[9px] tracking-[0.18em] text-bone-dim uppercase transition-colors hover:border-white/20 hover:text-bone"
             aria-label={other === "en" ? "Switch to English" : "Türkçeye geç"}
           >
             {other.toUpperCase()}
@@ -114,14 +120,14 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
           ref={menuButton}
           type="button"
           onClick={() => setOpen(true)}
-          className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[12px] text-bone md:hidden"
+          className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[11px] text-bone md:hidden"
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls="mobile-navigation"
         >
           {t.menu}
         </button>
-        <div className="absolute inset-x-5 bottom-0 h-px overflow-hidden bg-white/[0.055]">
+        <div className="absolute inset-x-7 bottom-0 h-px overflow-hidden bg-white/[0.045]">
           <div
             ref={progress}
             aria-hidden
