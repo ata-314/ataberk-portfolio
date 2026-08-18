@@ -19,6 +19,9 @@ uniform sampler2D uPosTex;
 uniform sampler2D uNrmTex;
 uniform sampler2D uVideoTex;
 uniform float uVideoOn;
+uniform float uMeltScale;
+uniform vec3 uVortexA;
+uniform vec3 uVortexB;
 uniform float uTexW;
 uniform float uTexH;
 uniform float uRowsPerFrame;
@@ -63,16 +66,33 @@ void main() {
   vec3 field = aHome + flow;
   vVideo = texture2D(uVideoTex, aGrid).rgb;
   float luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
+  vec2 centered = aGrid - 0.5;
   vec3 sheet = vec3(
-    (aGrid.x - 0.5) * 8.8,
-    (aGrid.y - 0.5) * 5.15,
-    luminance * 1.65 - 0.75
+    centered.x * 11.8,
+    centered.y * 7.2,
+    centered.y * -1.2 + luminance * 1.8
   );
-  sheet.xy += vec2(
-    sin(aGrid.y * 6.28 + uTime * 0.11),
-    cos(aGrid.x * 6.28 - uTime * 0.09)
-  ) * 0.075;
-  field = mix(field, sheet, smoothstep(0.0, 0.82, uVideoOn));
+  float melt = (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0)) * uMeltScale;
+  float edge = max(
+    smoothstep(0.26, 0.5, abs(centered.x)),
+    smoothstep(0.24, 0.5, abs(centered.y))
+  );
+  float lowBand = sin(aGrid.y * 19.0 + uTime * 0.31 + aSeed * 0.07);
+  float crossBand = cos(aGrid.x * 17.0 - uTime * 0.27 + aSeed * 0.05);
+  vec2 liquid = vec2(lowBand, crossBand) * (0.045 + (1.0 - luminance) * 0.075 + melt * 0.34);
+  liquid += vec2(
+    sin(centered.y * 9.0 + uTime * 0.85 + aSeed * 0.1),
+    cos(centered.x * 8.0 - uTime * 0.75)
+  ) * edge * (0.28 + melt * 0.55);
+  vec2 vortexA = sheet.xy - uVortexA.xy;
+  vec2 vortexB = sheet.xy - uVortexB.xy;
+  float distanceA = length(vortexA) + 0.001;
+  float distanceB = length(vortexB) + 0.001;
+  liquid += vec2(-vortexA.y, vortexA.x) / distanceA * exp(-distanceA * 0.55) * 0.24;
+  liquid += vec2(vortexB.y, -vortexB.x) / distanceB * exp(-distanceB * 0.6) * 0.2;
+  sheet.xy += liquid * (1.0 + edge * 1.65);
+  sheet.z += (lowBand + crossBand) * 0.055 * melt;
+  field = mix(field, sheet, smoothstep(0.0, 0.72, uVideoOn));
   vec3 point = field;
   float alpha = 1.0;
   float energy = 0.08 + luminance * uVideoOn * 0.22 + 0.1 * sin(aSeed + uTime * 0.08);
@@ -119,12 +139,13 @@ void main() {
   gl_Position = projectionMatrix * view;
   vGlyph = aGlyph;
   vBird = bird;
+  vVideoMix = uVideoOn * (1.0 - bird) * (1.0 - uFinale);
+  alpha *= mix(1.0, 0.22 + luminance * 0.82, vVideoMix);
   vAlpha = alpha * appear;
   vEnergy = clamp(energy, 0.0, 1.0);
   vDepth = clamp((-view.z - 3.0) / 10.0, 0.0, 1.0);
-  vVideoMix = uVideoOn * (1.0 - bird) * (1.0 - uFinale);
   float size = mix(0.5 + seed * 0.45, 0.7 + seed * 0.8, bird);
-  size = mix(size, 1.3 + seed * 0.38, vVideoMix);
+  size = mix(size, 1.5 + seed * 0.5, vVideoMix);
   gl_PointSize = uSize * size / -view.z;
 }
 `;
@@ -158,8 +179,11 @@ void main() {
   vec3 color = mix(uColorBase, uColorCyan, vDepth * 0.3 + 0.06);
   float luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
   vec3 videoColor = clamp(mix(vec3(luminance), vVideo, 1.35) * vec3(1.06, 1.02, 0.96), 0.0, 1.0);
-  color = mix(color, videoColor, vVideoMix * 0.94);
+  color = mix(color, videoColor, vVideoMix * 0.92);
   color = mix(color, uColorAccent, smoothstep(0.38, 1.0, vEnergy));
-  gl_FragColor = vec4(color, shape * vAlpha * (0.48 + vBird * 0.22 + vEnergy * 0.24));
+  float depthFade = 1.0 - vDepth * 0.48;
+  float body = mix(0.5, 0.72, vBird);
+  body = mix(body, 0.85, vVideoMix);
+  gl_FragColor = vec4(color, shape * vAlpha * depthFade * (body + vEnergy * 0.26));
 }
 `;

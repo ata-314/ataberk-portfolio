@@ -233,7 +233,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.useProgram(program);
 
     const mobile = window.matchMedia("(pointer: coarse)").matches || innerWidth < 768;
-    const count = mobile ? 4200 : 12000;
+    const count = mobile ? 9000 : 30000;
     const birdCount = mobile ? 2000 : 5000;
     let randomState = 0x9e3779b9;
     const random = () => {
@@ -357,9 +357,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       })
       .catch((error) => console.error("bird texture failed:", error));
 
-    // The authored video-data painting stays in the opening, but is sampled
-    // through a small 20fps surface and paused before bird formation. This
-    // preserves the visual without video upload competing with the morph.
+    // The original full-bleed liquid data painting stays visible while the
+    // bird gathers. Decoding/upload pauses early, but the last frame keeps
+    // flowing in the shader so video work never competes with the morph.
     const video = document.createElement("video");
     video.src = "/media/hero-source.mp4";
     video.muted = true;
@@ -456,12 +456,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       pointerSmooth[1] = damp(pointerSmooth[1], pointer[1], 7, delta);
       if (waveAge >= 0) waveAge = waveAge > 3.5 ? -1 : waveAge + delta;
 
-      const targetVideo = videoReady * (1 - smoothstep(hero, 0.045, 0.17));
-      videoMix = damp(videoMix, targetVideo, 13, delta);
-      if (hero > 0.2 && !videoPaused) {
+      const targetVideo = videoReady * (1 - smoothstep(hero, 0.58, 0.82));
+      videoMix = damp(videoMix, targetVideo, 8, delta);
+      if (hero > 0.16 && !videoPaused) {
         video.pause();
         videoPaused = true;
-      } else if (hero < 0.025 && videoPaused) {
+      } else if (hero < 0.035 && videoPaused) {
         videoPaused = false;
         void video.play().catch(() => (videoReady = 0));
       }
