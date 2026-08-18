@@ -44,6 +44,8 @@ varying vec3 vVideo;
 varying float vVideoMix;
 varying float vLight;
 varying float vElectric;
+varying float vPigment;
+varying float vPigmentDensity;
 
 vec3 birdPosition(float index, float frame) {
   float row = frame * uRowsPerFrame + floor(index / uTexW);
@@ -68,16 +70,20 @@ void main() {
   vec3 field = aHome + flow;
   vVideo = vec3(0.0);
   float luminance = 0.0;
+  float pigmentDensity = 0.0;
   // Uniform branch: once the liquid painting has handed off, integrated GPUs
   // skip every video sample, exp and liquid-wave operation during bird flight.
   if (uVideoOn > 0.015) {
     vVideo = texture2D(uVideoTex, aGrid).rgb;
     luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
+    float chroma = max(vVideo.r, max(vVideo.g, vVideo.b))
+      - min(vVideo.r, min(vVideo.g, vVideo.b));
+    pigmentDensity = smoothstep(0.035, 0.88, luminance + chroma * 0.28);
     vec2 centered = aGrid - 0.5;
     vec3 sheet = vec3(
       centered.x * 10.8,
       centered.y * 6.4,
-      centered.y * -1.2 + luminance * 1.8
+      centered.y * -1.2 + luminance * 1.8 + (seed - 0.5) * (0.42 + (1.0 - pigmentDensity) * 0.5)
     );
     float melt = (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0)) * uMeltScale;
     float edge = max(
@@ -86,7 +92,14 @@ void main() {
     );
     float lowBand = sin(aGrid.y * 19.0 + uTime * 0.31 + aSeed * 0.07);
     float crossBand = cos(aGrid.x * 17.0 - uTime * 0.27 + aSeed * 0.05);
+    float pigmentFold = sin(
+      centered.x * 5.2
+      + centered.y * 7.4
+      + sin(centered.y * 3.0 - uTime * 0.16) * 1.8
+      + uTime * 0.22
+    );
     vec2 liquid = vec2(lowBand, crossBand) * (0.045 + (1.0 - luminance) * 0.075 + melt * 0.34);
+    liquid += vec2(pigmentFold, -pigmentFold) * (0.035 + pigmentDensity * 0.075);
     liquid += vec2(
       sin(centered.y * 9.0 + uTime * 0.85 + aSeed * 0.1),
       cos(centered.x * 8.0 - uTime * 0.75)
@@ -98,7 +111,8 @@ void main() {
     liquid += vec2(-vortexA.y, vortexA.x) / distanceA * exp(-distanceA * 0.55) * 0.24;
     liquid += vec2(vortexB.y, -vortexB.x) / distanceB * exp(-distanceB * 0.6) * 0.2;
     sheet.xy += liquid * (1.0 + edge * 1.65);
-    sheet.z += (lowBand + crossBand) * 0.055 * melt;
+    sheet.z += (lowBand + crossBand) * 0.055 * melt
+      + pigmentFold * (0.08 + pigmentDensity * 0.15);
     field = mix(field, sheet, smoothstep(0.0, 0.72, uVideoOn));
   }
   vec3 point = field;
@@ -200,8 +214,17 @@ void main() {
   vDepth = clamp((-view.z - 3.0) / 10.0, 0.0, 1.0);
   vLight = mix(1.0, light, bird);
   vElectric = electric;
+  vPigment = fract(
+    luminance * 0.72
+    + seed * 0.2
+    + 0.08 * sin(uTime * 0.22 + aSeed * 0.17)
+  );
+  vPigmentDensity = pigmentDensity;
   float size = mix(0.5 + seed * 0.45, 0.7 + seed * 0.8, bird);
-  size = mix(size, 1.5 + seed * 0.5, vVideoMix);
+  // Broad translucent particles overlap into pigment clouds; dense highlights
+  // retain a tighter core, keeping the source video's motion legible.
+  float pigmentSize = mix(2.8 + seed * 0.9, 1.7 + seed * 0.55, pigmentDensity);
+  size = mix(size, pigmentSize, vVideoMix);
   size *= 1.0 + electric * 0.75;
   gl_PointSize = uSize * size / -view.z;
 }
@@ -222,6 +245,8 @@ varying vec3 vVideo;
 varying float vVideoMix;
 varying float vLight;
 varying float vElectric;
+varying float vPigment;
+varying float vPigmentDensity;
 
 void main() {
   if (vAlpha < 0.01) discard;
@@ -235,12 +260,20 @@ void main() {
   } else {
     float radius = length(gl_PointCoord - 0.5);
     if (radius > 0.5) discard;
-    shape = smoothstep(0.5, 0.08, radius);
+    float haze = smoothstep(0.5, 0.02, radius);
+    float core = smoothstep(0.2, 0.015, radius);
+    shape = mix(haze * 0.34, haze * 0.58 + core * 0.42, vPigmentDensity);
   }
   vec3 color = mix(uColorBase, uColorCyan, vDepth * 0.3 + 0.06);
   float luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
-  vec3 videoColor = clamp(mix(vec3(luminance), vVideo, 1.35) * vec3(1.06, 1.02, 0.96), 0.0, 1.0);
-  color = mix(color, videoColor, vVideoMix * 0.92);
+  // The source video drives density and motion only. Its original RGB is
+  // recolored into the same bone / cyan / electric-lime family as the bird.
+  vec3 deepCyan = uColorCyan * vec3(0.11, 0.23, 0.27);
+  vec3 videoColor = mix(deepCyan, uColorCyan, smoothstep(0.04, 0.48, luminance));
+  videoColor = mix(videoColor, uColorBase, smoothstep(0.34, 0.72, vPigment));
+  float lime = smoothstep(0.72, 0.98, luminance + vPigmentDensity * 0.22);
+  videoColor = mix(videoColor, uColorAccent, lime * (0.58 + vEnergy * 0.28));
+  color = mix(color, videoColor, vVideoMix * 0.96);
   color = mix(color, uColorAccent, smoothstep(0.38, 1.0, vEnergy));
   color *= mix(1.0, vLight, vBird * (1.0 - vElectric * 0.45));
   vec3 electricColor = mix(uColorCyan, uColorAccent, 0.35 + 0.35 * sin(vGlyph));
@@ -248,7 +281,7 @@ void main() {
   color += electricColor * vElectric * 0.42;
   float depthFade = 1.0 - vDepth * 0.48;
   float body = mix(0.5, 0.72, vBird);
-  body = mix(body, 0.85, vVideoMix);
+  body = mix(body, 0.54 + vPigmentDensity * 0.2, vVideoMix);
   gl_FragColor = vec4(color, shape * vAlpha * depthFade * (body + vEnergy * 0.26 + vElectric * 0.34));
 }
 `;
