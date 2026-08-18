@@ -297,6 +297,25 @@ varying float vElectric;
 varying float vPigment;
 varying float vPigmentDensity;
 
+float hash1(float n) { return fract(sin(n) * 43758.5453); }
+
+// One holographic scan column: a sharp leading edge, a decaying data wake
+// carved by micro scanlines and row ticks, and cyan/magenta diffraction
+// fringes hugging either side of the edge. rowHash shears occasional rows
+// sideways for a glitched-readout feel.
+vec4 scanColumn(vec2 screen, float pixelY, float head, float dir, float rowHash) {
+  float x = head + (rowHash - 0.5) * 0.016 * step(0.86, rowHash);
+  float ahead = (screen.x - x) * dir;
+  float front = exp(-pow(abs(ahead) * 150.0, 2.0)) * 1.35;
+  float wake = exp(-max(-ahead, 0.0) * 13.0) * step(ahead, 0.0) * (1.0 - front);
+  float micro = 0.5 + 0.5 * sin(pixelY * 1.7 + uTime * 26.0);
+  float tick = 0.22 + 0.78 * step(0.55, rowHash);
+  vec3 fringe = vec3(0.25, 0.95, 1.0) * exp(-pow((ahead - 0.006) * 150.0, 2.0))
+    + vec3(1.0, 0.3, 0.9) * exp(-pow((ahead + 0.009) * 130.0, 2.0));
+  float body = front + wake * micro * tick * 0.8;
+  return vec4(fringe, body);
+}
+
 void main() {
   if (vAlpha < 0.01) discard;
   float shape;
@@ -335,16 +354,24 @@ void main() {
   videoColor = mix(videoColor, uGradC, smoothstep(0.3, 0.68, rampLevel));
   videoColor = mix(videoColor, uGradD, smoothstep(0.68, 0.98, rampLevel));
 
-  // A restrained scanner occasionally crosses the particle field. Fine
-  // secondary lines surface briefly around it instead of sitting permanently.
-  float screenY = gl_FragCoord.y / max(uResolution.y, 1.0);
-  float scanGate = smoothstep(0.68, 0.94, 0.5 + 0.5 * sin(uTime * 0.52));
-  float scanHead = fract(uTime * 0.075);
-  float scanBand = exp(-pow((screenY - scanHead) * 64.0, 2.0));
-  float scanEcho = exp(-pow((screenY - scanHead + 0.016) * 92.0, 2.0));
-  float scanGrain = smoothstep(0.82, 1.0, sin(gl_FragCoord.y * 0.72 + uTime * 4.2));
-  float scan = (scanBand + scanEcho * 0.52 + scanGrain * 0.1) * scanGate * vVideoMix;
-  videoColor += uGradD * scan * 0.5;
+  // Two holographic scan columns sweep the field in opposite directions,
+  // gated so they surface occasionally instead of sitting permanently. Rows
+  // are hashed per time-step: some shear sideways, some read brighter, and a
+  // fast flicker keeps the projection feeling volumetric rather than printed.
+  vec2 screen = gl_FragCoord.xy / max(uResolution, vec2(1.0));
+  float rowBand = floor(screen.y * 40.0);
+  float rowHash = hash1(rowBand * 12.9898 + floor(uTime * 9.0) * 0.173);
+  float gateA = smoothstep(0.5, 0.88, 0.5 + 0.5 * sin(uTime * 0.52));
+  float gateB = smoothstep(0.55, 0.9, 0.5 + 0.5 * sin(uTime * 0.34 + 2.6));
+  float flicker = 0.82 + 0.18 * sin(uTime * 31.0 + rowBand * 0.7);
+  vec4 colA = scanColumn(screen, gl_FragCoord.y, fract(uTime * 0.058), 1.0, rowHash);
+  vec4 colB = scanColumn(screen, gl_FragCoord.y, 1.0 - fract(uTime * 0.041 + 0.37), -1.0, rowHash);
+  float scan = (colA.a * gateA + colB.a * gateB) * flicker * vVideoMix;
+  vec3 scanChroma = (colA.rgb * gateA + colB.rgb * gateB) * flicker * vVideoMix;
+  // Thin-film iridescence drifts down the column so the wake refracts like a
+  // hologram instead of printing a flat white bar.
+  vec3 iridescence = 0.5 + 0.5 * cos(6.28318 * (screen.y * 1.4 + vec3(0.0, 0.33, 0.66)) + uTime * 0.4);
+  videoColor += (uGradD * 0.4 + vec3(0.18) + iridescence * 0.38) * scan + scanChroma * 1.35;
 
   color = mix(color, videoColor, vVideoMix * 0.98);
   color = mix(color, uColorAccent, smoothstep(0.38, 1.0, vEnergy) * (1.0 - vVideoMix));
