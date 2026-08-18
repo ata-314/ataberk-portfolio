@@ -108,24 +108,18 @@ export function Hero({ t }: { t: HeroStrings }) {
       >
         <StaticField />
         <div aria-hidden className="hero-scrim pointer-events-none absolute inset-0" />
-        <div aria-hidden className="brutal-marquee top-[16svh] opacity-70">
-          <span className="brutal-marquee-track">
-            CODE / MOTION / AI / SYSTEMS / CODE / MOTION / AI / SYSTEMS /
-          </span>
-        </div>
-
-        <div data-hero-identity className="hero-focus hero-copy pointer-events-none relative z-10 mx-auto w-full max-w-7xl origin-left text-left">
-          <div className="mb-5 flex items-center gap-3 [animation:heroRise_0.8s_ease_0.1s_both]">
-            <span aria-hidden className="h-2 w-2 bg-lime shadow-[0_0_16px_rgba(200,255,62,0.75)]" />
+        <div data-hero-identity className="hero-focus hero-copy pointer-events-none relative z-10 mx-auto w-full max-w-5xl origin-center text-center">
+          <div className="mb-7 flex items-center justify-center gap-3 [animation:heroRise_0.8s_ease_0.1s_both]">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime shadow-[0_0_16px_rgba(200,255,62,0.75)]" />
             <p lang="en" className="font-mono text-[10px] tracking-[0.28em] text-bone-dim uppercase md:text-[11px]">
-              01 — {t.title}
+              {t.title}
             </p>
           </div>
           <h1
             lang="en"
             aria-label="Ataberk Soylu"
-            className="overflow-hidden font-mono leading-[0.88] font-semibold tracking-[-0.085em]"
-            style={{ fontSize: "clamp(2.65rem, 9vw, 9rem)" }}
+            className="overflow-hidden font-mono leading-none font-semibold tracking-[-0.07em]"
+            style={{ fontSize: "clamp(2.55rem, 7.4vw, 7.25rem)" }}
           >
             <span aria-hidden className="hero-type-shell">
               <span className="hero-type-prompt">&gt;</span>
@@ -133,24 +127,24 @@ export function Hero({ t }: { t: HeroStrings }) {
               <span className="hero-type-cursor" />
             </span>
           </h1>
-          <div className="pointer-events-auto mt-8 max-w-3xl [animation:heroRise_0.9s_ease_0.5s_both]">
-            <p className="font-display text-xl leading-[1.06] font-semibold tracking-[-0.035em] text-bone/90 text-balance md:text-3xl">{t.tagline}</p>
-            <div className="mt-8 flex flex-wrap gap-0">
+          <div className="pointer-events-auto mx-auto mt-7 max-w-2xl [animation:heroRise_0.9s_ease_0.5s_both]">
+            <p className="text-base leading-relaxed text-bone/85 text-balance md:text-xl">{t.tagline}</p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
               <a
                 href="#work"
                 data-cursor="view"
-                className="border border-bone bg-bone px-6 py-3.5 font-mono text-[11px] font-semibold tracking-widest text-ink uppercase transition-colors hover:bg-lime"
+                className="rounded-full bg-bone px-6 py-3.5 font-mono text-[11px] font-semibold tracking-widest text-ink uppercase shadow-[0_12px_36px_-18px_rgba(243,239,231,0.75)] transition-all hover:-translate-y-0.5 hover:bg-white"
               >
                 {t.ctaWork}
               </a>
               <a
                 href={`/${t.locale}/about`}
-                className="-ml-px border border-white/20 bg-black/30 px-6 py-3.5 font-mono text-[11px] tracking-widest text-bone uppercase transition-colors hover:border-lime hover:text-lime"
+                className="rounded-full border border-white/12 bg-white/[0.055] px-6 py-3.5 font-mono text-[11px] tracking-widest text-bone uppercase transition-colors hover:border-white/25 hover:bg-white/[0.09]"
               >
                 {t.ctaAbout}
               </a>
             </div>
-            <p className="mt-7 max-w-2xl border-l border-lime/60 pl-4 font-mono text-[9px] leading-relaxed tracking-[0.16em] text-bone-dim/60 uppercase md:text-[10px]">
+            <p className="mx-auto mt-7 max-w-xl font-mono text-[9px] leading-relaxed tracking-[0.16em] text-bone-dim/55 uppercase md:text-[10px]">
               {t.intro}
             </p>
           </div>
@@ -158,15 +152,15 @@ export function Hero({ t }: { t: HeroStrings }) {
 
         <div
           data-hero-direction
-          className="hero-panel hero-copy pointer-events-none absolute inset-x-6 bottom-[9svh] z-10 pl-5 text-left opacity-0 md:right-auto md:bottom-[12svh] md:left-10 md:w-[min(54rem,58vw)] md:pl-7 xl:left-[max(3rem,calc((100vw-80rem)/2))] motion-reduce:hidden"
+          className="hero-panel hero-copy pointer-events-none absolute inset-x-5 bottom-[8svh] z-10 p-6 text-left opacity-0 md:right-auto md:bottom-[12svh] md:left-10 md:w-[29rem] md:p-8 xl:left-[max(3rem,calc((100vw-80rem)/2))] motion-reduce:hidden"
         >
           <div className="flex items-center gap-3">
-            <span aria-hidden className="h-2 w-2 bg-lime" />
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
             <p className="font-mono text-[10px] tracking-[0.3em] text-lime uppercase">
               03 / {tr ? "Yön" : "Direction"}
             </p>
           </div>
-          <p className="font-display mt-5 max-w-4xl text-4xl leading-[0.94] font-semibold tracking-[-0.055em] text-balance md:text-6xl lg:text-7xl">
+          <p className="font-display mt-5 max-w-md text-2xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance md:text-3xl">
             {t.tagline}
           </p>
           <div
@@ -176,13 +170,13 @@ export function Hero({ t }: { t: HeroStrings }) {
             <a
               href="#work"
               data-cursor="view"
-              className="border border-bone bg-bone px-6 py-3.5 font-mono text-[11px] font-semibold tracking-widest text-ink uppercase transition-colors hover:bg-lime"
+              className="rounded-full bg-bone px-6 py-3.5 font-mono text-[11px] font-semibold tracking-widest text-ink uppercase transition-all hover:scale-[1.02] hover:bg-white"
             >
               {t.ctaWork}
             </a>
             <a
               href={`/${t.locale}/about`}
-              className="-ml-px border border-white/20 bg-black/30 px-6 py-3.5 font-mono text-[11px] tracking-widest text-bone uppercase transition-colors hover:border-lime hover:text-lime"
+              className="rounded-full border border-white/12 bg-white/[0.06] px-6 py-3.5 font-mono text-[11px] tracking-widest text-bone uppercase transition-colors hover:border-white/25 hover:bg-white/[0.1]"
             >
               {t.ctaAbout}
             </a>
@@ -192,7 +186,7 @@ export function Hero({ t }: { t: HeroStrings }) {
         <div
           data-hero-phases
           aria-hidden
-          className="pointer-events-none absolute right-8 top-24 hidden flex-col items-end gap-2 border-r border-white/20 pr-4 font-mono text-[9px] tracking-[0.24em] text-bone-dim uppercase lg:flex motion-reduce:hidden"
+          className="hero-panel pointer-events-none absolute right-8 top-24 hidden flex-col items-end gap-2 rounded-2xl px-4 py-3 font-mono text-[9px] tracking-[0.24em] text-bone-dim uppercase lg:flex motion-reduce:hidden"
         >
           <span data-phase="one" className="text-lime">01 · {tr ? "Kimlik" : "Identity"}</span>
           <span data-phase="two" className="opacity-30">02 · {tr ? "Madde" : "Matter"}</span>
@@ -201,7 +195,7 @@ export function Hero({ t }: { t: HeroStrings }) {
 
         <p
           data-hero-hint
-          className="pointer-events-none absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 border border-white/15 bg-black/55 px-4 py-2 font-mono text-[10px] tracking-widest text-bone-dim/70 uppercase motion-reduce:hidden"
+          className="pointer-events-none absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 py-2 font-mono text-[10px] tracking-widest text-bone-dim/70 uppercase motion-reduce:hidden"
         >
           {t.scrollHint} <span aria-hidden className="text-lime">↓</span>
         </p>

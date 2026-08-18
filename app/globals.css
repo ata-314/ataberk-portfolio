@@ -111,33 +111,6 @@ html:not([data-stage-ready="true"]):not([data-stage-static="true"])
     linear-gradient(180deg, rgba(10, 10, 11, 0.44) 0%, transparent 22%, transparent 72%, rgba(10, 10, 11, 0.46) 100%);
 }
 
-.brutal-marquee {
-  position: absolute;
-  inset-inline: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  font-family: var(--font-archivo), sans-serif;
-  font-size: clamp(5rem, 13vw, 12.5rem);
-  font-weight: 700;
-  line-height: 0.78;
-  letter-spacing: -0.065em;
-  color: transparent;
-  -webkit-text-stroke: 1px rgba(243, 239, 231, 0.105);
-  pointer-events: none;
-}
-
-.brutal-marquee-track {
-  display: inline-block;
-  min-width: max-content;
-  padding-left: 100%;
-  will-change: transform;
-  animation: brutalMarquee 24s linear infinite;
-}
-
-@keyframes brutalMarquee {
-  to { transform: translateX(-100%); }
-}
-
 /* Terminal identity: a fixed-width shell keeps the first character anchored
    while the name types, holds, deletes and returns without shifting layout. */
 .hero-type-shell {
@@ -270,19 +243,31 @@ html:not([data-stage-ready="true"]):not([data-stage-static="true"])
    Use an optically translucent material without live backdrop sampling: this
    avoids a large 44px blur repaint on every bird frame, especially in Safari. */
 .hero-panel {
-  background: transparent;
-  border: 0;
-  border-left: 2px solid var(--lime);
-  border-radius: 0;
-  box-shadow: none;
+  background: linear-gradient(
+    145deg,
+    rgba(29, 29, 32, 0.88),
+    rgba(11, 11, 13, 0.82) 55%,
+    rgba(23, 23, 26, 0.86)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: clamp(1.5rem, 2.5vw, 2.4rem);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 32px 90px -42px rgba(0, 0, 0, 0.98);
 }
 
 .hero-focus {
   position: relative;
   isolation: isolate;
-  padding-block: clamp(1.5rem, 4vw, 3rem);
-  border-block: 1px solid rgba(255, 255, 255, 0.13);
-  background: linear-gradient(90deg, rgba(10, 10, 11, 0.78), rgba(10, 10, 11, 0.12) 72%, transparent);
+  padding: clamp(1.75rem, 4vw, 3.75rem);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: clamp(1.75rem, 4vw, 3.25rem);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08), transparent 38%),
+    linear-gradient(145deg, rgba(16, 16, 18, 0.72), rgba(9, 9, 10, 0.5));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 36px 120px -58px rgba(0, 0, 0, 0.95);
 }
 
 .hero-focus::after {
@@ -290,10 +275,8 @@ html:not([data-stage-ready="true"]):not([data-stage-static="true"])
   position: absolute;
   inset: 0;
   z-index: -1;
-  width: min(34vw, 30rem);
-  left: auto;
-  background: var(--lime);
-  opacity: 0.035;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 20%, rgba(200, 255, 62, 0.035), transparent 72%);
   pointer-events: none;
 }
 
@@ -310,20 +293,26 @@ html:not([data-stage-ready="true"]):not([data-stage-static="true"])
 }
 
 .nav-shell {
-  background: rgba(10, 10, 11, 0.86);
-  border-block: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: none;
-  -webkit-backdrop-filter: blur(10px) saturate(1.1);
-  backdrop-filter: blur(10px) saturate(1.1);
+  background: linear-gradient(180deg, rgba(29, 29, 31, 0.88), rgba(16, 16, 18, 0.82));
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 18px 50px -30px rgba(0, 0, 0, 0.92);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
 }
 
 .work-intro-shell {
   position: relative;
   overflow: hidden;
-  border-block: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: clamp(1.75rem, 3vw, 3rem);
+  background:
+    radial-gradient(circle at 88% 8%, rgba(200, 255, 62, 0.075), transparent 30%),
+    linear-gradient(145deg, rgba(25, 25, 28, 0.86), rgba(12, 12, 14, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 42px 100px -64px rgba(0, 0, 0, 0.98);
 }
 
 /* Empty, production-ready media planes. They establish crop and rhythm now;
@@ -337,7 +326,7 @@ html:not([data-stage-ready="true"]):not([data-stage-static="true"])
     radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.045), transparent 42%),
     linear-gradient(145deg, #1a1a1d, #111113 64%, #161618);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0;
+  border-radius: clamp(1.25rem, 2.2vw, 2.35rem);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     0 32px 90px -56px rgba(0, 0, 0, 0.95);

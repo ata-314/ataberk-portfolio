@@ -84,12 +84,6 @@ export function WorkSection({ locale, visualLabel }: { locale: Locale; visualLab
     >
       <div className="mx-auto max-w-7xl">
         <div data-reveal className="work-intro-shell grid gap-10 p-7 md:grid-cols-12 md:p-12 lg:p-16">
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -right-3 -bottom-14 font-display text-[11rem] leading-none font-bold tracking-[-0.08em] text-white/[0.025] md:text-[18rem]"
-          >
-            01
-          </span>
           <div className="md:col-span-7">
             <div className="flex items-center gap-3">
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime shadow-[0_0_14px_rgba(200,255,62,0.65)]" />
@@ -112,7 +106,7 @@ export function WorkSection({ locale, visualLabel }: { locale: Locale; visualLab
             </p>
             <div className="flex flex-wrap gap-2">
               {["AI Systems", "Creative Development", "Motion + 3D"].map((label) => (
-                <span key={label} className="border border-white/15 bg-white/[0.035] px-3 py-2 font-mono text-[9px] tracking-[0.14em] text-bone-dim uppercase">
+                <span key={label} className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 font-mono text-[9px] tracking-[0.14em] text-bone-dim uppercase">
                   {label}
                 </span>
               ))}
