@@ -233,9 +233,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.useProgram(program);
 
     const mobile = window.matchMedia("(pointer: coarse)").matches || innerWidth < 768;
-    const count = mobile ? 5200 : 18000;
-    const birdCount = mobile ? 2000 : 5000;
-    const flightCount = mobile ? 2800 : 8000;
+    const count = mobile ? 7000 : 24000;
+    const birdCount = mobile ? 2400 : 6000;
+    const flightCount = mobile ? 3000 : 7500;
     let randomState = 0x9e3779b9;
     const random = () => {
       randomState ^= randomState << 13;
@@ -340,23 +340,28 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.uniform1i(u("uAtlas"), 3);
 
     let birdReady = 0;
-    void fetch("/models/bird-bake.bin")
-      .then((response) => {
-        if (!response.ok) throw new Error(`bird bake: ${response.status}`);
-        return response.arrayBuffer();
-      })
-      .then((buffer) => {
-        if (disposed || buffer.byteLength !== (POSITION_ELEMENTS + NORMAL_ELEMENTS) * 2) return;
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, positionTexture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, TEX_W, TEX_H, 0, gl.RGBA, gl.HALF_FLOAT, new Uint16Array(buffer, 0, POSITION_ELEMENTS));
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, normalTexture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, TEX_W, ROWS_PER_FRAME, 0, gl.RGBA, gl.HALF_FLOAT, new Uint16Array(buffer, POSITION_ELEMENTS * 2, NORMAL_ELEMENTS));
-        birdReady = 1;
-      })
-      .catch((error) => console.error("bird texture failed:", error));
+    try {
+      const response = await fetch("/models/bird-bake.bin");
+      if (!response.ok) throw new Error(`bird bake: ${response.status}`);
+      const buffer = await response.arrayBuffer();
+      if (disposed) return;
+      if (buffer.byteLength !== (POSITION_ELEMENTS + NORMAL_ELEMENTS) * 2) {
+        throw new Error("bird texture has an unexpected byte length");
+      }
+      // Upload before the RAF loop exists. Previously this asynchronous upload
+      // could land during the first scroll and create a random 50–100ms stall.
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, positionTexture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, TEX_W, TEX_H, 0, gl.RGBA, gl.HALF_FLOAT, new Uint16Array(buffer, 0, POSITION_ELEMENTS));
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, normalTexture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, TEX_W, ROWS_PER_FRAME, 0, gl.RGBA, gl.HALF_FLOAT, new Uint16Array(buffer, POSITION_ELEMENTS * 2, NORMAL_ELEMENTS));
+      birdReady = 1;
+      await yieldTask();
+    } catch (error) {
+      console.error("bird texture failed:", error);
+    }
 
     // The original full-bleed liquid data painting stays visible while the
     // bird gathers. GPU uploads stop on scroll, while the last uploaded frame
@@ -532,7 +537,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uFlap"), flap);
       gl.uniform1f(u("uBirdReady"), readyMix);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      const flightLoad = smoothstep(hero, 0.08, 0.34);
+      // Use undamped scroll intent for workload shedding: the dense opening
+      // remains rich at rest, then drops its draw budget before the cinematic
+      // interpolation catches up, avoiding a heavy first-scroll frame.
+      const flightLoad = smoothstep(scrollState.hero.current, 0.015, 0.2);
       const drawCount = Math.round(mix(count, flightCount, flightLoad));
       gl.drawArrays(gl.POINTS, 0, drawCount);
       if (firstFrame) {
