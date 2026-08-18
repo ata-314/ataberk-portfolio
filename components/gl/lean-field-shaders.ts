@@ -64,35 +64,41 @@ void main() {
     sin((aHome.x + aHome.y) * 0.43 + phase * 0.65)
   ) * 0.28;
   vec3 field = aHome + flow;
-  vVideo = texture2D(uVideoTex, aGrid).rgb;
-  float luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
-  vec2 centered = aGrid - 0.5;
-  vec3 sheet = vec3(
-    centered.x * 11.8,
-    centered.y * 7.2,
-    centered.y * -1.2 + luminance * 1.8
-  );
-  float melt = (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0)) * uMeltScale;
-  float edge = max(
-    smoothstep(0.26, 0.5, abs(centered.x)),
-    smoothstep(0.24, 0.5, abs(centered.y))
-  );
-  float lowBand = sin(aGrid.y * 19.0 + uTime * 0.31 + aSeed * 0.07);
-  float crossBand = cos(aGrid.x * 17.0 - uTime * 0.27 + aSeed * 0.05);
-  vec2 liquid = vec2(lowBand, crossBand) * (0.045 + (1.0 - luminance) * 0.075 + melt * 0.34);
-  liquid += vec2(
-    sin(centered.y * 9.0 + uTime * 0.85 + aSeed * 0.1),
-    cos(centered.x * 8.0 - uTime * 0.75)
-  ) * edge * (0.28 + melt * 0.55);
-  vec2 vortexA = sheet.xy - uVortexA.xy;
-  vec2 vortexB = sheet.xy - uVortexB.xy;
-  float distanceA = length(vortexA) + 0.001;
-  float distanceB = length(vortexB) + 0.001;
-  liquid += vec2(-vortexA.y, vortexA.x) / distanceA * exp(-distanceA * 0.55) * 0.24;
-  liquid += vec2(vortexB.y, -vortexB.x) / distanceB * exp(-distanceB * 0.6) * 0.2;
-  sheet.xy += liquid * (1.0 + edge * 1.65);
-  sheet.z += (lowBand + crossBand) * 0.055 * melt;
-  field = mix(field, sheet, smoothstep(0.0, 0.72, uVideoOn));
+  vVideo = vec3(0.0);
+  float luminance = 0.0;
+  // Uniform branch: once the liquid painting has handed off, integrated GPUs
+  // skip every video sample, exp and liquid-wave operation during bird flight.
+  if (uVideoOn > 0.015) {
+    vVideo = texture2D(uVideoTex, aGrid).rgb;
+    luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
+    vec2 centered = aGrid - 0.5;
+    vec3 sheet = vec3(
+      centered.x * 11.8,
+      centered.y * 7.2,
+      centered.y * -1.2 + luminance * 1.8
+    );
+    float melt = (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0)) * uMeltScale;
+    float edge = max(
+      smoothstep(0.26, 0.5, abs(centered.x)),
+      smoothstep(0.24, 0.5, abs(centered.y))
+    );
+    float lowBand = sin(aGrid.y * 19.0 + uTime * 0.31 + aSeed * 0.07);
+    float crossBand = cos(aGrid.x * 17.0 - uTime * 0.27 + aSeed * 0.05);
+    vec2 liquid = vec2(lowBand, crossBand) * (0.045 + (1.0 - luminance) * 0.075 + melt * 0.34);
+    liquid += vec2(
+      sin(centered.y * 9.0 + uTime * 0.85 + aSeed * 0.1),
+      cos(centered.x * 8.0 - uTime * 0.75)
+    ) * edge * (0.28 + melt * 0.55);
+    vec2 vortexA = sheet.xy - uVortexA.xy;
+    vec2 vortexB = sheet.xy - uVortexB.xy;
+    float distanceA = length(vortexA) + 0.001;
+    float distanceB = length(vortexB) + 0.001;
+    liquid += vec2(-vortexA.y, vortexA.x) / distanceA * exp(-distanceA * 0.55) * 0.24;
+    liquid += vec2(vortexB.y, -vortexB.x) / distanceB * exp(-distanceB * 0.6) * 0.2;
+    sheet.xy += liquid * (1.0 + edge * 1.65);
+    sheet.z += (lowBand + crossBand) * 0.055 * melt;
+    field = mix(field, sheet, smoothstep(0.0, 0.72, uVideoOn));
+  }
   vec3 point = field;
   float alpha = 1.0;
   float energy = 0.08 + luminance * uVideoOn * 0.22 + 0.1 * sin(aSeed + uTime * 0.08);

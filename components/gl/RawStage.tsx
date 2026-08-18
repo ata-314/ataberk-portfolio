@@ -233,8 +233,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.useProgram(program);
 
     const mobile = window.matchMedia("(pointer: coarse)").matches || innerWidth < 768;
-    const count = mobile ? 9000 : 30000;
+    const count = mobile ? 6500 : 22000;
     const birdCount = mobile ? 2000 : 5000;
+    const flightCount = mobile ? 3600 : 10000;
     let randomState = 0x9e3779b9;
     const random = () => {
       randomState ^= randomState << 13;
@@ -370,6 +371,22 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     videoSurface.width = 640;
     videoSurface.height = 360;
     const videoContext = videoSurface.getContext("2d", { alpha: false });
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      videoSurface.width,
+      videoSurface.height,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      null,
+    );
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     let videoReady = 0;
     let videoPaused = false;
     let lastVideoUpload = -1;
@@ -456,12 +473,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       pointerSmooth[1] = damp(pointerSmooth[1], pointer[1], 7, delta);
       if (waveAge >= 0) waveAge = waveAge > 3.5 ? -1 : waveAge + delta;
 
-      const targetVideo = videoReady * (1 - smoothstep(hero, 0.58, 0.82));
-      videoMix = damp(videoMix, targetVideo, 8, delta);
-      if (hero > 0.16 && !videoPaused) {
+      const targetVideo = videoReady * (1 - smoothstep(hero, 0.14, 0.38));
+      videoMix = damp(videoMix, targetVideo, 12, delta);
+      if (hero > 0.025 && !videoPaused) {
         video.pause();
         videoPaused = true;
-      } else if (hero < 0.035 && videoPaused) {
+      } else if (hero < 0.006 && videoPaused) {
         videoPaused = false;
         void video.play().catch(() => (videoReady = 0));
       }
@@ -476,9 +493,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, videoTexture);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoSurface);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, videoSurface);
       }
 
       const flight = flightAt(hero, scrollState.page.current, pointerSmooth, pointerActive);
@@ -514,7 +529,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uFlap"), flap);
       gl.uniform1f(u("uBirdReady"), readyMix);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.drawArrays(gl.POINTS, 0, count);
+      const flightLoad = smoothstep(hero, 0.08, 0.34);
+      const drawCount = Math.round(mix(count, flightCount, flightLoad));
+      gl.drawArrays(gl.POINTS, 0, drawCount);
       if (firstFrame) {
         firstFrame = false;
         onReady?.();
