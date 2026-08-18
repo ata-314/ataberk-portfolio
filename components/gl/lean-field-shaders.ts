@@ -17,6 +17,8 @@ uniform mat4 uBirdMat;
 uniform vec3 uBirdDir;
 uniform sampler2D uPosTex;
 uniform sampler2D uNrmTex;
+uniform sampler2D uVideoTex;
+uniform float uVideoOn;
 uniform float uTexW;
 uniform float uTexH;
 uniform float uRowsPerFrame;
@@ -35,6 +37,8 @@ varying float vBird;
 varying float vAlpha;
 varying float vEnergy;
 varying float vDepth;
+varying vec3 vVideo;
+varying float vVideoMix;
 
 vec3 birdPosition(float index, float frame) {
   float row = frame * uRowsPerFrame + floor(index / uTexW);
@@ -57,9 +61,21 @@ void main() {
     sin((aHome.x + aHome.y) * 0.43 + phase * 0.65)
   ) * 0.28;
   vec3 field = aHome + flow;
+  vVideo = texture2D(uVideoTex, aGrid).rgb;
+  float luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
+  vec3 sheet = vec3(
+    (aGrid.x - 0.5) * 8.8,
+    (aGrid.y - 0.5) * 5.15,
+    luminance * 1.65 - 0.75
+  );
+  sheet.xy += vec2(
+    sin(aGrid.y * 6.28 + uTime * 0.11),
+    cos(aGrid.x * 6.28 - uTime * 0.09)
+  ) * 0.075;
+  field = mix(field, sheet, smoothstep(0.0, 0.82, uVideoOn));
   vec3 point = field;
   float alpha = 1.0;
-  float energy = 0.08 + 0.12 * sin(aSeed + uTime * 0.08);
+  float energy = 0.08 + luminance * uVideoOn * 0.22 + 0.1 * sin(aSeed + uTime * 0.08);
   float bird = step(0.0, aBird) * smoothstep(0.08, 0.85, uBirdReady);
   if (bird > 0.001) {
     float frame = uFlap * uFrames;
@@ -106,7 +122,9 @@ void main() {
   vAlpha = alpha * appear;
   vEnergy = clamp(energy, 0.0, 1.0);
   vDepth = clamp((-view.z - 3.0) / 10.0, 0.0, 1.0);
+  vVideoMix = uVideoOn * (1.0 - bird) * (1.0 - uFinale);
   float size = mix(0.5 + seed * 0.45, 0.7 + seed * 0.8, bird);
+  size = mix(size, 1.3 + seed * 0.38, vVideoMix);
   gl_PointSize = uSize * size / -view.z;
 }
 `;
@@ -122,6 +140,8 @@ varying float vBird;
 varying float vAlpha;
 varying float vEnergy;
 varying float vDepth;
+varying vec3 vVideo;
+varying float vVideoMix;
 
 void main() {
   if (vAlpha < 0.01) discard;
@@ -136,6 +156,9 @@ void main() {
     shape = smoothstep(0.5, 0.08, radius);
   }
   vec3 color = mix(uColorBase, uColorCyan, vDepth * 0.3 + 0.06);
+  float luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
+  vec3 videoColor = clamp(mix(vec3(luminance), vVideo, 1.35) * vec3(1.06, 1.02, 0.96), 0.0, 1.0);
+  color = mix(color, videoColor, vVideoMix * 0.94);
   color = mix(color, uColorAccent, smoothstep(0.38, 1.0, vEnergy));
   gl_FragColor = vec4(color, shape * vAlpha * (0.48 + vBird * 0.22 + vEnergy * 0.24));
 }

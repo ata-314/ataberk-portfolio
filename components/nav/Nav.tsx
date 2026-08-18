@@ -83,13 +83,13 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-50 px-3 md:px-6">
-      <div className="nav-shell pointer-events-auto relative mx-auto mt-3 flex max-w-5xl items-center justify-between overflow-hidden rounded-full px-2.5 py-2 md:mt-4 md:pl-3 md:pr-2">
+      <div className="nav-shell pointer-events-auto relative mx-auto mt-3 flex max-w-7xl items-center justify-between overflow-hidden px-2.5 py-2 md:mt-4 md:pl-3 md:pr-2">
         <Link
           href={`/${locale}`}
-          className="flex items-center gap-2.5 rounded-full px-2 py-1.5 font-display text-sm font-semibold tracking-tight transition-opacity hover:opacity-75"
+          className="flex items-center gap-2.5 px-2 py-1.5 font-display text-sm font-semibold tracking-tight transition-opacity hover:opacity-75"
           aria-label="Ataberk Soylu"
         >
-          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-full border border-lime/25 bg-lime/[0.08] font-mono text-[9px] tracking-[-0.08em] text-lime shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+          <span aria-hidden className="grid h-7 w-7 place-items-center border border-lime/50 bg-lime/[0.08] font-mono text-[9px] tracking-[-0.08em] text-lime">
             AS
           </span>
           <span className="hidden sm:inline">Ataberk Soylu</span>
@@ -99,9 +99,9 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
             <Link
               key={l.label}
               href={l.href}
-              className={`rounded-full px-3 py-2 text-[12px] transition-colors ${
+              className={`border-l border-white/10 px-3 py-2 text-[11px] uppercase transition-colors ${
                 i === links.length - 1
-                  ? "ml-1 bg-bone text-ink hover:bg-white"
+                  ? "ml-1 border-lime bg-lime text-ink hover:bg-bone"
                   : "text-bone-dim hover:bg-white/[0.07] hover:text-bone"
               }`}
             >
@@ -110,7 +110,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
           ))}
           <Link
             href={otherPath}
-            className="ml-1 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 font-mono text-[9px] tracking-[0.18em] text-bone-dim uppercase transition-colors hover:border-white/20 hover:text-bone"
+            className="ml-1 border border-white/15 bg-white/[0.04] px-3 py-2 font-mono text-[9px] tracking-[0.18em] text-bone-dim uppercase transition-colors hover:border-lime hover:text-lime"
             aria-label={other === "en" ? "Switch to English" : "Türkçeye geç"}
           >
             {other.toUpperCase()}
@@ -120,7 +120,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
           ref={menuButton}
           type="button"
           onClick={() => setOpen(true)}
-          className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[11px] text-bone md:hidden"
+          className="border border-white/15 bg-white/[0.06] px-4 py-2 text-[11px] text-bone uppercase md:hidden"
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls="mobile-navigation"
