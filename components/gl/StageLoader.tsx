@@ -12,9 +12,10 @@ export default function StageLoader() {
     const canvas = document.createElement("canvas");
     if (!canvas.getContext("webgl2")) return;
 
-    // Warm fine-pointer desktops while the browser is idle, before a likely
-    // scroll. Direct wheel input is debounced so Canvas creation never lands
-    // inside the active gesture. Coarse/mobile devices stay interaction-gated.
+    // Warm the WebGL stage while the visitor is reading the opening, before a
+    // likely scroll. Direct wheel input is still debounced so Canvas creation
+    // never lands inside the active gesture. Mobile needs this warm-up too:
+    // evaluating the Three/R3F chunk on its first scroll causes a visible hitch.
     let started = false;
     let wheelTimer: ReturnType<typeof setTimeout> | undefined;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -34,12 +35,13 @@ export default function StageLoader() {
     }
     window.addEventListener("wheel", onWheel, { passive: true });
 
-    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-      if ("requestIdleCallback" in window) {
-        idleId = window.requestIdleCallback(activate, { timeout: 1400 });
-      } else {
-        idleTimer = setTimeout(activate, 900);
-      }
+    const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if ("requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(activate, {
+        timeout: finePointer ? 1400 : 2200,
+      });
+    } else {
+      idleTimer = setTimeout(activate, finePointer ? 900 : 1800);
     }
 
     return () => {
