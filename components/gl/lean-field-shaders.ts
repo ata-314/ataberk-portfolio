@@ -28,6 +28,8 @@ uniform float uRowsPerFrame;
 uniform float uFrames;
 uniform float uFlap;
 uniform float uBirdReady;
+uniform vec2 uTide;
+uniform vec4 uEdgeAges;
 
 attribute vec3 aHome;
 attribute vec2 aGrid;
@@ -46,6 +48,12 @@ varying float vLight;
 varying float vElectric;
 varying float vPigment;
 varying float vPigmentDensity;
+
+// Inward directions for the frame edges: left, right, bottom, top. Edge waves
+// travel along these when the fluid body strikes the border of the viewport.
+const vec2 EDGE_INWARD[4] = vec2[4](
+  vec2(1.0, 0.0), vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(0.0, -1.0)
+);
 
 vec3 birdPosition(float index, float frame) {
   float row = frame * uRowsPerFrame + floor(index / uTexW);
@@ -71,6 +79,7 @@ void main() {
   vVideo = vec3(0.0);
   float luminance = 0.0;
   float pigmentDensity = 0.0;
+  float edgeGlow = 0.0;
   // Uniform branch: once the liquid painting has handed off, integrated GPUs
   // skip every video sample, exp and liquid-wave operation during bird flight.
   if (uVideoOn > 0.015) {
@@ -98,12 +107,28 @@ void main() {
       + sin(centered.y * 3.0 - uTime * 0.16) * 1.8
       + uTime * 0.22
     );
+    float slowSwell = sin(
+      centered.y * 4.2
+      - uTime * 0.24
+      + sin(centered.x * 3.1 + uTime * 0.12) * 1.4
+    );
     vec2 liquid = vec2(lowBand, crossBand) * (0.045 + (1.0 - luminance) * 0.075 + melt * 0.34);
     liquid += vec2(pigmentFold, -pigmentFold) * (0.035 + pigmentDensity * 0.075);
+    liquid += vec2(
+      cos(centered.y * 3.6 - uTime * 0.18),
+      slowSwell
+    ) * (0.055 + pigmentDensity * 0.06);
     liquid += vec2(
       sin(centered.y * 9.0 + uTime * 0.85 + aSeed * 0.1),
       cos(centered.x * 8.0 - uTime * 0.75)
     ) * edge * (0.28 + melt * 0.55);
+    // Domain-warped advection: nested sines approximate curl noise, so the
+    // pigment streams shear and fold instead of oscillating in place.
+    vec2 warp = vec2(
+      sin(sheet.y * 1.9 + uTime * 0.5 + sin(sheet.x * 1.1 + uTime * 0.23) * 2.1),
+      cos(sheet.x * 1.6 - uTime * 0.44 + sin(sheet.y * 1.35 - uTime * 0.31) * 1.9)
+    );
+    liquid += warp * (0.05 + pigmentDensity * 0.055);
     vec2 vortexA = sheet.xy - uVortexA.xy;
     vec2 vortexB = sheet.xy - uVortexB.xy;
     float distanceA = length(vortexA) + 0.001;
@@ -112,12 +137,28 @@ void main() {
     liquid += vec2(vortexB.y, -vortexB.x) / distanceB * exp(-distanceB * 0.6) * 0.2;
     sheet.xy += liquid * (1.0 + edge * 1.65);
     sheet.z += (lowBand + crossBand) * 0.055 * melt
-      + pigmentFold * (0.08 + pigmentDensity * 0.15);
+      + pigmentFold * (0.08 + pigmentDensity * 0.15)
+      + slowSwell * (0.07 + pigmentDensity * 0.12);
+    // Slosh: the whole fluid body leans with a slow tide and piles up against
+    // the frame; when it strikes an edge the CPU fires that edge's wave and a
+    // ring travels back through the pigment.
+    sheet.xy += uTide * (0.3 + pigmentDensity * 0.25);
+    vec4 edgeDist = vec4(sheet.x + 5.4, 5.4 - sheet.x, sheet.y + 3.2, 3.2 - sheet.y);
+    for (int i = 0; i < 4; i++) {
+      float age = uEdgeAges[i];
+      if (age >= 0.0) {
+        float ring = exp(-pow((edgeDist[i] - age * 3.3) * 1.12, 2.0)) * exp(-age * 1.05);
+        sheet.xy += EDGE_INWARD[i] * ring * 0.5;
+        sheet.z += ring * 0.34;
+        edgeGlow += ring;
+      }
+    }
     field = mix(field, sheet, smoothstep(0.0, 0.72, uVideoOn));
   }
   vec3 point = field;
   float alpha = 1.0;
-  float energy = 0.08 + luminance * uVideoOn * 0.22 + 0.1 * sin(aSeed + uTime * 0.08);
+  float energy = 0.08 + luminance * uVideoOn * 0.22 + 0.1 * sin(aSeed + uTime * 0.08)
+    + edgeGlow * 0.85;
   float light = 1.0;
   float electric = 0.0;
   // At rest every point belongs to the video painting. Bird anatomy and its
@@ -221,9 +262,9 @@ void main() {
   );
   vPigmentDensity = pigmentDensity;
   float size = mix(0.5 + seed * 0.45, 0.7 + seed * 0.8, bird);
-  // Broad translucent particles overlap into pigment clouds; dense highlights
-  // retain a tighter core, keeping the source video's motion legible.
-  float pigmentSize = mix(2.8 + seed * 0.9, 1.7 + seed * 0.55, pigmentDensity);
+  // Compact particles keep the fluid field crisp; darker matter remains just
+  // large enough to build depth without turning into low-resolution blobs.
+  float pigmentSize = mix(1.85 + seed * 0.38, 1.15 + seed * 0.3, pigmentDensity);
   size = mix(size, pigmentSize, vVideoMix);
   size *= 1.0 + electric * 0.75;
   gl_PointSize = uSize * size / -view.z;
@@ -232,9 +273,17 @@ void main() {
 
 export const leanFragment = /* glsl */ `
 uniform sampler2D uAtlas;
+uniform float uTime;
+uniform vec2 uResolution;
 uniform vec3 uColorBase;
 uniform vec3 uColorAccent;
 uniform vec3 uColorCyan;
+// Living gradient for the fluid state — four stops (deep, mid, bright, peak)
+// crossfaded on the CPU between curated palettes, Unsupervised-style.
+uniform vec3 uGradA;
+uniform vec3 uGradB;
+uniform vec3 uGradC;
+uniform vec3 uGradD;
 
 varying float vGlyph;
 varying float vBird;
@@ -258,30 +307,56 @@ void main() {
     shape = max(shape, electricHalo * vElectric * 0.72);
     if (shape < 0.12) discard;
   } else {
+    // Hard-rimmed disc with an anti-aliased edge exactly one pixel wide: the
+    // particle reads as a crisp droplet at any DPR instead of a soft blob.
     float radius = length(gl_PointCoord - 0.5);
-    if (radius > 0.5) discard;
-    float haze = smoothstep(0.5, 0.02, radius);
-    float core = smoothstep(0.2, 0.015, radius);
-    shape = mix(haze * 0.34, haze * 0.58 + core * 0.42, vPigmentDensity);
+    float edge = max(fwidth(radius), 0.004);
+    if (radius > 0.46 + edge) discard;
+    float disc = 1.0 - smoothstep(0.44 - edge, 0.46 + edge, radius);
+    float core = 1.0 - smoothstep(0.05, 0.3, radius);
+    shape = disc * (
+      mix(0.3, 0.46, vPigmentDensity)
+      + core * mix(0.48, 0.72, vPigmentDensity)
+    );
   }
   vec3 color = mix(uColorBase, uColorCyan, vDepth * 0.3 + 0.06);
   float luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
-  // The source video drives density and motion only. Its original RGB is
-  // recolored into the same bone / cyan / electric-lime family as the bird.
-  vec3 deepCyan = uColorCyan * vec3(0.11, 0.23, 0.27);
-  vec3 videoColor = mix(deepCyan, uColorCyan, smoothstep(0.04, 0.48, luminance));
-  videoColor = mix(videoColor, uColorBase, smoothstep(0.34, 0.72, vPigment));
-  float lime = smoothstep(0.72, 0.98, luminance + vPigmentDensity * 0.22);
-  videoColor = mix(videoColor, uColorAccent, lime * (0.58 + vEnergy * 0.28));
-  color = mix(color, videoColor, vVideoMix * 0.96);
-  color = mix(color, uColorAccent, smoothstep(0.38, 1.0, vEnergy));
+  // The source RGB becomes a density field graded through the living palette:
+  // deep tones in quiet pockets, the peak stop at the energetic crests. The
+  // per-particle pigment phase spreads neighbours across the ramp so the
+  // fluid shimmers with hue variation instead of banding.
+  float rampLevel = clamp(
+    luminance * 0.82
+    + vPigmentDensity * 0.2
+    + (1.0 - vDepth) * 0.05
+    + (vPigment - 0.5) * 0.16,
+    0.0, 1.0);
+  vec3 videoColor = mix(uGradA, uGradB, smoothstep(0.015, 0.3, rampLevel));
+  videoColor = mix(videoColor, uGradC, smoothstep(0.3, 0.68, rampLevel));
+  videoColor = mix(videoColor, uGradD, smoothstep(0.68, 0.98, rampLevel));
+
+  // A restrained scanner occasionally crosses the particle field. Fine
+  // secondary lines surface briefly around it instead of sitting permanently.
+  float screenY = gl_FragCoord.y / max(uResolution.y, 1.0);
+  float scanGate = smoothstep(0.68, 0.94, 0.5 + 0.5 * sin(uTime * 0.52));
+  float scanHead = fract(uTime * 0.075);
+  float scanBand = exp(-pow((screenY - scanHead) * 64.0, 2.0));
+  float scanEcho = exp(-pow((screenY - scanHead + 0.016) * 92.0, 2.0));
+  float scanGrain = smoothstep(0.82, 1.0, sin(gl_FragCoord.y * 0.72 + uTime * 4.2));
+  float scan = (scanBand + scanEcho * 0.52 + scanGrain * 0.1) * scanGate * vVideoMix;
+  videoColor += uGradD * scan * 0.5;
+
+  color = mix(color, videoColor, vVideoMix * 0.98);
+  color = mix(color, uColorAccent, smoothstep(0.38, 1.0, vEnergy) * (1.0 - vVideoMix));
+  // Edge waves and pointer ripples flare toward the palette's peak stop.
+  color = mix(color, uGradD, smoothstep(0.42, 1.0, vEnergy) * vVideoMix * 0.85);
   color *= mix(1.0, vLight, vBird * (1.0 - vElectric * 0.45));
   vec3 electricColor = mix(uColorCyan, uColorAccent, 0.35 + 0.35 * sin(vGlyph));
   color = mix(color, electricColor, clamp(vElectric * 0.92, 0.0, 0.92));
   color += electricColor * vElectric * 0.42;
   float depthFade = 1.0 - vDepth * 0.48;
   float body = mix(0.5, 0.72, vBird);
-  body = mix(body, 0.54 + vPigmentDensity * 0.2, vVideoMix);
+  body = mix(body, 0.48 + vPigmentDensity * 0.22 + scan * 0.24, vVideoMix);
   gl_FragColor = vec4(color, shape * vAlpha * depthFade * (body + vEnergy * 0.26 + vElectric * 0.34));
 }
 `;

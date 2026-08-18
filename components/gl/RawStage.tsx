@@ -373,8 +373,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     video.playsInline = true;
     video.preload = "auto";
     const videoSurface = document.createElement("canvas");
-    videoSurface.width = 640;
-    videoSurface.height = 360;
+    videoSurface.width = 800;
+    videoSurface.height = 450;
     const videoContext = videoSurface.getContext("2d", { alpha: false });
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, videoTexture);
@@ -412,11 +412,41 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const pointerSmooth: Vec3 = [999, 999, 0];
     let pointerActive = 0;
     let waveAge = -1;
+
+    // Living palette: four Unsupervised-style pigment sets, each a ramp of
+    // deep → mid → bright → peak stops. The CPU crossfades between them and
+    // uploads the blended ramp every frame.
+    const PALETTES: number[][][] = [
+      [[0.01, 0.024, 0.075], [0.031, 0.196, 0.53], [0.164, 0.72, 0.95], [0.83, 0.97, 1.0]],
+      [[0.055, 0.012, 0.11], [0.36, 0.06, 0.52], [0.93, 0.22, 0.6], [1.0, 0.86, 0.93]],
+      [[0.078, 0.024, 0.012], [0.69, 0.17, 0.055], [1.0, 0.58, 0.14], [1.0, 0.93, 0.74]],
+      [[0.006, 0.055, 0.05], [0.02, 0.35, 0.31], [0.2, 0.88, 0.66], [0.88, 1.0, 0.94]],
+    ];
+    const PALETTE_PERIOD = 16;
+    const gradient = new Float32Array(12);
+
+    // Edge waves: left, right, bottom, top. Age -1 = idle; a fired wave
+    // travels inward from its edge for ~4s. The tide fires them when the
+    // fluid body strikes a border; the pointer fires them on contact with
+    // the viewport edge.
+    const edgeAges = new Float32Array([-1, -1, -1, -1]);
+    const edgeCooldownUntil = new Float32Array(4);
+    const fireEdgeWave = (edge: number, cooldown: number) => {
+      if (time < edgeCooldownUntil[edge]) return;
+      edgeCooldownUntil[edge] = time + cooldown;
+      edgeAges[edge] = 0;
+    };
+
     const onPointerMove = (event: PointerEvent) => {
       const aspect = innerWidth / Math.max(innerHeight, 1);
       pointer[0] = (event.clientX / innerWidth * 2 - 1) * (aspect < 1 ? 1.7 : 3.2);
       pointer[1] = -(event.clientY / innerHeight * 2 - 1) * 2;
       pointerActive = mobile ? 0 : 1;
+      const margin = 28;
+      if (event.clientX <= margin) fireEdgeWave(0, 1.4);
+      else if (event.clientX >= innerWidth - margin) fireEdgeWave(1, 1.4);
+      if (event.clientY >= innerHeight - margin) fireEdgeWave(2, 1.4);
+      else if (event.clientY <= margin) fireEdgeWave(3, 1.4);
     };
     const onPointerLeave = () => (pointerActive = 0);
     const onPointerDown = (event: PointerEvent) => {
@@ -432,7 +462,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const birdMatrix = new Float32Array(16);
     let pixelRatio = 1;
     const resize = () => {
-      pixelRatio = Math.min(devicePixelRatio, 1);
+      // Full-resolution rendering keeps the droplets pixel-crisp on retina
+      // displays; the point budget is small enough that fill cost stays low.
+      pixelRatio = Math.min(devicePixelRatio, mobile ? 1.5 : 2);
       const width = Math.round(innerWidth * pixelRatio);
       const height = Math.round(innerHeight * pixelRatio);
       if (canvas.width !== width || canvas.height !== height) {
@@ -483,6 +515,29 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       pointerSmooth[1] = damp(pointerSmooth[1], pointer[1], 7, delta);
       if (waveAge >= 0) waveAge = waveAge > 3.5 ? -1 : waveAge + delta;
 
+      // Two superposed slow sines per axis make the tide irregular: the fluid
+      // leans, strikes a border, and that edge's wave fires with a cooldown.
+      const tideX = Math.sin(time * 0.16) * 0.62 + Math.sin(time * 0.071 + 1.7) * 0.38;
+      const tideY = Math.sin(time * 0.118 + 0.8) * 0.5 + Math.sin(time * 0.053) * 0.24;
+      if (tideX < -0.86) fireEdgeWave(0, 5.5);
+      else if (tideX > 0.86) fireEdgeWave(1, 5.5);
+      if (tideY < -0.6) fireEdgeWave(2, 5.5);
+      else if (tideY > 0.6) fireEdgeWave(3, 5.5);
+      for (let i = 0; i < 4; i++) {
+        if (edgeAges[i] >= 0) edgeAges[i] = edgeAges[i] > 4 ? -1 : edgeAges[i] + delta;
+      }
+
+      const cyclePos = time / PALETTE_PERIOD;
+      const paletteIndex = Math.floor(cyclePos) % PALETTES.length;
+      const current = PALETTES[paletteIndex];
+      const upcoming = PALETTES[(paletteIndex + 1) % PALETTES.length];
+      const fade = smoothstep(cyclePos - Math.floor(cyclePos), 0.62, 1);
+      for (let stop = 0; stop < 4; stop++) {
+        for (let channel = 0; channel < 3; channel++) {
+          gradient[stop * 3 + channel] = mix(current[stop][channel], upcoming[stop][channel], fade);
+        }
+      }
+
       const targetVideo = videoReady * (1 - smoothstep(hero, 0.14, 0.38));
       videoMix = damp(videoMix, targetVideo, 12, delta);
       if (scrollIntent || hero > 0.025) {
@@ -519,6 +574,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniformMatrix4fv(u("projectionMatrix"), false, projection);
       gl.uniformMatrix4fv(u("modelViewMatrix"), false, view);
       gl.uniformMatrix4fv(u("uBirdMat"), false, birdMatrix);
+      gl.uniform2f(u("uResolution"), canvas.width, canvas.height);
       gl.uniform1f(u("uTime"), time);
       gl.uniform1f(u("uReveal"), reveal);
       gl.uniform1f(u("uHero"), hero);
@@ -529,6 +585,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uPointerVel"), 0.35);
       gl.uniform3f(u("uWaveOrigin"), pointerSmooth[0], pointerSmooth[1], 0);
       gl.uniform1f(u("uWaveAge"), waveAge);
+      gl.uniform2f(u("uTide"), tideX, tideY);
+      gl.uniform4f(u("uEdgeAges"), edgeAges[0], edgeAges[1], edgeAges[2], edgeAges[3]);
+      gl.uniform3f(u("uGradA"), gradient[0], gradient[1], gradient[2]);
+      gl.uniform3f(u("uGradB"), gradient[3], gradient[4], gradient[5]);
+      gl.uniform3f(u("uGradC"), gradient[6], gradient[7], gradient[8]);
+      gl.uniform3f(u("uGradD"), gradient[9], gradient[10], gradient[11]);
       gl.uniform1f(u("uSize"), 40 * pixelRatio * (innerHeight / 900));
       gl.uniform3f(u("uBirdDir"), direction[0], direction[1], direction[2]);
       gl.uniform1f(u("uVideoOn"), videoMix);
