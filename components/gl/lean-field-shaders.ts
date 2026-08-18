@@ -73,8 +73,8 @@ void main() {
     luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
     vec2 centered = aGrid - 0.5;
     vec3 sheet = vec3(
-      centered.x * 11.8,
-      centered.y * 7.2,
+      centered.x * 10.8,
+      centered.y * 6.4,
       centered.y * -1.2 + luminance * 1.8
     );
     float melt = (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0)) * uMeltScale;

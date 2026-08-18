@@ -233,9 +233,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.useProgram(program);
 
     const mobile = window.matchMedia("(pointer: coarse)").matches || innerWidth < 768;
-    const count = mobile ? 6500 : 22000;
+    const count = mobile ? 5200 : 18000;
     const birdCount = mobile ? 2000 : 5000;
-    const flightCount = mobile ? 3600 : 10000;
+    const flightCount = mobile ? 2800 : 8000;
     let randomState = 0x9e3779b9;
     const random = () => {
       randomState ^= randomState << 13;
@@ -359,8 +359,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       .catch((error) => console.error("bird texture failed:", error));
 
     // The original full-bleed liquid data painting stays visible while the
-    // bird gathers. Decoding/upload pauses early, but the last frame keeps
-    // flowing in the shader so video work never competes with the morph.
+    // bird gathers. GPU uploads stop on scroll, while the last uploaded frame
+    // keeps flowing in the shader so video work never competes with the morph.
     const video = document.createElement("video");
     video.src = "/media/hero-source.mp4";
     video.muted = true;
@@ -388,15 +388,20 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     let videoReady = 0;
-    let videoPaused = false;
+    let videoUploadsSuspended = false;
+    let scrollIntent = false;
     let lastVideoUpload = -1;
     video.addEventListener("playing", () => {
       videoReady = 1;
-      videoPaused = false;
+      videoUploadsSuspended = false;
     });
     void video.play().catch(() => {
       videoReady = 0;
     });
+    const onScrollIntent = () => {
+      scrollIntent = window.scrollY > 1;
+    };
+    addEventListener("scroll", onScrollIntent, { passive: true });
 
     const pointer: Vec3 = [999, 999, 0];
     const pointerSmooth: Vec3 = [999, 999, 0];
@@ -465,7 +470,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       last = now;
       time += delta;
       reveal = Math.min(1, reveal + delta / 2.2);
-      hero = damp(hero, scrollState.hero.current, 11, delta);
+      hero = damp(hero, scrollState.hero.current, 24, delta);
       readyMix = damp(readyMix, birdReady, 5, delta);
       dissolve = damp(dissolve, smoothstep(scrollState.page.current, 0.9, 0.97), 5, delta);
       finale = damp(finale, smoothstep(scrollState.page.current, 0.86, 0.97), 5, delta);
@@ -475,16 +480,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
 
       const targetVideo = videoReady * (1 - smoothstep(hero, 0.14, 0.38));
       videoMix = damp(videoMix, targetVideo, 12, delta);
-      if (hero > 0.025 && !videoPaused) {
-        video.pause();
-        videoPaused = true;
-      } else if (hero < 0.006 && videoPaused) {
-        videoPaused = false;
-        void video.play().catch(() => (videoReady = 0));
+      if (scrollIntent || hero > 0.025) {
+        videoUploadsSuspended = true;
+      } else if (hero < 0.006) {
+        videoUploadsSuspended = false;
       }
       if (
         videoContext &&
-        !videoPaused &&
+        !videoUploadsSuspended &&
         video.readyState >= 2 &&
         video.currentTime - lastVideoUpload >= 1 / 20
       ) {
@@ -542,6 +545,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     runtimeCleanup = () => {
       cancelAnimationFrame(frameId);
       removeEventListener("resize", resize);
+      removeEventListener("scroll", onScrollIntent);
       removeEventListener("pointermove", onPointerMove);
       removeEventListener("pointerdown", onPointerDown);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);

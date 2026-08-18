@@ -43,7 +43,7 @@ export function Hero({ t }: { t: HeroStrings }) {
           trigger: root,
           start: "top top",
           end: "bottom bottom",
-          scrub: 0.14,
+          scrub: true,
           onUpdate: (self) => {
             scrollState.hero.current = self.progress;
           },
@@ -100,7 +100,7 @@ export function Hero({ t }: { t: HeroStrings }) {
   return (
     <div
       ref={wrapper}
-      className="relative h-[265svh] md:h-[350svh] motion-reduce:h-auto"
+      className="relative h-[210svh] md:h-[240svh] motion-reduce:h-auto"
     >
       <section
         aria-label={t.name}
