@@ -18,55 +18,38 @@ export function Reveal() {
     () => {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-      gsap.set("[data-reveal]", { opacity: 0, y: 30 });
-      ScrollTrigger.batch("[data-reveal]", {
-        start: "top 88%",
-        end: "bottom 10%",
-        onEnter: (els) =>
-          gsap.to(els, {
-            opacity: 1,
-            y: 0,
-            duration: 0.9,
-            ease: "power3.out",
-            stagger: 0.08,
-            overwrite: true,
-          }),
-        onLeave: (els) =>
-          gsap.to(els, { opacity: 0, y: -24, duration: 0.5, ease: "power2.in", overwrite: true }),
-        onEnterBack: (els) =>
-          gsap.to(els, {
-            opacity: 1,
-            y: 0,
-            duration: 0.7,
-            ease: "power3.out",
-            stagger: 0.06,
-            overwrite: true,
-          }),
-        onLeaveBack: (els) =>
-          gsap.to(els, { opacity: 0, y: 30, duration: 0.5, ease: "power2.in", overwrite: true }),
+      // Copy is scrubbed directly to scroll position: it rises in through the
+      // lower band of the viewport, holds through the middle, and slips out
+      // through the upper band — every pixel of scroll moves the text.
+      document.querySelectorAll<HTMLElement>("[data-reveal]").forEach((el) => {
+        gsap
+          .timeline({
+            scrollTrigger: { trigger: el, start: "top 98%", end: "bottom 2%", scrub: 0.5 },
+          })
+          .fromTo(
+            el,
+            { opacity: 0, y: 44 },
+            { opacity: 1, y: 0, ease: "power2.out", duration: 3 },
+          )
+          .to(el, { opacity: 1, y: 0, duration: 5.5 })
+          .to(el, { opacity: 0, y: -36, ease: "power2.in", duration: 2.5 });
       });
 
-      // Section headings arrive word by word and reverse out the same way.
+      // Section headings decompose word by word on the same scrubbed rail.
       document.querySelectorAll<HTMLElement>("[data-reveal-words]").forEach((heading) => {
         const words = heading.querySelectorAll("[data-word]");
         if (!words.length) return;
-        gsap.fromTo(
-          words,
-          { opacity: 0, y: "0.55em" },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.75,
-            ease: "power3.out",
-            stagger: 0.05,
-            scrollTrigger: {
-              trigger: heading,
-              start: "top 86%",
-              end: "bottom 8%",
-              toggleActions: "play reverse play reverse",
-            },
-          },
-        );
+        gsap
+          .timeline({
+            scrollTrigger: { trigger: heading, start: "top 96%", end: "bottom 4%", scrub: 0.5 },
+          })
+          .fromTo(
+            words,
+            { opacity: 0, y: "0.55em" },
+            { opacity: 1, y: 0, ease: "power2.out", duration: 2.4, stagger: 0.35 },
+          )
+          .to(words, { opacity: 1, duration: 5 })
+          .to(words, { opacity: 0, y: "-0.4em", ease: "power2.in", duration: 2, stagger: 0.2 });
       });
     },
     { dependencies: [pathname], revertOnUpdate: true },

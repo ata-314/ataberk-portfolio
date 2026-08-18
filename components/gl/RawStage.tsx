@@ -470,11 +470,27 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       edgeAges[edge] = 0;
     };
 
+    // Pointer scan: cursor position in the fluid sheet's own coordinate
+    // space (±5.4 × ±3.2) plus a motion-driven sweep strength that charges
+    // while the cursor moves and decays in the render loop when it rests.
+    const scanPointer = [0, 0];
+    const scanSmooth = [0, 0];
+    let scanVelocity = 0;
     const onPointerMove = (event: PointerEvent) => {
       const aspect = innerWidth / Math.max(innerHeight, 1);
       pointer[0] = (event.clientX / innerWidth * 2 - 1) * (aspect < 1 ? 1.7 : 3.2);
       pointer[1] = -(event.clientY / innerHeight * 2 - 1) * 2;
       pointerActive = mobile ? 0 : 1;
+      if (!mobile) {
+        const sx = (event.clientX / innerWidth * 2 - 1) * 5.4;
+        const sy = -(event.clientY / innerHeight * 2 - 1) * 3.2;
+        scanVelocity = Math.min(
+          1.4,
+          scanVelocity + Math.hypot(sx - scanPointer[0], sy - scanPointer[1]) * 0.55,
+        );
+        scanPointer[0] = sx;
+        scanPointer[1] = sy;
+      }
       const margin = 28;
       if (event.clientX <= margin) fireEdgeWave(0, 1.4);
       else if (event.clientX >= innerWidth - margin) fireEdgeWave(1, 1.4);
@@ -639,6 +655,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uPointerVel"), 0.35);
       gl.uniform3f(u("uWaveOrigin"), pointerSmooth[0], pointerSmooth[1], 0);
       gl.uniform1f(u("uWaveAge"), waveAge);
+      scanVelocity *= Math.exp(-2.4 * delta);
+      scanSmooth[0] = damp(scanSmooth[0], scanPointer[0], 11, delta);
+      scanSmooth[1] = damp(scanSmooth[1], scanPointer[1], 11, delta);
+      gl.uniform2f(u("uScanPtr"), scanSmooth[0], scanSmooth[1]);
+      gl.uniform1f(u("uScanVel"), scanVelocity);
       gl.uniform2f(u("uTide"), tideX, tideY);
       gl.uniform4f(u("uEdgeAges"), edgeAges[0], edgeAges[1], edgeAges[2], edgeAges[3]);
       gl.uniform3f(u("uGradA"), gradient[0], gradient[1], gradient[2]);

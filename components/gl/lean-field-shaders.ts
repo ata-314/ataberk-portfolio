@@ -32,6 +32,8 @@ uniform vec2 uTide;
 uniform vec4 uEdgeAges;
 uniform float uIntro;
 uniform float uLineMode;
+uniform vec2 uScanPtr;
+uniform float uScanVel;
 
 attribute vec3 aHome;
 attribute vec2 aGrid;
@@ -83,6 +85,7 @@ void main() {
   float luminance = 0.0;
   float pigmentDensity = 0.0;
   float edgeGlow = 0.0;
+  float pointerScan = 0.0;
   // Uniform branch: once the liquid painting has handed off, integrated GPUs
   // skip every video sample, exp and liquid-wave operation during bird flight.
   if (uVideoOn > 0.015) {
@@ -152,6 +155,15 @@ void main() {
     // the frame; when it strikes an edge the CPU fires that edge's wave and a
     // ring travels back through the pigment.
     sheet.xy += uTide * (0.3 + pigmentDensity * 0.25);
+    // Pointer scanning: moving the cursor sweeps a lime scan through the
+    // pigment — data near the sweep lights up and ripples in its wake, and
+    // the effect fades as the cursor comes to rest.
+    vec2 toScan = sheet.xy - uScanPtr;
+    float scanDist = length(toScan);
+    pointerScan = exp(-scanDist * scanDist * 0.85) * uScanVel;
+    float scanWave = sin(scanDist * 6.0 - uTime * 9.0) * pointerScan;
+    sheet.xy += normalize(toScan + 0.0001) * scanWave * 0.22;
+    sheet.z += pointerScan * 0.45 + scanWave * 0.18;
     vec4 edgeDist = vec4(sheet.x + 5.4, 5.4 - sheet.x, sheet.y + 3.2, 3.2 - sheet.y);
     for (int i = 0; i < 4; i++) {
       float age = uEdgeAges[i];
@@ -167,7 +179,7 @@ void main() {
   vec3 point = field;
   float alpha = 1.0;
   float energy = 0.08 + luminance * uVideoOn * 0.22 + 0.1 * sin(aSeed + uTime * 0.08)
-    + edgeGlow * 0.85;
+    + edgeGlow * 0.85 + pointerScan * 0.9;
   float light = 1.0;
   float electric = 0.0;
   // At rest every point belongs to the video painting. Bird anatomy and its
@@ -276,6 +288,8 @@ void main() {
     vScanLime = lime * introLife * 1.2;
     energy += vScanLime * 0.9;
   }
+  // The pointer sweep shares the acid-lime scan identity.
+  vScanLime += pointerScan;
 
   float appear = smoothstep(seed * 0.7, seed * 0.7 + 0.22, uReveal);
   vec4 view = modelViewMatrix * vec4(point, 1.0);
