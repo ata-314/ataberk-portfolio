@@ -222,6 +222,15 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let runtimeCleanup = () => {};
     let frameId = 0;
     let firstFrame = true;
+    // During the opening flight nothing but the tunnel is on screen: the nav
+    // and hero copy hide on "flying" and return when the flight lands. The
+    // safety timer guarantees the copy can never stay hidden if the render
+    // loop dies before marking the intro done.
+    const skipIntro = window.scrollY > 40;
+    document.documentElement.dataset.stageIntro = skipIntro ? "done" : "flying";
+    const introSafety = setTimeout(() => {
+      document.documentElement.dataset.stageIntro = "done";
+    }, 7000);
     void (async () => {
     const program = await createProgram(gl);
     if (disposed) {
@@ -519,7 +528,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let reveal = 0;
     // Opening tunnel flight. Skipped when the page restores an existing
     // scroll position, so mid-page reloads never replay the intro.
-    let intro = window.scrollY > 40 ? 1 : 0;
+    let intro = skipIntro ? 1 : 0;
     let introMarked = false;
     let hero = 0;
     let readyMix = 0;
@@ -543,6 +552,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const scanBoost = 1 - smoothstep(intro, 0.72, 1);
       if (!introMarked && intro >= 0.8) {
         introMarked = true;
+        clearTimeout(introSafety);
         // Hero entrance animations wait on this flag; the copy starts typing
         // while the camera is still easing into its resting position.
         document.documentElement.dataset.stageIntro = "done";
@@ -665,6 +675,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
 
     runtimeCleanup = () => {
       cancelAnimationFrame(frameId);
+      clearTimeout(introSafety);
       delete document.documentElement.dataset.stageIntro;
       removeEventListener("resize", resize);
       removeEventListener("scroll", onScrollIntent);

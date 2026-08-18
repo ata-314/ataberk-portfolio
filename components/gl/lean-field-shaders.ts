@@ -95,7 +95,7 @@ void main() {
     vec3 sheet = vec3(
       centered.x * 10.8,
       centered.y * 6.4,
-      centered.y * -1.2 + luminance * 1.8 + (seed - 0.5) * (0.42 + (1.0 - pigmentDensity) * 0.5)
+      centered.y * -1.2 + luminance * 1.8 + (seed - 0.5) * (0.6 + (1.0 - pigmentDensity) * 0.65)
     );
     float melt = (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0)) * uMeltScale;
     float edge = max(
@@ -131,7 +131,7 @@ void main() {
       sin(sheet.y * 1.9 + uTime * 0.5 + sin(sheet.x * 1.1 + uTime * 0.23) * 2.1),
       cos(sheet.x * 1.6 - uTime * 0.44 + sin(sheet.y * 1.35 - uTime * 0.31) * 1.9)
     );
-    liquid += warp * (0.07 + pigmentDensity * 0.07);
+    liquid += warp * (0.085 + pigmentDensity * 0.08);
     vec2 vortexA = sheet.xy - uVortexA.xy;
     vec2 vortexB = sheet.xy - uVortexB.xy;
     float distanceA = length(vortexA) + 0.001;
@@ -300,7 +300,7 @@ void main() {
   float size = mix(0.5 + seed * 0.45, 0.7 + seed * 0.8, bird);
   // Compact particles keep the fluid field crisp; darker matter remains just
   // large enough to build depth without turning into low-resolution blobs.
-  float pigmentSize = mix(1.85 + seed * 0.38, 1.15 + seed * 0.3, pigmentDensity);
+  float pigmentSize = mix(2.6 + seed * 0.5, 1.7 + seed * 0.4, pigmentDensity);
   size = mix(size, pigmentSize, vVideoMix);
   size *= 1.0 + electric * 0.75;
   gl_PointSize = uSize * size / -view.z;
@@ -368,17 +368,15 @@ void main() {
     shape = max(shape, electricHalo * vElectric * 0.72);
     if (shape < 0.12) discard;
   } else {
-    // Hard-rimmed disc with an anti-aliased edge exactly one pixel wide: the
-    // particle reads as a crisp droplet at any DPR instead of a soft blob.
+    // Soft volumetric droplet: a gaussian body with a brighter core, sized to
+    // overlap its neighbours so the field reads as one continuous fluid mass
+    // instead of discrete pixels.
     float radius = length(gl_PointCoord - 0.5);
-    float edge = max(fwidth(radius), 0.004);
-    if (radius > 0.46 + edge) discard;
-    float disc = 1.0 - smoothstep(0.44 - edge, 0.46 + edge, radius);
-    float core = 1.0 - smoothstep(0.05, 0.3, radius);
-    shape = disc * (
-      mix(0.3, 0.46, vPigmentDensity)
-      + core * mix(0.48, 0.72, vPigmentDensity)
-    );
+    if (radius > 0.5) discard;
+    float fall = exp(-radius * radius * 10.0) - exp(-2.5);
+    float core = exp(-radius * radius * 30.0);
+    shape = fall * mix(0.3, 0.44, vPigmentDensity)
+      + core * mix(0.3, 0.5, vPigmentDensity);
   }
   vec3 color = mix(uColorBase, uColorCyan, vDepth * 0.3 + 0.06);
   float luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));

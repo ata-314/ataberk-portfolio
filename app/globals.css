@@ -107,6 +107,19 @@ html:not([data-stage-intro="done"]):not([data-stage-static="true"])
   animation-play-state: paused !important;
 }
 
+/* Nothing but the tunnel during the opening flight: site chrome and hero copy
+   hold at zero opacity while the stage reports "flying", then return through
+   their own entrance animations when the flight lands. */
+html[data-stage-intro="flying"]
+  :is(header, [data-hero-identity], [data-hero-hint], [data-hero-corner]) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+header {
+  transition: opacity 0.8s ease;
+}
+
 .hero-scrim {
   background: linear-gradient(
     180deg,

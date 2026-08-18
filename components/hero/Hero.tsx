@@ -166,7 +166,7 @@ export function Hero({ t }: { t: HeroStrings }) {
         >
           {t.scrollHint} <span aria-hidden className="text-lime">↓</span>
         </p>
-        <p className="pointer-events-none absolute right-6 bottom-7 hidden font-mono text-[9px] tracking-[0.2em] text-bone-dim/40 uppercase lg:block motion-reduce:hidden">
+        <p data-hero-corner className="pointer-events-none absolute right-6 bottom-7 hidden font-mono text-[9px] tracking-[0.2em] text-bone-dim/40 uppercase lg:block motion-reduce:hidden">
           {tr
             ? "Kaydırma kuşu biçimlendirir · İmleç yön verir"
             : "Scroll shapes the bird · Cursor gives direction"}
