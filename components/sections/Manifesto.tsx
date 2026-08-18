@@ -52,7 +52,7 @@ export function Manifesto({ line, sub }: { line: string; sub: string }) {
             </span>
           ))}
         </p>
-        <p className="mx-auto mt-8 max-w-xl text-lg text-bone-dim">{sub}</p>
+        <p data-reveal className="mx-auto mt-8 max-w-xl text-lg text-bone-dim">{sub}</p>
       </div>
     </section>
   );

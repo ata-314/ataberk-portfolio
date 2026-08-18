@@ -274,17 +274,5 @@ export function HologramBust() {
     };
   }, []);
 
-  return (
-    <div className="relative h-full w-full">
-      <canvas ref={canvasRef} className="h-full w-full" />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-[12%] bottom-[6%] h-16"
-        style={{
-          background:
-            "radial-gradient(ellipse 50% 100% at 50% 100%, rgba(200,255,62,0.14), rgba(138,230,255,0.05) 55%, transparent 75%)",
-        }}
-      />
-    </div>
-  );
+  return <canvas ref={canvasRef} className="h-full w-full" />;
 }

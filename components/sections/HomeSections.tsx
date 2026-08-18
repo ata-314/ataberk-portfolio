@@ -90,16 +90,17 @@ export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
       className="pointer-events-none relative z-20 flex min-h-[90svh] flex-col justify-center px-6 md:px-10"
     >
       <div className="hero-copy mx-auto w-full max-w-5xl text-center">
-        <p className="font-mono text-[11px] tracking-[0.35em] text-lime/80 uppercase">
+        <p data-reveal className="font-mono text-[11px] tracking-[0.35em] text-lime/80 uppercase">
           {t.heading}
         </p>
         <h2
+          data-reveal
           className="font-display mt-7 leading-[1.05] font-semibold tracking-tight text-balance"
           style={{ fontSize: "var(--text-h1)" }}
         >
           {t.line}
         </h2>
-        <ul className="pointer-events-auto mt-12 flex flex-wrap justify-center gap-x-7 gap-y-3">
+        <ul data-reveal className="pointer-events-auto mt-12 flex flex-wrap justify-center gap-x-7 gap-y-3">
           {t.intents.map((intent) => (
             <li
               key={intent}
@@ -109,7 +110,7 @@ export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
             </li>
           ))}
         </ul>
-        <div className="pointer-events-auto mt-10 flex flex-col items-center gap-4">
+        <div data-reveal className="pointer-events-auto mt-10 flex flex-col items-center gap-4">
           <a
             href={CONTACT_URL}
             target="_blank"

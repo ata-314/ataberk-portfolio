@@ -9,18 +9,29 @@ export function SectionIntro({
   title: string;
   lead?: string;
 }) {
+  const words = title.split(" ");
   return (
-    <div data-reveal className="hero-copy mx-auto max-w-4xl text-center">
-      <p className="font-mono text-[10px] tracking-[0.34em] text-lime/85 uppercase">
+    <div className="hero-copy mx-auto max-w-4xl text-center">
+      <p data-reveal className="font-mono text-[10px] tracking-[0.34em] text-lime/85 uppercase">
         {eyebrow}
       </p>
       <h2
+        data-reveal-words
         className="font-display mt-7 leading-[1.02] font-semibold tracking-[-0.04em] text-balance"
         style={{ fontSize: "var(--text-h2)" }}
       >
-        {title}
+        {words.map((word, index) => (
+          <span key={index} data-word className="inline-block">
+            {word}
+            {index < words.length - 1 ? " " : ""}
+          </span>
+        ))}
       </h2>
-      {lead && <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-bone-dim text-balance md:text-lg">{lead}</p>}
+      {lead && (
+        <p data-reveal className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-bone-dim text-balance md:text-lg">
+          {lead}
+        </p>
+      )}
     </div>
   );
 }
