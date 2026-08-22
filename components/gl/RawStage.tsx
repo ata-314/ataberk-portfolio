@@ -406,8 +406,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     video.playsInline = true;
     video.preload = "auto";
     const videoSurface = document.createElement("canvas");
-    videoSurface.width = 800;
-    videoSurface.height = 450;
+    videoSurface.width = mobile ? 480 : 800;
+    videoSurface.height = mobile ? 270 : 450;
     const videoContext = videoSurface.getContext("2d", { alpha: false });
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, videoTexture);
@@ -512,8 +512,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let pixelRatio = 1;
     const resize = () => {
       // Full-resolution rendering keeps the droplets pixel-crisp on retina
-      // displays; the point budget is small enough that fill cost stays low.
-      pixelRatio = Math.min(devicePixelRatio, mobile ? 1.4 : 2);
+      // displays; phones trade a little sharpness for fill-rate headroom —
+      // the additive field is fill-bound, so DPR is the dominant mobile cost.
+      pixelRatio = Math.min(devicePixelRatio, mobile ? 1.25 : 2);
       const width = Math.round(innerWidth * pixelRatio);
       const height = Math.round(innerHeight * pixelRatio);
       if (canvas.width !== width || canvas.height !== height) {
@@ -563,8 +564,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       last = now;
       time += delta;
       reveal = Math.min(1, reveal + delta / 2.2);
-      intro = Math.min(1, intro + delta / 4.8);
-      const introEase = 1 - Math.pow(1 - intro, 3);
+      intro = Math.min(1, intro + delta / 4.4);
+      // Ease-in-out flight: lift off from a standstill, rush through the bore
+      // at mid-flight, then decelerate into the hero position. The data keeps
+      // streaming past even before the camera itself picks up speed.
+      const introEase =
+        intro < 0.5 ? 4 * intro * intro * intro : 1 - Math.pow(-2 * intro + 2, 3) / 2;
       const scanBoost = 1 - smoothstep(intro, 0.72, 1);
       if (!introMarked && intro >= 0.8) {
         introMarked = true;
@@ -604,7 +609,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         }
       }
 
-      const targetVideo = videoReady * (1 - smoothstep(hero, 0.14, 0.38));
+      // Phones hand the painting off earlier so the video branch and the bird
+      // morph never share a frame budget for long.
+      const targetVideo = mobile
+        ? videoReady * (1 - smoothstep(hero, 0.1, 0.24))
+        : videoReady * (1 - smoothstep(hero, 0.14, 0.38));
       videoMix = damp(videoMix, targetVideo, 12, delta);
       if (scrollIntent || hero > 0.025) {
         videoUploadsSuspended = true;
@@ -633,9 +642,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       compose(birdMatrix, flight.position, flight.scale, yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)));
       flap = (flap + delta) % 1;
 
+      // A gentle banked drift while flying keeps the bore from reading as a
+      // straight rail; it fades to nothing as the camera lands.
+      const introDrift = 1 - introEase;
       const camera: Vec3 = [
-        Math.sin(hero * Math.PI) * 0.14,
-        -0.02 - hero * 0.03,
+        Math.sin(hero * Math.PI) * 0.14 + Math.sin(intro * Math.PI * 2.2) * 0.42 * introDrift,
+        -0.02 - hero * 0.03 + Math.cos(intro * Math.PI * 1.7) * 0.26 * introDrift,
         mix(40, 8.2 - hero * 1.5 * (1 - finale), introEase),
       ];
       lookAt(view, camera, [0, 0.08, 0]);
@@ -666,7 +678,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform3f(u("uGradB"), gradient[3], gradient[4], gradient[5]);
       gl.uniform3f(u("uGradC"), gradient[6], gradient[7], gradient[8]);
       gl.uniform3f(u("uGradD"), gradient[9], gradient[10], gradient[11]);
-      gl.uniform1f(u("uSize"), 40 * pixelRatio * (innerHeight / 900));
+      gl.uniform1f(u("uSize"), 40 * pixelRatio * (innerHeight / 900) * (mobile ? 0.85 : 1));
       gl.uniform3f(u("uBirdDir"), direction[0], direction[1], direction[2]);
       gl.uniform1f(u("uVideoOn"), videoMix);
       gl.uniform3f(u("uVortexA"), -1.35 + Math.sin(time * 0.045) * 0.72, 0.32 + Math.cos(time * 0.038) * 0.5, 0);

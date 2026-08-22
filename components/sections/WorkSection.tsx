@@ -106,7 +106,7 @@ export function WorkSection({ locale, visualLabel }: { locale: Locale; visualLab
             </p>
             <div className="flex flex-wrap gap-2">
               {["AI Systems", "Creative Development", "Motion + 3D"].map((label) => (
-                <span key={label} className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 font-mono text-[9px] tracking-[0.14em] text-bone-dim uppercase">
+                <span key={label} className="glass-chip px-3.5 py-2 font-mono text-[9px] tracking-[0.14em] text-bone-dim uppercase">
                   {label}
                 </span>
               ))}

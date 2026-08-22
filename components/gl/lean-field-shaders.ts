@@ -264,29 +264,32 @@ void main() {
     energy += ring;
   }
 
-  // Opening flight: the field starts stretched into a deep data bore the
-  // camera flies through; particles anneal into the painting as uIntro eases
-  // to 1. Two lime scan planes sweep the bore and briefly light passing data.
+  // Opening flight: the field starts stretched into a deep data bore that the
+  // camera genuinely passes through — the z span reaches behind the camera's
+  // start position and the data itself streams toward the viewer, wrapping at
+  // the far end, so information rushes past on both sides of the flight path.
+  // Particles anneal into the painting as uIntro eases to 1.
   vScanLime = 0.0;
-  // uIntro is the raw flight progress: the bore holds its shape for the first
-  // third of the flight, then anneals into the painting as the camera slows.
-  float introLife = 1.0 - smoothstep(0.3, 1.0, uIntro);
+  float introLife = 1.0 - smoothstep(0.34, 1.0, uIntro);
   if (introLife > 0.001) {
     float lane = fract(aSeed * 3.917) * 6.28318;
-    float bore = 1.55 + fract(aSeed * 6.31) * 3.6;
+    float bore = 1.35 + fract(aSeed * 6.31) * 3.9;
+    float zSpan = 92.0;
+    float zSeed = fract(aSeed * 9.271) * zSpan;
+    float zFlow = mod(zSeed + uTime * (9.0 + fract(aSeed * 5.7) * 13.0), zSpan);
     vec3 tunnel = vec3(
       cos(lane) * bore + flow.x * 0.7,
       sin(lane) * bore * 0.62 + flow.y * 0.7,
-      6.0 - fract(aSeed * 9.271) * 52.0
+      44.0 - zFlow
     );
     point = mix(point, tunnel, introLife);
     float lime = 0.0;
     for (int k = 0; k < 2; k++) {
-      float sweep = mix(-46.0, 9.0, fract(uTime * 0.42 + float(k) * 0.5));
+      float sweep = mix(-46.0, 40.0, fract(uTime * 0.3 + float(k) * 0.5));
       lime += exp(-pow((point.z - sweep) * 0.45, 2.0));
     }
     vScanLime = lime * introLife * 1.2;
-    energy += vScanLime * 0.9;
+    energy += vScanLime * 0.9 + introLife * 0.12;
   }
   // The pointer sweep shares the acid-lime scan identity.
   vScanLime += pointerScan;
@@ -323,7 +326,10 @@ void main() {
   float pigmentSize = mix(2.6 + seed * 0.5, 1.7 + seed * 0.4, pigmentDensity);
   size = mix(size, pigmentSize, vVideoMix);
   size *= 1.0 + electric * 0.75;
-  gl_PointSize = uSize * size / -view.z;
+  // The fly-through brings particles right up to the camera plane: clamp the
+  // divisor so near passes flare into streaks instead of exploding, and cap
+  // the sprite so a single point can never flood the mobile rasterizer.
+  gl_PointSize = min(uSize * size / max(-view.z, 0.6), uSize * 2.2);
 }
 `;
 

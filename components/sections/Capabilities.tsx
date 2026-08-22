@@ -19,8 +19,8 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
       <div className="mx-auto max-w-7xl">
         <SectionIntro eyebrow="Systems" title={t.heading} lead={t.lead} />
 
-        {/* Desktop: open columns on a shared spine, without card shells */}
-        <div className="relative mt-20 hidden border-y border-white/10 md:block">
+        {/* Desktop: open columns on a shared spine inside one glass shell */}
+        <div className="glass glass-sheen relative mt-20 hidden overflow-hidden md:block">
           <div aria-hidden className="absolute inset-x-0 top-0 h-px">
             <div
               className="h-px bg-lime/70 transition-all duration-500"
@@ -73,17 +73,17 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
           </div>
         </div>
 
-        {/* Mobile: accessible native accordion */}
-        <div className="mt-12 border-t border-white/10 md:hidden">
+        {/* Mobile: accessible native accordion as stacked glass cards */}
+        <div className="mt-12 space-y-3 md:hidden">
           {t.systems.map((sys, i) => (
-            <details key={sys.key} className="group border-b border-white/10">
+            <details key={sys.key} className="group glass glass-sheen overflow-hidden px-5">
               <summary className="flex cursor-pointer items-center justify-between py-5">
                 <span lang="en" className="font-display text-lg font-semibold">
                   {sys.name}
                 </span>
                 <span className="font-mono text-xs text-bone-dim">0{i + 1}</span>
               </summary>
-              <div className="pb-6">
+              <div className="border-t border-white/10 pt-4 pb-6">
                 <ul className="space-y-2">
                   {sys.items.map((item) => (
                     <li key={item} lang="en" className="text-sm text-bone-dim">

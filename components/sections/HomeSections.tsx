@@ -15,17 +15,23 @@ export function AISystems({ t }: { t: SiteContent["aiSystems"] }) {
     >
       <div className="mx-auto max-w-7xl">
         <SectionIntro eyebrow="Intelligence" title={t.heading} lead={t.lead} />
-        <div className="mt-16 grid border-t border-white/10 md:grid-cols-2">
+        <div className="mt-16 grid gap-4 md:grid-cols-2 md:gap-5">
           {t.entries.map((e, i) => (
             <div
               key={e.name}
               data-reveal
-              className={`border-b border-white/10 py-8 md:p-8 ${i % 2 === 0 ? "md:border-r" : ""}`}
+              className="glass glass-hover glass-sheen p-7 md:p-9"
             >
-              <p className="font-mono text-[11px] tracking-widest text-bone-dim/60">
-                0{i + 1}
-              </p>
-              <h3 lang="en" className="font-display mt-3 text-xl font-semibold">
+              <div className="flex items-start justify-between">
+                <p className="font-mono text-[11px] tracking-widest text-bone-dim/60">
+                  0{i + 1}
+                </p>
+                <span
+                  aria-hidden
+                  className="h-1.5 w-1.5 rounded-full bg-lime/70 shadow-[0_0_12px_rgba(200,255,62,0.5)]"
+                />
+              </div>
+              <h3 lang="en" className="font-display mt-4 text-xl font-semibold">
                 {e.name}
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-bone-dim">{e.desc}</p>
@@ -54,7 +60,7 @@ export function AboutPreview({
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto grid max-w-7xl items-center gap-10 md:grid-cols-2 md:gap-6">
-        <div data-reveal className="hero-copy order-2 md:order-1">
+        <div data-reveal className="glass glass-sheen order-2 p-8 md:order-1 md:p-12">
           <p className="font-mono text-[11px] tracking-[0.35em] text-lime/80 uppercase">
             {about.heading}
           </p>
@@ -100,11 +106,11 @@ export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
         >
           {t.line}
         </h2>
-        <ul data-reveal className="pointer-events-auto mt-12 flex flex-wrap justify-center gap-x-7 gap-y-3">
+        <ul data-reveal className="pointer-events-auto mt-12 flex flex-wrap justify-center gap-3">
           {t.intents.map((intent) => (
             <li
               key={intent}
-              className="border-b border-white/15 px-1 py-2 text-sm text-bone-dim"
+              className="glass-chip px-5 py-2.5 text-sm text-bone-dim"
             >
               {intent}
             </li>
