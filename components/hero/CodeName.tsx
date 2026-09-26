@@ -14,7 +14,7 @@ const hash = (a: number, b = 0) => {
 };
 
 type Cell = { x: number; y: number; col: number; row: number; cover: number; seed: number };
-type Line = { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; cells: Cell[]; backing: HTMLCanvasElement; rows: number; w: number; h: number };
+type Line = { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; cells: Cell[]; rows: number; w: number; h: number };
 
 // The display name set as living code: each line's letterforms are rasterized
 // into a coverage grid, and every covered cell draws a monospace glyph. Code
@@ -114,36 +114,28 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
             if (cover > 0.3) cells.push({ x: col * cell, y: row * cell, col: col + i * 997, row, cover, seed: hash(col + i * 997, row) });
           }
         }
-        // A faint solid body under the glyphs keeps each letterform continuous
-        // at small sizes, where glyph side-bearings would otherwise break it up.
-        const backing = document.createElement("canvas");
-        backing.width = canvas.width;
-        backing.height = canvas.height;
-        const b = backing.getContext("2d")!;
-        for (const c of cells) {
-          b.fillStyle = `rgba(${BONE}, ${0.2 * Math.min(1, c.cover * 1.2)})`;
-          b.fillRect(c.x * dpr, c.y * dpr, Math.ceil(cell * dpr), Math.ceil(cell * dpr));
-        }
-        return { canvas, ctx, cells, backing, rows, w, h };
+        return { canvas, ctx, cells, rows, w, h };
       });
     };
 
     const draw = (now: number) => {
       const t = now / 1000;
       const size = Math.ceil(cell * dpr);
-      const reveal = revealStart < 0 ? 0 : Math.min(1, (now - revealStart) / 1100);
+      const reveal = revealStart < 0 ? 0 : Math.min(1, (now - revealStart) / 2400);
       for (const line of built) {
         const { ctx, cells, rows, canvas } = line;
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const rect = canvas.getBoundingClientRect();
-        ctx.globalAlpha = reveal;
-        ctx.drawImage(line.backing, 0, 0);
         for (const c of cells) {
-          // Left-to-right decode on entrance, jittered per cell.
-          const gate = (c.x / line.w) * 0.72 + c.seed * 0.28;
-          if (gate > reveal) continue;
-          const settling = reveal < 1 ? 1 - Math.min(1, (reveal - gate) * 6) : 0;
+          // Scattered code converges into the letter mask; no solid text body.
+          const progress = Math.max(0, Math.min(1, (reveal - c.seed * .18) / .82));
+          const ease = progress * progress * progress * (progress * (progress * 6 - 15) + 10);
+          const settling = 1 - ease;
+          const startX = hash(c.col, c.row + 91) * (line.w - cell);
+          const startY = hash(c.col + 27, c.row + 53) * (line.h - cell);
+          const x = startX + (c.x - startX) * ease;
+          const y = startY + (c.y - startY) * ease;
           const colSeed = hash(c.col, 7.3);
           const speed = 5 + colSeed * 11;
           const span = rows + 14 + colSeed * 18;
@@ -161,8 +153,8 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
           // and cells still decoding on entrance.
           const hot = behind >= 0 && behind < 1.2 ? 1 : Math.max(c.seed < 0.22 ? near : 0, settling);
           const atlas = hot > 0.5 ? atlasLime! : atlasBone!;
-          ctx.globalAlpha = bright * Math.min(1, c.cover * 1.2);
-          ctx.drawImage(atlas, glyph * size, 0, size, size, c.x * dpr, c.y * dpr, size, size);
+          ctx.globalAlpha = bright * Math.min(1, c.cover * 1.2) * Math.min(1, reveal * 8) * (.4 + ease * .6);
+          ctx.drawImage(atlas, glyph * size, 0, size, size, x * dpr, y * dpr, size, size);
         }
       }
     };

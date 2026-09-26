@@ -161,12 +161,15 @@ header {
 
 .code-name-text {
   display: inline-block;
-  transition: color 0.4s ease;
 }
 
 /* Once the glyph canvas has drawn, the typeset text only holds the layout. */
 [data-code-ready="true"] .code-name-text {
   color: transparent;
+}
+
+[data-code-ready="true"] .hero-line > span {
+  animation: none;
 }
 
 .code-name-canvas {
