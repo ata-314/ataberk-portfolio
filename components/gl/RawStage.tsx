@@ -438,10 +438,27 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // Pointer scan: cursor position in the fluid sheet's own coordinate
     // space at the resting camera plane, plus a sweep strength that charges
     // while the cursor moves and decays in the render loop when it rests.
+    // Pointer wake for the sculpture grains: a ring of recent cursor
+    // positions in NDC, each with a strength set by stroke speed that decays
+    // in the render loop. Works for mouse and touch drags alike.
+    const wake = new Float32Array(8 * 4);
+    let wakeSlot = 0;
+    let wakeLast: [number, number] | null = null;
+    const burst = new Float32Array([0, 0, -1]);
+    const pushWake = (clientX: number, clientY: number) => {
+      const nx = (clientX / innerWidth) * 2 - 1;
+      const ny = -((clientY / innerHeight) * 2 - 1);
+      const moved = wakeLast ? Math.hypot(nx - wakeLast[0], ny - wakeLast[1]) : 0;
+      if (wakeLast && moved < 0.025) return;
+      wakeLast = [nx, ny];
+      wake.set([nx, ny, Math.min(1, 0.35 + moved * 9), 0], wakeSlot * 4);
+      wakeSlot = (wakeSlot + 1) % 8;
+    };
     const scanPointer = [0, 0];
     const scanSmooth = [0, 0];
     let scanVelocity = 0;
     const onPointerMove = (event: PointerEvent) => {
+      pushWake(event.clientX, event.clientY);
       const aspect = innerWidth / Math.max(innerHeight, 1);
       pointer[0] = (event.clientX / innerWidth * 2 - 1) * (aspect < 1 ? 1.7 : 3.2);
       pointer[1] = -(event.clientY / innerHeight * 2 - 1) * 2;
@@ -467,6 +484,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const onPointerDown = (event: PointerEvent) => {
       onPointerMove(event);
       waveAge = 0;
+      burst.set([(event.clientX / innerWidth) * 2 - 1, -((event.clientY / innerHeight) * 2 - 1), 0]);
     };
     addEventListener("pointermove", onPointerMove, { passive: true });
     addEventListener("pointerdown", onPointerDown, { passive: true });
@@ -551,6 +569,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       pointerSmooth[0] = damp(pointerSmooth[0], pointer[0], 7, delta);
       pointerSmooth[1] = damp(pointerSmooth[1], pointer[1], 7, delta);
       if (waveAge >= 0) waveAge = waveAge > 3.5 ? -1 : waveAge + delta;
+      for (let i = 0; i < 8; i++) wake[i * 4 + 2] *= Math.exp(-2.2 * delta);
+      if (burst[2] >= 0) burst[2] = burst[2] > 2.5 ? -1 : burst[2] + delta;
 
       // Two superposed slow sines per axis make the tide irregular: the fluid
       // leans, strikes a border, and that edge's wave fires with a cooldown.
@@ -643,6 +663,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           hero, ready: readyMix, flap, finale,
           matrix: birdMatrix, view, projection,
           positions: positionTexture, normals: normalTexture,
+          trail: wake, burst,
         });
       if (firstFrame) {
         firstFrame = false;

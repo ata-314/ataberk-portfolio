@@ -67,6 +67,12 @@ uniform float birdReady;
 uniform float flap;
 uniform float finale;
 uniform vec4 edgeAges;
+// Pointer wake: recent cursor positions in NDC (xy) with a decaying
+// strength (z). burst: click origin (xy) and age in seconds (z, -1 idle).
+uniform vec4 trail[8];
+uniform vec3 burst;
+// 1 on the additive glow pass that haloes the formed bird.
+uniform float glowPass;
 out vec3 tint;
 out float alpha;
 ${field}
@@ -145,6 +151,8 @@ void renderGrain(float id) {
   vec2 source=sourceClip.xy/sourceClip.w;
   vec2 destination=source;
   float birdLight=1.0;
+  float electric=0.0;
+  vec3 electricColor=vec3(.6,.97,1.0);
   if(assembly>0.0) {
     // Every source ID maps to baked anatomy; repeated samples receive a
     // tiny normal offset so all grains remain separate within the feathers.
@@ -160,6 +168,18 @@ void renderGrain(float id) {
     destination=target.xy/target.w;
     vec3 worldNormal=normalize(mat3(birdMatrix)*normal);
     birdLight=.65+.85*max(dot(worldNormal,normalize(vec3(-.6,.8,1.0))),0.0);
+    // Electrified body: thin veins crawl over the anatomy in patches, arc
+    // pulses race along the wingspan and random grains spark for a frame.
+    float vein=noise(anatomy*5.5+vec3(0.0,time*2.6,time*1.7));
+    float veinLine=1.0-smoothstep(0.0,.022,abs(vein-.5));
+    veinLine*=smoothstep(.5,.7,noise(anatomy*2.0-vec3(time*.9)));
+    float span=anatomy.x*1.6+anatomy.z*.9;
+    float arc=pow(.5+.5*sin(span*7.0-time*11.0+noise(anatomy*3.0+time)*4.0),60.0);
+    float spark=step(.975,grainRandom(uint(id)+uint(floor(time*18.0))*131u));
+    electric=clamp(veinLine*.95+arc*.75+spark,0.0,1.4);
+    electricColor=mix(vec3(.55,.95,1.0),vec3(.84,1.0,.3),.5+.5*sin(time*3.0+seed*6.28));
+    // Sparks leap slightly off the surface.
+    destination+=(vec2(grainRandom(uint(id)+uint(time*18.0)),grainRandom(uint(id)+977u+uint(time*18.0)))-.5)*.014*spark;
   }
   // The first gathering already traces the actual anatomy. A loose halo
   // follows the wings and body, then contracts onto the feather samples.
@@ -173,10 +193,44 @@ void renderGrain(float id) {
   vec2 travel=looseBird-source;
   vec2 curl=vec2(-travel.y,travel.x)*sin(gather*3.14159265)*.10;
   vec2 position=mix(mix(source,looseBird,gather)+curl,destination,settle);
+  // Pointer wake and click shockwave push the fluid grains aside with a
+  // slight swirl, and light up whatever they disturb.
+  float fluidPart=1.0-assembly;
+  float lift=0.0;
+  vec2 asp=vec2(aspect,1.0);
+  for(int k=0;k<8;k++) {
+    vec4 tk=trail[k];
+    if(tk.z<.01) continue;
+    vec2 d=(position-tk.xy)*asp;
+    float r2=dot(d,d);
+    float f=tk.z*exp(-r2/.045);
+    // Rotate the neighbourhood around the wake point and dilate it slightly:
+    // a true rotation keeps density (a plain offset emptied the core).
+    float turn=f*(.9+seed*.5)*fluidPart;
+    float c=cos(turn),s=sin(turn);
+    vec2 moved=mat2(c,s,-s,c)*d*(1.0+f*.12*fluidPart);
+    position=tk.xy+moved/asp;
+    lift+=f;
+  }
+  if(burst.z>=0.0) {
+    vec2 d=(position-burst.xy)*asp;
+    float r=length(d);
+    float ring=exp(-pow((r-burst.z*1.3)/.07,2.0))*exp(-burst.z*1.6);
+    position+=d/(r+1e-4)/asp*ring*.08*fluidPart;
+    lift+=ring*1.4;
+  }
+  lift=min(lift,1.6)*fluidPart;
   gl_Position=vec4(position,0.0,1.0);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
   gl_PointSize=max(1.0,mix(fluidSize,(1.8+seed*.65)*pixelScale,assembly));
-  tint=mix(tint,mix(lime*.7+citron*.3,vec3(.8,.96,1.0),.3)*birdLight*1.25,assembly*.8);
+  // Kept below 1 so the body keeps its hue and lighting; the veins and the
+  // halo pass carry the brightness.
+  vec3 birdBody=min(mix(lime*.7+citron*.3,vec3(.8,.96,1.0),.18)*birdLight*1.05,vec3(.95));
+  tint=mix(tint,birdBody,assembly*.85);
+  // Veins burn white-hot at the core and fringe into the electric hue.
+  vec3 hot=mix(electricColor,vec3(1.0),.45)*1.6;
+  tint=mix(tint,hot,clamp(electric,0.0,1.0)*assembly);
+  gl_PointSize*=1.0+electric*.9*assembly;
   // A bright scan sweeps down the relief every six seconds. Depth bends
   // the band around the folds; only actual grains carry the light.
   float sweep=1.55-mod(time*.52,3.1);
@@ -189,8 +243,18 @@ void renderGrain(float id) {
   tint+=scanColor*scan*1.55;
   tint=mix(tint,vec3(.86,1.0,1.0)*2.0,core*.8*(1.0-assembly));
   gl_PointSize*=1.0+shoulder*.6*(1.0-assembly);
-  alpha=mix(.8+light*.18,.9,assembly)*opacity;
+  alpha=mix(.8+light*.18,.95,assembly)*opacity;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
+  tint+=mix(citron,vec3(.75,1.0,.95),.35)*lift*.9;
+  if(glowPass>.5) {
+    // Halo pass: only bird grains, drawn large and soft with additive blend.
+    if(assembly<.05) {alpha=0.0;gl_Position=vec4(2.0,2.0,2.0,1.0);return;}
+    // Halo mostly around live veins and sparks; the body keeps only a faint
+    // lime aura (no red/blue, which washed the green body out to grey).
+    tint=mix(vec3(.3,.85,.05),electricColor*1.4,clamp(electric,0.0,1.0));
+    alpha=(.008+electric*.4)*assembly*opacity;
+    gl_PointSize*=3.2;
+  }
 }
 void main() {
   renderGrain(float(gl_VertexID));
@@ -200,11 +264,13 @@ precision highp float;
 in vec3 tint;
 in float alpha;
 uniform vec2 resolution;
+uniform float glowPass;
 out vec4 color;
 void main() {
   vec2 p=(gl_PointCoord-.5)*2.0;
   float r2=dot(p,p);
   if(r2>1.0 || alpha<.005) discard;
+  if(glowPass>.5) {color=vec4(tint,exp(-r2*3.2)*alpha);return;}
   vec3 n=vec3(p.x,-p.y,sqrt(1.0-r2));
   vec3 lamp=normalize(vec3(-.4,.6,1.0));
   float light=.38+.72*max(dot(n,lamp),0.0);
@@ -254,6 +320,7 @@ export type SculptureFlight = {
   hero: number; ready: number; flap: number; finale: number;
   matrix: Float32Array; view: Float32Array; projection: Float32Array;
   positions: WebGLTexture | null; normals: WebGLTexture | null;
+  trail: Float32Array; burst: Float32Array;
 };
 
 export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean) {
@@ -288,7 +355,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -359,9 +426,23 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       gl.uniformMatrix4fv(uniforms.birdProjection,false,flight.projection);
       for(let i=0;i<4;i++) edgeAges[i]=flowTime-impactAt[i]<3.0?flowTime-impactAt[i]:-1;
       gl.uniform4fv(uniforms.edgeAges,edgeAges);
+      gl.uniform4fv(uniforms.trail,flight.trail);
+      gl.uniform3fv(uniforms.burst,flight.burst);
+      gl.uniform1f(uniforms.glowPass,0);
       // Constant draw count and frozen source mask throughout assembly.
       gl.drawArrays(gl.POINTS,0,columns*rows);
       gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+      // Additive halo over the forming bird. A subset of IDs still covers
+      // every anatomy sample (index = id*37 mod 9000).
+      if(flight.hero>.06 && flight.ready>.5 && flight.finale<.98) {
+        gl.uniform1f(uniforms.glowPass,1);
+        // Add light only: leave destination alpha untouched, or the halo's
+        // accumulated alpha greys the transparent, premultiplied canvas.
+        gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE,gl.ZERO,gl.ONE);
+        gl.drawArrays(gl.POINTS,0,Math.min(columns*rows,mobile?3000:6000));
+        gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+        gl.uniform1f(uniforms.glowPass,0);
+      }
     },
     dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteVertexArray(vao);},
   };
