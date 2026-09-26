@@ -67,7 +67,6 @@ uniform float birdReady;
 uniform float flap;
 uniform float finale;
 uniform vec4 edgeAges;
-uniform highp int electricPass;
 out vec3 tint;
 out float alpha;
 ${field}
@@ -178,45 +177,31 @@ void renderGrain(float id) {
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
   gl_PointSize=max(1.0,mix(fluidSize,(1.8+seed*.65)*pixelScale,assembly));
   tint=mix(tint,mix(lime*.7+citron*.3,vec3(.8,.96,1.0),.3)*birdLight*1.25,assembly*.8);
+  // A bright scan sweeps down the relief every six seconds. Depth bends
+  // the band around the folds; only actual grains carry the light.
+  float sweep=1.55-mod(time*.52,3.1);
+  float scanDistance=screen.y+local.z*.065-sweep;
+  float core=exp(-pow(scanDistance/.032,2.0));
+  float shoulder=exp(-pow(scanDistance/.11,2.0));
+  float trail=exp(-max(scanDistance,0.0)*5.5)*smoothstep(-.015,.035,scanDistance);
+  float scan=(core+shoulder*.6+trail*.38)*(1.0-assembly);
+  vec3 scanColor=mix(vec3(.18,1.0,.65),vec3(.62,.94,1.0),shoulder);
+  tint+=scanColor*scan*1.55;
+  tint=mix(tint,vec3(.86,1.0,1.0)*2.0,core*.8*(1.0-assembly));
+  gl_PointSize*=1.0+shoulder*.6*(1.0-assembly);
   alpha=mix(.8+light*.18,.9,assembly)*opacity;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
 }
 void main() {
-  if(electricPass==0) { renderGrain(float(gl_VertexID)); return; }
-  // Each arc terminates on two actual grains, so it follows both the fluid
-  // and the bird. Six short segments form a fine, irregular discharge.
-  float bolt=floor(float(gl_VertexID)/12.0);
-  float segment=floor(mod(float(gl_VertexID),12.0)/2.0);
-  float u=(segment+mod(float(gl_VertexID),2.0))/6.0;
-  float total=grid.x*grid.y;
-  float first=mod(bolt*1999.0+317.0,total-grid.x*7.0-14.0);
-  float second=first+grid.x*(2.0+floor(grainRandom(uint(bolt)+37u)*4.0))+9.0;
-  renderGrain(first);
-  vec4 start=gl_Position; float startAlpha=alpha;
-  renderGrain(second);
-  vec4 end=gl_Position;
-  float beat=time*.65+grainRandom(uint(bolt)+71u)*17.0;
-  float phase=fract(beat);
-  float flash=smoothstep(0.0,.06,phase)*(1.0-smoothstep(.17,.36,phase));
-  vec2 tangent=end.xy-start.xy;
-  vec2 perpendicular=normalize(vec2(-tangent.y,tangent.x)+vec2(.00001));
-  float jag=grainRandom(uint(bolt)*31u+uint(segment+mod(float(gl_VertexID),2.0))*7u+uint(floor(beat))*127u)-.5;
-  vec2 point=mix(start.xy,end.xy,u)+perpendicular*jag*.022*sin(u*3.14159265);
-  gl_Position=vec4(point,0,1);
-  tint=mix(vec3(.4,1.0,.65),vec3(.35,.8,1.0),grainRandom(uint(bolt)+53u))*1.8;
-  alpha=min(startAlpha,alpha)*flash*.75*(1.0-smoothstep(.5,.8,hero)*.7)*opacity;
-  if(length(tangent)>.20 || startAlpha==0.0) alpha=0.0;
-
+  renderGrain(float(gl_VertexID));
 }`;
 const fragment = `#version 300 es
 precision highp float;
 in vec3 tint;
 in float alpha;
-uniform highp int electricPass;
 uniform vec2 resolution;
 out vec4 color;
 void main() {
-  if(electricPass==1) { color=vec4(tint,alpha); return; }
   vec2 p=(gl_PointCoord-.5)*2.0;
   float r2=dot(p,p);
   if(r2>1.0 || alpha<.005) discard;
@@ -303,7 +288,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","electricPass"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -375,11 +360,8 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       for(let i=0;i<4;i++) edgeAges[i]=flowTime-impactAt[i]<3.0?flowTime-impactAt[i]:-1;
       gl.uniform4fv(uniforms.edgeAges,edgeAges);
       // Constant draw count and frozen source mask throughout assembly.
-      gl.uniform1i(uniforms.electricPass,0);
       gl.drawArrays(gl.POINTS,0,columns*rows);
       gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
-      gl.uniform1i(uniforms.electricPass,1);
-      gl.drawArrays(gl.LINES,0,(mobile?48:110)*12);
     },
     dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteVertexArray(vao);},
   };
