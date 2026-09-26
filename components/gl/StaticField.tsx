@@ -1,24 +1,13 @@
-// A still pigment relief for reduced-motion and unavailable WebGL.
-// Pure CSS keeps the scene available before JavaScript or GPU initialization.
+// Static point-cloud counterpart for reduced-motion and unavailable WebGL.
 export function StaticField() {
   return (
-    <div aria-hidden className="hero-static-field absolute inset-0 overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-80"
-        style={{
-          backgroundImage:
-            "radial-gradient(ellipse 35% 26% at 53% 30%, #e5dcc1 15%, #84a8a1 47%, #1b4e50 61%, transparent 70%), radial-gradient(ellipse 43% 28% at 62% 47%, #cf7150 20%, #864431 53%, transparent 72%), radial-gradient(ellipse 36% 32% at 35% 48%, #85a39b 20%, #234448 54%, transparent 72%), linear-gradient(180deg, #c9bda2, #84725b 38%, #0a0a0b 92%)",
-        }}
-      />
-      <div
-        className="absolute inset-0 opacity-25"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(225,241,239,.7) 0 .6px, transparent 1px)",
-          backgroundSize: "5px 5px",
-          maskImage: "linear-gradient(180deg, black, transparent 90%)",
-        }}
-      />
+    <div aria-hidden className="hero-static-field absolute inset-0 overflow-hidden bg-black">
+      <div className="absolute inset-0 opacity-70" style={{
+        backgroundImage: "radial-gradient(circle, #50dcff 0 .8px, transparent 1.3px), radial-gradient(circle, #875aff 0 .7px, transparent 1.2px)",
+        backgroundSize: "5px 5px, 7px 7px",
+        backgroundPosition: "0 0, 2px 3px",
+        maskImage: "radial-gradient(ellipse 36% 26% at 53% 30%, black 15%, transparent 72%), radial-gradient(ellipse 43% 28% at 62% 47%, black 20%, transparent 72%), radial-gradient(ellipse 36% 32% at 35% 48%, black 20%, transparent 72%)",
+      }} />
     </div>
   );
 }

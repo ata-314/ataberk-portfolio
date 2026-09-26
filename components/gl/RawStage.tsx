@@ -251,7 +251,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const sculpture = createSculptureLayer(gl, mobile);
     gl.bindVertexArray(vao);
     gl.useProgram(program);
-    // Sparse grains supply the handoff; the opaque sculpture carries entry.
+    // Sparse grains supply the handoff; the particle sculpture carries entry.
     const count = mobile ? 10000 : 24000;
     const birdCount = mobile ? 2400 : 6000;
     const flightCount = mobile ? 3000 : 7500;
@@ -502,7 +502,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
     gl.disable(gl.DEPTH_TEST);
-    gl.clearColor(0, 0, 0, 0);
+    gl.clearColor(0, 0, 0, 1);
     gl.uniform1f(u("uTexW"), TEX_W);
     gl.uniform1f(u("uTexH"), TEX_H);
     gl.uniform1f(u("uRowsPerFrame"), ROWS_PER_FRAME);
