@@ -14,15 +14,12 @@ uniform vec3 uWaveOrigin;
 uniform float uWaveAge;
 uniform float uSize;
 uniform float uMinPoint;
+uniform vec2 uSheet;
 uniform mat4 uBirdMat;
 uniform vec3 uBirdDir;
 uniform sampler2D uPosTex;
 uniform sampler2D uNrmTex;
-uniform sampler2D uVideoTex;
 uniform float uVideoOn;
-uniform float uMeltScale;
-uniform vec3 uVortexA;
-uniform vec3 uVortexB;
 uniform float uTexW;
 uniform float uTexH;
 uniform float uRowsPerFrame;
@@ -54,6 +51,8 @@ varying float vElectric;
 varying float vPigment;
 varying float vPigmentDensity;
 varying float vScanLime;
+varying vec2 vFlow;
+varying float vStreak;
 
 // Inward directions for the frame edges: left, right, bottom, top. Edge waves
 // travel along these when the fluid body strikes the border of the viewport.
@@ -65,6 +64,41 @@ vec3 birdPosition(float index, float frame) {
   float row = frame * uRowsPerFrame + floor(index / uTexW);
   float column = mod(index, uTexW);
   return texture2D(uPosTex, vec2((column + 0.5) / uTexW, (row + 0.5) / uTexH)).xyz;
+}
+
+// Value noise + fbm for the procedural data sea.
+float hash21(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+float vnoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(hash21(i), hash21(i + vec2(1.0, 0.0)), u.x),
+    mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), u.x),
+    u.y
+  );
+}
+
+float fbm(vec2 p) {
+  float value = 0.0;
+  float amplitude = 0.5;
+  mat2 octave = mat2(1.6, 1.2, -1.2, 1.6);
+  for (int i = 0; i < 4; i++) {
+    value += amplitude * vnoise(p);
+    p = octave * p;
+    amplitude *= 0.5;
+  }
+  return value;
+}
+
+// Two-octave fbm: the smooth stream function the sea's currents follow.
+float fbm2(vec2 p) {
+  return 0.667 * vnoise(p) + 0.333 * vnoise(mat2(1.6, 1.2, -1.2, 1.6) * p);
 }
 
 vec3 birdNormal(float index) {
@@ -87,75 +121,55 @@ void main() {
   float pigmentDensity = 0.0;
   float edgeGlow = 0.0;
   float pointerScan = 0.0;
-  // Uniform branch: once the liquid painting has handed off, integrated GPUs
-  // skip every video sample, exp and liquid-wave operation during bird flight.
+  float streamFade = 1.0;
+  vFlow = vec2(1.0, 0.0);
+  vStreak = 0.0;
+  // Uniform branch: once the data sea has handed off, integrated GPUs skip
+  // every noise, exp and liquid-wave operation during bird flight.
   if (uVideoOn > 0.015) {
-    vVideo = texture2D(uVideoTex, aGrid).rgb;
-    luminance = dot(vVideo, vec3(0.299, 0.587, 0.114));
-    float chroma = max(vVideo.r, max(vVideo.g, vVideo.b))
-      - min(vVideo.r, min(vVideo.g, vVideo.b));
-    pigmentDensity = smoothstep(0.035, 0.88, luminance + chroma * 0.28);
+    // Procedural data sea. Two domain-warp layers fold an fbm field into
+    // pigment currents; the final density drives brightness, relief and the
+    // palette ramp. Everything is a pure function of grid position and time,
+    // so the sea never loops and costs no texture uploads.
+    // uSheet is the half-extent of the visible frame (plus bleed) in world
+    // units, so the sea always fills the viewport at any aspect and the
+    // pattern keeps one physical scale from phone to ultrawide.
+    vec2 world = (aGrid - 0.5) * 2.0 * uSheet;
+    vec2 q = world * 0.52;
+    float st = uTime * 0.045;
+    vec2 w1 = vec2(fbm(q + vec2(0.0, st)), fbm(q + vec2(5.2, 1.3) - st));
+    vec2 w2 = vec2(
+      fbm(q + 3.2 * w1 + vec2(1.7, 9.2) + st * 1.6),
+      fbm(q + 3.2 * w1 + vec2(8.3, 2.8) - st * 1.2)
+    );
+    vec2 warped = q + 3.6 * w2 + vec2(st * 0.6, 0.0);
+    float dens = fbm(warped);
+    // Flow runs along the contours of a smooth stream function built on the
+    // same first warp, so strokes sweep in broad coherent swirls that match
+    // the marbling instead of following the finest noise octave.
+    vec2 sq = q * 0.9 + 1.4 * w1 + vec2(st * 0.8, -st * 0.5);
+    float psi = fbm2(sq);
+    vec2 grad = vec2(fbm2(sq + vec2(0.05, 0.0)) - psi, fbm2(sq + vec2(0.0, 0.05)) - psi) / 0.05;
+    float flowStrength = length(grad);
+    vec2 flowDir = flowStrength > 0.0001 ? vec2(-grad.y, grad.x) / flowStrength : vec2(1.0, 0.0);
+    // The warped density is the pigment tone: a contrast curve, no threshold.
+    luminance = pow(smoothstep(0.06, 0.76, dens), 1.2);
+    float fold = length(w2 - w1);
+    pigmentDensity = smoothstep(0.05, 0.9, luminance + fold * 0.35);
+    vVideo = vec3(luminance);
     vec2 centered = aGrid - 0.5;
+    // The sea is a relief surface: marbled density lifts toward the camera,
+    // so bright currents gain depth and parallax without scrambling the
+    // pattern. Motion comes from the evolving field itself, a slow swell and
+    // a gentle tide that sloshes the body against the frame.
+    float swell = sin(centered.x * 4.2 + centered.y * 2.3 - uTime * 0.35) * 0.5
+      + sin(centered.x * -2.1 + centered.y * 5.1 + uTime * 0.27) * 0.5;
     vec3 sheet = vec3(
-      centered.x * 10.8,
-      centered.y * 6.4,
-      centered.y * -1.2 + luminance * 1.8 + (seed - 0.5) * (0.6 + (1.0 - pigmentDensity) * 0.65)
+      world,
+      (dens - 0.45) * 1.6 + swell * 0.2 + (seed - 0.5) * 0.08
     );
-    float melt = (0.25 + 0.75 * pow(0.5 + 0.5 * sin(uTime * 0.16), 2.0)) * uMeltScale;
-    float edge = max(
-      smoothstep(0.26, 0.5, abs(centered.x)),
-      smoothstep(0.24, 0.5, abs(centered.y))
-    );
-    float lowBand = sin(aGrid.y * 19.0 + uTime * 0.31 + aSeed * 0.07);
-    float crossBand = cos(aGrid.x * 17.0 - uTime * 0.27 + aSeed * 0.05);
-    float pigmentFold = sin(
-      centered.x * 5.2
-      + centered.y * 7.4
-      + sin(centered.y * 3.0 - uTime * 0.21) * 1.8
-      + uTime * 0.3
-    );
-    float slowSwell = sin(
-      centered.y * 4.2
-      - uTime * 0.31
-      + sin(centered.x * 3.1 + uTime * 0.16) * 1.4
-    );
-    vec2 liquid = vec2(lowBand, crossBand) * (0.045 + (1.0 - luminance) * 0.075 + melt * 0.34);
-    liquid += vec2(pigmentFold, -pigmentFold) * (0.05 + pigmentDensity * 0.095);
-    liquid += vec2(
-      cos(centered.y * 3.6 - uTime * 0.23),
-      slowSwell
-    ) * (0.075 + pigmentDensity * 0.08);
-    liquid += vec2(
-      sin(centered.y * 9.0 + uTime * 0.85 + aSeed * 0.1),
-      cos(centered.x * 8.0 - uTime * 0.75)
-    ) * edge * (0.28 + melt * 0.55);
-    // Domain-warped advection: nested sines approximate curl noise, so the
-    // pigment streams shear and fold instead of oscillating in place.
-    vec2 warp = vec2(
-      sin(sheet.y * 1.9 + uTime * 0.5 + sin(sheet.x * 1.1 + uTime * 0.23) * 2.1),
-      cos(sheet.x * 1.6 - uTime * 0.44 + sin(sheet.y * 1.35 - uTime * 0.31) * 1.9)
-    );
-    liquid += warp * (0.085 + pigmentDensity * 0.08);
-    vec2 vortexA = sheet.xy - uVortexA.xy;
-    vec2 vortexB = sheet.xy - uVortexB.xy;
-    float distanceA = length(vortexA) + 0.001;
-    float distanceB = length(vortexB) + 0.001;
-    liquid += vec2(-vortexA.y, vortexA.x) / distanceA * exp(-distanceA * 0.55) * 0.3;
-    liquid += vec2(vortexB.y, -vortexB.x) / distanceB * exp(-distanceB * 0.6) * 0.26;
-    sheet.xy += liquid * (1.0 + edge * 1.65);
-    // Grand churn: a very slow whole-sheet current so the painting always
-    // has a reading of large-scale movement under the local turbulence.
-    sheet.xy += vec2(
-      sin(uTime * 0.031 + centered.y * 1.3),
-      cos(uTime * 0.027 + centered.x * 1.1)
-    ) * 0.16;
-    sheet.z += (lowBand + crossBand) * 0.055 * melt
-      + pigmentFold * (0.08 + pigmentDensity * 0.15)
-      + slowSwell * (0.07 + pigmentDensity * 0.12);
-    // Slosh: the whole fluid body leans with a slow tide and piles up against
-    // the frame; when it strikes an edge the CPU fires that edge's wave and a
-    // ring travels back through the pigment.
-    sheet.xy += uTide * (0.3 + pigmentDensity * 0.25);
+    sheet.xy += (w2 - 0.5) * 0.18;
+    sheet.xy += uTide * 0.12;
     // Pointer scanning: moving the cursor sweeps a lime scan through the
     // pigment — data near the sweep lights up and ripples in its wake, and
     // the effect fades as the cursor comes to rest.
@@ -165,7 +179,7 @@ void main() {
     float scanWave = sin(scanDist * 6.0 - uTime * 9.0) * pointerScan;
     sheet.xy += normalize(toScan + 0.0001) * scanWave * 0.22;
     sheet.z += pointerScan * 0.45 + scanWave * 0.18;
-    vec4 edgeDist = vec4(sheet.x + 5.4, 5.4 - sheet.x, sheet.y + 3.2, 3.2 - sheet.y);
+    vec4 edgeDist = vec4(sheet.x + uSheet.x, uSheet.x - sheet.x, sheet.y + uSheet.y, uSheet.y - sheet.y);
     for (int i = 0; i < 4; i++) {
       float age = uEdgeAges[i];
       if (age >= 0.0) {
@@ -175,6 +189,15 @@ void main() {
         edgeGlow += ring;
       }
     }
+    // Each particle slides along the local current for a short life and
+    // fades at both ends; the fragment stage draws it as a stroke aligned to
+    // the same direction, so the sea reads as brushed flow lines.
+    float life = fract(uTime * (0.05 + seed * 0.05) + fract(aSeed * 0.618));
+    float reach = 0.1 + min(flowStrength, 3.0) * 0.05;
+    sheet.xy += flowDir * (life - 0.5) * reach;
+    streamFade = sin(3.14159 * life);
+    vFlow = flowDir;
+    vStreak = smoothstep(0.1, 0.9, flowStrength);
     field = mix(field, sheet, smoothstep(0.0, 0.72, uVideoOn));
   }
   vec3 point = field;
@@ -295,7 +318,7 @@ void main() {
   vGlyph = aGlyph;
   vBird = bird;
   vVideoMix = uVideoOn * (1.0 - bird) * (1.0 - uFinale);
-  alpha *= mix(1.0, 0.22 + luminance * 0.82, vVideoMix);
+  alpha *= mix(1.0, (0.16 + luminance * 0.78) * streamFade, vVideoMix);
   vAlpha = alpha * appear;
   // Link pass: the same particles redrawn as line pairs. Each endpoint pulses
   // on a short offset cycle, so thin connections surface briefly between
@@ -318,7 +341,10 @@ void main() {
   float size = mix(0.5 + seed * 0.45, 0.7 + seed * 0.8, bird);
   // Compact particles keep the fluid field crisp; darker matter remains just
   // large enough to build depth without turning into low-resolution blobs.
-  float pigmentSize = mix(2.6 + seed * 0.5, 1.7 + seed * 0.4, pigmentDensity);
+  // Bright currents swell into overlapping glow; quiet water stays a fine
+  // dust, which gives the sea its luminous-pigment depth.
+  // Strokes need a larger sprite to hold their length.
+  float pigmentSize = mix(1.6 + seed * 0.4, 3.2 + seed * 0.8, luminance) * (1.0 + vStreak * 0.8);
   size = mix(size, pigmentSize, vVideoMix);
   size *= 1.0 + electric * 0.75;
   // The fly-through brings particles right up to the camera plane: clamp the
@@ -366,6 +392,8 @@ varying float vElectric;
 varying float vPigment;
 varying float vPigmentDensity;
 varying float vScanLime;
+varying vec2 vFlow;
+varying float vStreak;
 
 float hash1(float n) { return fract(sin(n) * 43758.5453); }
 
@@ -402,7 +430,14 @@ void main() {
     // Soft volumetric droplet: a gaussian body with a brighter core, sized to
     // overlap its neighbours so the field reads as one continuous fluid mass
     // instead of discrete pixels.
-    float radius = length(gl_PointCoord - 0.5);
+    vec2 pc = gl_PointCoord - 0.5;
+    pc.y = -pc.y;
+    // Flow stroke: squeeze the droplet across the current and stretch it
+    // along it. Strong currents give long thin strokes, calm water stays round.
+    float along = dot(pc, vFlow);
+    float across = dot(pc, vec2(-vFlow.y, vFlow.x));
+    float stretch = mix(1.0, 3.4, vStreak * vVideoMix);
+    float radius = length(vec2(along, across * stretch));
     if (radius > 0.5) discard;
     // Depth of field: near droplets stay tight and bright, far ones widen
     // into a soft out-of-focus haze so the painting gains real volume.

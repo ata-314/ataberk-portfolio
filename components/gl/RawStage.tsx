@@ -247,7 +247,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.useProgram(program);
 
     const mobile = window.matchMedia("(pointer: coarse)").matches || innerWidth < 768;
-    const count = mobile ? 7000 : 24000;
+    // No video decode or uploads any more, so the sea can afford density.
+    const count = mobile ? 14000 : 60000;
     const birdCount = mobile ? 2400 : 6000;
     const flightCount = mobile ? 3000 : 7500;
     let randomState = 0x9e3779b9;
@@ -262,7 +263,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const seeds = new Float32Array(count);
     const glyphs = new Float32Array(count);
     const birds = new Float32Array(count);
-    const columns = Math.round(Math.sqrt(count * (16 / 9)));
+    const columns = Math.round(Math.sqrt(count * Math.max(innerWidth / Math.max(innerHeight, 1), 0.3)));
     const rows = Math.ceil(count / columns);
     const permutation = Array.from({ length: count }, (_, index) => index);
     for (let i = count - 1; i > 0; i--) {
@@ -329,7 +330,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
     const positionTexture = gl.createTexture();
     const normalTexture = gl.createTexture();
-    const videoTexture = gl.createTexture();
     const atlasTexture = createAtlas(gl);
     const setupTexture = (
       unit: number,
@@ -372,7 +372,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
     setupTexture(0, positionTexture, "uPosTex", true);
     setupTexture(1, normalTexture, "uNrmTex", true);
-    setupTexture(2, videoTexture, "uVideoTex");
     gl.activeTexture(gl.TEXTURE3);
     gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
     gl.uniform1i(u("uAtlas"), 3);
@@ -401,50 +400,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       console.error("bird texture failed:", error);
     }
 
-    // The original full-bleed liquid data painting stays visible while the
-    // bird gathers. GPU uploads stop on scroll, while the last uploaded frame
-    // keeps flowing in the shader so video work never competes with the morph.
-    const video = document.createElement("video");
-    video.src = "/media/hero-source.mp4";
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.preload = "auto";
-    const videoSurface = document.createElement("canvas");
-    videoSurface.width = mobile ? 480 : 800;
-    videoSurface.height = mobile ? 270 : 450;
-    const videoContext = videoSurface.getContext("2d", { alpha: false });
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, videoTexture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      videoSurface.width,
-      videoSurface.height,
-      0,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      null,
-    );
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    let videoReady = 0;
-    let videoUploadsSuspended = false;
-    let scrollIntent = false;
-    let lastVideoUpload = -1;
-    video.addEventListener("playing", () => {
-      videoReady = 1;
-      videoUploadsSuspended = false;
-    });
-    void video.play().catch(() => {
-      videoReady = 0;
-    });
-    const onScrollIntent = () => {
-      scrollIntent = window.scrollY > 1;
-    };
-    addEventListener("scroll", onScrollIntent, { passive: true });
+    // The data sea is procedural (see lean-field-shaders), so it is ready as
+    // soon as the program is.
+    const videoReady = 1;
 
     const pointer: Vec3 = [999, 999, 0];
     const pointerSmooth: Vec3 = [999, 999, 0];
@@ -544,7 +502,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.uniform1f(u("uTexH"), TEX_H);
     gl.uniform1f(u("uRowsPerFrame"), ROWS_PER_FRAME);
     gl.uniform1f(u("uFrames"), BIRD_FRAMES);
-    gl.uniform1f(u("uMeltScale"), 1);
     gl.uniform3f(u("uColorBase"), 0.953, 0.937, 0.906);
     gl.uniform3f(u("uColorAccent"), 0.784, 1, 0.243);
     gl.uniform3f(u("uColorCyan"), 0.541, 0.902, 1);
@@ -615,31 +572,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         }
       }
 
-      // Phones hand the painting off earlier so the video branch and the bird
+      // Phones hand the painting off earlier so the sea branch and the bird
       // morph never share a frame budget for long.
       const targetVideo = mobile
         ? videoReady * (1 - smoothstep(hero, 0.1, 0.24))
         : videoReady * (1 - smoothstep(hero, 0.14, 0.38));
       videoMix = damp(videoMix, targetVideo, 12, delta);
-      if (scrollIntent || hero > 0.025) {
-        videoUploadsSuspended = true;
-      } else if (hero < 0.006) {
-        videoUploadsSuspended = false;
-      }
-      if (
-        videoContext &&
-        !videoUploadsSuspended &&
-        video.readyState >= 2 &&
-        video.currentTime - lastVideoUpload >= 1 / 20
-      ) {
-        lastVideoUpload = video.currentTime;
-        videoContext.drawImage(video, 0, 0, videoSurface.width, videoSurface.height);
-        gl.activeTexture(gl.TEXTURE2);
-        gl.bindTexture(gl.TEXTURE_2D, videoTexture);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, videoSurface);
-      }
-
       const flight = flightAt(hero, scrollState.page.current, pointerSmooth, pointerActive);
       const directionLength = Math.hypot(...flight.direction) || 1;
       const direction: Vec3 = [flight.direction[0] / directionLength, flight.direction[1] / directionLength, flight.direction[2] / directionLength];
@@ -684,10 +622,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform3f(u("uGradD"), gradient[9], gradient[10], gradient[11]);
       gl.uniform1f(u("uSize"), 40 * pixelRatio * (innerHeight / 900) * (mobile ? 0.85 : 1));
       gl.uniform1f(u("uMinPoint"), 4.5);
+      // Visible half-extent at the resting camera distance, plus 12% bleed.
+      const sheetHalfY = 8.2 * Math.tan(Math.PI / 8) * 1.12;
+      gl.uniform2f(u("uSheet"), sheetHalfY * (innerWidth / Math.max(innerHeight, 1)), sheetHalfY);
       gl.uniform3f(u("uBirdDir"), direction[0], direction[1], direction[2]);
       gl.uniform1f(u("uVideoOn"), videoMix);
-      gl.uniform3f(u("uVortexA"), -1.35 + Math.sin(time * 0.045) * 0.72, 0.32 + Math.cos(time * 0.038) * 0.5, 0);
-      gl.uniform3f(u("uVortexB"), 1.35 + Math.cos(time * 0.042) * 0.72, -0.32 + Math.sin(time * 0.05) * 0.5, 0);
       gl.uniform1f(u("uFlap"), flap);
       gl.uniform1f(u("uBirdReady"), readyMix);
       gl.uniform1f(u("uIntro"), intro);
@@ -716,17 +655,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       clearTimeout(introSafety);
       delete document.documentElement.dataset.stageIntro;
       removeEventListener("resize", resize);
-      removeEventListener("scroll", onScrollIntent);
       removeEventListener("pointermove", onPointerMove);
       removeEventListener("pointerdown", onPointerDown);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
       gl.deleteTexture(normalTexture);
-      gl.deleteTexture(videoTexture);
       gl.deleteTexture(atlasTexture);
       gl.deleteVertexArray(vao);
       gl.deleteProgram(program);
