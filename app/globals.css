@@ -159,6 +159,21 @@ header {
   animation: heroMask 1.05s cubic-bezier(0.19, 1, 0.22, 1) var(--d, 0s) both;
 }
 
+.code-name-text {
+  display: inline-block;
+  transition: color 0.4s ease;
+}
+
+/* Once the glyph canvas has drawn, the typeset text only holds the layout. */
+[data-code-ready="true"] .code-name-text {
+  color: transparent;
+}
+
+.code-name-canvas {
+  position: absolute;
+  pointer-events: none;
+}
+
 .hero-enter {
   animation: heroRise 0.9s cubic-bezier(0.19, 1, 0.22, 1) var(--d, 0s) both;
 }

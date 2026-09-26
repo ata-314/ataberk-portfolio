@@ -6,6 +6,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { scrollState } from "../three/scroll-state";
 import { StaticField } from "../gl/StaticField";
+import { CodeName } from "./CodeName";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -102,14 +103,7 @@ export function Hero({ t }: { t: HeroStrings }) {
           </div>
 
           <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-16">
-            <h1 aria-label={t.name} className="hero-name">
-              <span aria-hidden className="hero-line">
-                <span style={{ ["--d" as string]: "0.1s" }}>Ataberk</span>
-              </span>
-              <span aria-hidden className="hero-line">
-                <span style={{ ["--d" as string]: "0.2s" }}>Soylu</span>
-              </span>
-            </h1>
+            <CodeName lines={["Ataberk", "Soylu"]} className="hero-name" />
 
             <div className="pointer-events-auto max-w-md lg:pb-[0.9vw]">
               <p className="hero-enter text-lg leading-snug text-bone text-balance md:text-xl" style={{ ["--d" as string]: "0.38s" }}>

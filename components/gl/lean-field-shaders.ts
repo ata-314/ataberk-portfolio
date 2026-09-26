@@ -13,6 +13,7 @@ uniform float uPointerVel;
 uniform vec3 uWaveOrigin;
 uniform float uWaveAge;
 uniform float uSize;
+uniform float uMinPoint;
 uniform mat4 uBirdMat;
 uniform vec3 uBirdDir;
 uniform sampler2D uPosTex;
@@ -323,7 +324,17 @@ void main() {
   // The fly-through brings particles right up to the camera plane: clamp the
   // divisor so near passes flare into streaks instead of exploding, and cap
   // the sprite so a single point can never flood the mobile rasterizer.
-  gl_PointSize = min(uSize * size / max(-view.z, 0.6), uSize * 2.2);
+  float pointPx = min(uSize * size / max(-view.z, 0.6), uSize * 2.2);
+  // Sprites under a few device pixels rasterize as square blocks. Hold a
+  // minimum footprint so every droplet stays round, and dim the enlarged
+  // sprite by the area ratio so its total light stays the same. Glyph points
+  // keep their size so the bird's characters never wash out.
+  if (bird < 0.5 && uLineMode < 0.5 && pointPx < uMinPoint) {
+    float grow = uMinPoint / max(pointPx, 0.001);
+    vAlpha /= grow * grow;
+    pointPx = uMinPoint;
+  }
+  gl_PointSize = pointPx;
 }
 `;
 

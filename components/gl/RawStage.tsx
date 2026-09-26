@@ -519,7 +519,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // Full-resolution rendering keeps the droplets pixel-crisp on retina
       // displays; phones trade a little sharpness for fill-rate headroom —
       // the additive field is fill-bound, so DPR is the dominant mobile cost.
-      pixelRatio = Math.min(devicePixelRatio, mobile ? 1.25 : 2);
+      // Standard-density desktop screens render supersampled (≥1.5x) and let
+      // the compositor downsample, which rounds off the smallest droplets.
+      pixelRatio = mobile
+        ? Math.min(devicePixelRatio, 1.5)
+        : Math.min(Math.max(devicePixelRatio, 1.5), 2);
       const width = Math.round(innerWidth * pixelRatio);
       const height = Math.round(innerHeight * pixelRatio);
       if (canvas.width !== width || canvas.height !== height) {
@@ -679,6 +683,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform3f(u("uGradC"), gradient[6], gradient[7], gradient[8]);
       gl.uniform3f(u("uGradD"), gradient[9], gradient[10], gradient[11]);
       gl.uniform1f(u("uSize"), 40 * pixelRatio * (innerHeight / 900) * (mobile ? 0.85 : 1));
+      gl.uniform1f(u("uMinPoint"), 4.5);
       gl.uniform3f(u("uBirdDir"), direction[0], direction[1], direction[2]);
       gl.uniform1f(u("uVideoOn"), videoMix);
       gl.uniform3f(u("uVortexA"), -1.35 + Math.sin(time * 0.045) * 0.72, 0.32 + Math.cos(time * 0.038) * 0.5, 0);
