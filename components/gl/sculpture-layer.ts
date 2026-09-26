@@ -191,18 +191,18 @@ void renderGrain(float id) {
     destination=target.xy/target.w;
     vec3 worldNormal=normalize(mat3(birdMatrix)*normal);
     birdLight=.65+.85*max(dot(worldNormal,normalize(vec3(-.6,.8,1.0))),0.0);
-    // Electrified body: thin veins crawl over the anatomy in patches, arc
-    // pulses race along the wingspan and random grains spark for a frame.
-    float vein=noise(anatomy*5.5+vec3(0.0,time*2.6,time*1.7));
-    float veinLine=1.0-smoothstep(0.0,.022,abs(vein-.5));
-    veinLine*=smoothstep(.5,.7,noise(anatomy*2.0-vec3(time*.9)));
+    // A restrained charge: sparse thin veins crawl over the anatomy, a slow
+    // faint pulse runs along the wingspan and a rare grain sparks.
+    float vein=noise(anatomy*5.5+vec3(0.0,time*1.3,time*.85));
+    float veinLine=1.0-smoothstep(0.0,.012,abs(vein-.5));
+    veinLine*=smoothstep(.62,.78,noise(anatomy*2.0-vec3(time*.5)));
     float span=anatomy.x*1.6+anatomy.z*.9;
-    float arc=pow(.5+.5*sin(span*7.0-time*11.0+noise(anatomy*3.0+time)*4.0),60.0);
-    float spark=step(.975,grainRandom(uint(id)+uint(floor(time*18.0))*131u));
-    electric=clamp(veinLine*.95+arc*.75+spark,0.0,1.4);
-    electricColor=mix(vec3(.55,.95,1.0),vec3(.84,1.0,.3),.5+.5*sin(time*3.0+seed*6.28));
+    float arc=pow(.5+.5*sin(span*7.0-time*4.0+noise(anatomy*3.0+time*.5)*4.0),90.0);
+    float spark=step(.996,grainRandom(uint(id)+uint(floor(time*10.0))*131u));
+    electric=clamp(veinLine*.55+arc*.3+spark*.5,0.0,.7);
+    electricColor=mix(vec3(.55,.95,1.0),vec3(.84,1.0,.3),.5+.5*sin(time*1.2+seed*6.28));
     // Sparks leap slightly off the surface.
-    destination+=(vec2(grainRandom(uint(id)+uint(time*18.0)),grainRandom(uint(id)+977u+uint(time*18.0)))-.5)*.014*spark;
+    destination+=(vec2(grainRandom(uint(id)+uint(time*18.0)),grainRandom(uint(id)+977u+uint(time*18.0)))-.5)*.006*spark;
   }
   // The first gathering already traces the actual anatomy. A loose halo
   // follows the wings and body, then contracts onto the feather samples.
@@ -251,9 +251,9 @@ void renderGrain(float id) {
   vec3 birdBody=min(mix(lime*.7+citron*.3,vec3(.8,.96,1.0),.18)*birdLight*1.05,vec3(.95));
   tint=mix(tint,birdBody,assembly*.85);
   // Veins burn white-hot at the core and fringe into the electric hue.
-  vec3 hot=mix(electricColor,vec3(1.0),.45)*1.6;
+  vec3 hot=mix(electricColor,vec3(1.0),.25)*1.25;
   tint=mix(tint,hot,clamp(electric,0.0,1.0)*assembly);
-  gl_PointSize*=1.0+electric*.9*assembly;
+  gl_PointSize*=1.0+electric*.4*assembly;
   // A bright scan sweeps down the relief every six seconds. Depth bends
   // the band around the folds; only actual grains carry the light.
   float sweep=1.55-mod(time*.52,3.1);
@@ -275,7 +275,7 @@ void renderGrain(float id) {
     // Halo mostly around live veins and sparks; the body keeps only a faint
     // lime aura (no red/blue, which washed the green body out to grey).
     tint=mix(vec3(.3,.85,.05),electricColor*1.4,clamp(electric,0.0,1.0));
-    alpha=(.008+electric*.4)*assembly*opacity;
+    alpha=(.006+electric*.18)*assembly*opacity;
     gl_PointSize*=3.2;
   }
 }
