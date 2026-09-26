@@ -126,7 +126,12 @@ export function Hero({ t }: { t: HeroStrings }) {
             <span aria-hidden className="hero-meta hero-enter right-6 bottom-2 hidden md:block" style={{ ["--d" as string]: "0.65s" }}>
               {t.locale.toUpperCase()} / {tr ? "EN" : "TR"}
             </span>
-            <CodeName words={["ATABERK", "SOYLU"]} label={t.name} className="hero-name" />
+            <CodeName words={["ATABERK"]} label={t.name} className="hero-name" />
+            <p aria-hidden className="hero-enter mt-3 flex items-center justify-center gap-3 font-mono text-[11px] tracking-[0.6em] text-bone-dim uppercase md:mt-4 md:text-xs" style={{ ["--d" as string]: "0.7s" }}>
+              <span className="h-px w-6 bg-lime md:w-10" />
+              Soylu
+              <span className="h-px w-6 bg-lime md:w-10" />
+            </p>
           </div>
 
           <div className="pointer-events-auto mt-8 flex max-w-2xl flex-col items-center md:mt-10">

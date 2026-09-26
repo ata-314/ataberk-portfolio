@@ -414,9 +414,15 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       collectProbe();
       if(opacity<.002) return;
       const delta=Math.max(0,Math.min(time-lastTime,.05)); lastTime=time;
-      const flowing=flight.hero<.015 || flight.finale>.98 || flight.ready<.95;
+      // The bird samples its source positions from the surface map, so the
+      // flow must be still while grains gather. It eases to rest over the
+      // start of the assembly instead of stopping on the first scroll tick,
+      // which read as the field freezing.
+      const holdT=Math.min(1,Math.max(0,(flight.hero-.03)/.19));
+      const hold=flight.finale>.98 || flight.ready<.95 ? 0 : holdT*holdT*(3-2*holdT);
+      const flowing=hold<.999;
       if(flowing) {
-        flowTime+=delta;sourceX=px;sourceY=py;
+        flowTime+=delta*(1-hold);sourceX=px;sourceY=py;
         sourceActivity+=(activity-sourceActivity)*(1-Math.exp(-5*delta));mapDirty=true;
       }
       const count=mobile?70000:220000;

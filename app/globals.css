@@ -128,7 +128,7 @@ header {
    directly here (a :root token built from them would resolve as invalid). */
 .hero-name {
   font-family: var(--font-audiowide), var(--font-space), sans-serif;
-  font-size: clamp(2.8rem, 7.8vw, 8.2rem);
+  font-size: clamp(3.2rem, 11.5vw, 11.5rem);
   font-weight: 400;
   line-height: 0.95;
   letter-spacing: 0.01em;
@@ -139,7 +139,7 @@ header {
 
 @media (max-width: 767px) {
   .hero-name {
-    font-size: 13vw;
+    font-size: 19vw;
   }
 }
 
