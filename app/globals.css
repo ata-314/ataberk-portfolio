@@ -134,22 +134,22 @@ header {
    rising out of its own mask. Delays come from the --d custom property. */
 .hero-name {
   font-family: var(--font-display);
-  font-size: clamp(4.1rem, 13.2vw, 14rem);
+  font-size: clamp(4.1rem, 11.8vw, 12.5rem);
   font-weight: 600;
-  line-height: 0.84;
+  line-height: 1.04;
   letter-spacing: -0.058em;
   color: var(--bone);
 }
 
 @media (max-width: 767px) {
   .hero-name {
-    font-size: 24vw;
+    font-size: 22vw;
   }
 }
 
 .hero-line {
   display: block;
-  overflow: hidden;
+  overflow: visible;
   padding-bottom: 0.08em;
   margin-bottom: -0.08em;
 }

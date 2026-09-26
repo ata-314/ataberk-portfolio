@@ -59,7 +59,7 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
     const build = () => {
       const style = getComputedStyle(heading);
       const fontSize = parseFloat(style.fontSize);
-      cell = Math.max(4, fontSize / 30);
+      cell = Math.max(3, fontSize / 34);
       dpr = Math.min(devicePixelRatio || 1, 3);
       atlasBone = makeAtlas(BONE);
       atlasLime = makeAtlas(LIME);
@@ -67,14 +67,15 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
       built = textEls.map((el, i) => {
         const canvas = canvases[i];
         const box = el.getBoundingClientRect();
-        const w = Math.ceil(box.width + cell * 2);
-        const h = Math.ceil(box.height + cell * 2);
+        const padding = Math.ceil(fontSize * .14);
+        const w = Math.ceil(box.width + padding * 2);
+        const h = Math.ceil(box.height + padding * 2);
         canvas.width = Math.ceil(w * dpr);
         canvas.height = Math.ceil(h * dpr);
         canvas.style.width = `${w}px`;
         canvas.style.height = `${h}px`;
-        canvas.style.left = `${-cell}px`;
-        canvas.style.top = `${-cell}px`;
+        canvas.style.left = `${-padding}px`;
+        canvas.style.top = `${-padding}px`;
         const ctx = canvas.getContext("2d")!;
         const cols = Math.ceil(w / cell);
         const rows = Math.ceil(h / cell);
@@ -88,13 +89,11 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
         m.scale(1 / cell, 1 / cell);
         m.font = font;
         m.fillStyle = "#fff";
-        // Font metrics disagree with the DOM's inline box, so read the real
-        // baseline from a zero-size inline-block marker.
-        const marker = document.createElement("span");
-        marker.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
-        el.appendChild(marker);
-        const baseline = marker.getBoundingClientRect().top - box.top;
-        marker.remove();
+        // Reserve the actual ink bounds, including descenders. The old
+        // inline baseline and line mask cut off the bottom of “Soylu”.
+        const metrics = m.measureText(el.textContent ?? "");
+        const inkHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        const baseline = padding + (box.height - inkHeight) / 2 + metrics.actualBoundingBoxAscent;
         const node = el.firstChild;
         if (node) {
           const range = document.createRange();
@@ -103,7 +102,7 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
             range.setStart(node, c);
             range.setEnd(node, c + 1);
             const r = range.getBoundingClientRect();
-            m.fillText(text[c], r.left - box.left + cell, baseline + cell);
+            m.fillText(text[c], r.left - box.left + padding, baseline);
           }
         }
         const data = m.getImageData(0, 0, cols, rows).data;
@@ -121,21 +120,26 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
     const draw = (now: number) => {
       const t = now / 1000;
       const size = Math.ceil(cell * dpr);
-      const reveal = revealStart < 0 ? 0 : Math.min(1, (now - revealStart) / 2400);
+      const reveal = revealStart < 0 ? 0 : Math.min(1, (now - revealStart) / 3000);
       for (const line of built) {
         const { ctx, cells, rows, canvas } = line;
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const rect = canvas.getBoundingClientRect();
         for (const c of cells) {
-          // Scattered code converges into the letter mask; no solid text body.
-          const progress = Math.max(0, Math.min(1, (reveal - c.seed * .18) / .82));
-          const ease = progress * progress * progress * (progress * (progress * 6 - 15) + 10);
+          // Perspective brings the name forward from a deep, narrow field.
+          // The letter structure is present from the start, rather than a box
+          // of random symbols which suddenly turns into text.
+          const delay = (c.x / line.w) * .15 + c.seed * .08;
+          const progress = Math.max(0, Math.min(1, (reveal - delay) / .77));
+          const ease = 1 - Math.pow(1 - progress, 3);
           const settling = 1 - ease;
-          const startX = hash(c.col, c.row + 91) * (line.w - cell);
-          const startY = hash(c.col + 27, c.row + 53) * (line.h - cell);
-          const x = startX + (c.x - startX) * ease;
-          const y = startY + (c.y - startY) * ease;
+          const depth = .18 + ease * .82;
+          const x = line.w * .52 + (c.x - line.w * .52) * depth
+            + Math.sin(c.row * .16 + progress * 3) * settling * cell * 2;
+          const y = line.h * .72 + (c.y - line.h * .72) * depth
+            + settling * cell * 2;
+          const drawSize = size * (.35 + ease * .65);
           const colSeed = hash(c.col, 7.3);
           const speed = 5 + colSeed * 11;
           const span = rows + 14 + colSeed * 18;
@@ -148,13 +152,19 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
           const rate = 0.6 + c.seed * 3 + trail * 10 + near * 14 + settling * 20;
           const glyph = Math.floor(c.seed * 997 + t * rate) % CHARSET.length;
           const wave = 0.08 * Math.sin(c.col * 0.09 - t * 1.4 + c.row * 0.05);
-          const bright = Math.min(1, 0.72 + wave + trail * 0.35 + near * 0.3 + settling * 0.4);
+          const bright = Math.min(1, 0.9 + wave + trail * 0.2 + near * 0.3 + settling * 0.4);
           // Lime stays an accent: stream heads, a sparse subset under the pointer,
           // and cells still decoding on entrance.
           const hot = behind >= 0 && behind < 1.2 ? 1 : Math.max(c.seed < 0.22 ? near : 0, settling);
           const atlas = hot > 0.5 ? atlasLime! : atlasBone!;
-          ctx.globalAlpha = bright * Math.min(1, c.cover * 1.2) * Math.min(1, reveal * 8) * (.4 + ease * .6);
-          ctx.drawImage(atlas, glyph * size, 0, size, size, x * dpr, y * dpr, size, size);
+          ctx.globalAlpha = bright * Math.min(1, c.cover * 1.2) * Math.min(1, reveal * 8) * (.12 + ease * .88);
+          const opacity = ctx.globalAlpha;
+          // Fine code echoes suggest depth, with no filled letter backing.
+          ctx.globalAlpha = opacity * .16;
+          ctx.drawImage(atlasLime!, glyph * size, 0, size, size,
+            (x + 1.5) * dpr, (y + 2) * dpr, drawSize, drawSize);
+          ctx.globalAlpha = opacity;
+          ctx.drawImage(atlas, glyph * size, 0, size, size, x * dpr, y * dpr, drawSize, drawSize);
         }
       }
     };
