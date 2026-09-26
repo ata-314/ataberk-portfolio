@@ -1,17 +1,4 @@
-// The evolving sculpture is sampled directly into independent GPU points.
-// Empty space between luminous grains remains black; there is no solid skin.
-const vertex = `#version 300 es
-precision highp float;
-uniform vec2 resolution;
-uniform vec2 grid;
-uniform vec2 pointer;
-uniform float time;
-uniform float activity;
-uniform float opacity;
-uniform float pixelScale;
-out vec3 tint;
-out float alpha;
-float hash(vec3 p) {
+const field = /* glsl */ `float hash(vec3 p) {
   p = fract(p * 0.3183099 + vec3(.11,.27,.43));
   p *= 17.0;
   return fract(p.x * p.y * p.z * (p.x+p.y+p.z));
@@ -28,13 +15,13 @@ float smin(float a,float b,float k) {
   return mix(b,a,h)-k*h*(1.0-h);
 }
 float shape(vec3 p) {
-  float t=time*.24;
+  float t=time*.38;
   vec3 q=p;
-  q.x += .20*sin(p.y*1.3+t*.7)+.12*sin(p.z*2.0-t);
-  q.y += .34*sin(p.x*1.4-t*.8);
-  q.z += .24*sin(p.y*1.5+p.x*.7+t*.6);
+  q.x += .42*sin(p.y*1.1+t*.8)+.21*sin(p.z*1.6-t);
+  q.y += .48*sin(p.x*1.1-t*.8)+.18*cos(p.z*1.3+t);
+  q.z += .36*sin(p.y*1.2+p.x*.7+t*.6);
   // Large lobes rise, lean and merge; no repeating sheet or uniform wave.
-  float d=length((q-vec3(.1,-.8,0))/vec3(1.8,.95,1.0))-.98;
+  float d=length((q-vec3(.1,-.6,0))/vec3(2.4,1.05,1.0))-.98;
   d=smin(d,length(q-vec3(-1.15,.15,.0))-.98,.65);
   d=smin(d,length((q-vec3(.75,.4,.1))/vec3(.92,1.4,1.0))-.92,.58);
   d=smin(d,length(q-vec3(-.2+.22*sin(t*.8),1.45+.18*sin(t*.6),-.4))-.8,.55);
@@ -43,10 +30,10 @@ float shape(vec3 p) {
   float n=noise(flow);
   // Nested folds deform the actual surface, so foreground ridges hide
   // recessed matter and catch the key light on their lip.
-  float fold=sin(q.y*5.1 + q.x*2.4 + n*8.0 + t);
+  float fold=sin(q.y*3.8 + q.x*1.7 + n*6.0 + t);
   float fine=noise(flow*3.1+vec3(n*2.0));
   float sediment=noise(flow*8.0+fine*2.0);
-  d += fold*.14 + (n-.5)*.43 + (fine-.5)*.19 + (sediment-.5)*.055;
+  d += fold*.19 + (n-.5)*.4 + (fine-.5)*.09 + (sediment-.5)*.018;
   float touch=exp(-dot(p.xy-pointer,p.xy-pointer)*1.5)*activity;
   d -= touch*.15*sin(p.y*4.0+p.x*2.0-t*3.0);
   return d;
@@ -56,6 +43,23 @@ vec3 normalAt(vec3 p) {
   return normalize(vec3(shape(p+e.xyy)-shape(p-e.xyy),
     shape(p+e.yxy)-shape(p-e.yxy),shape(p+e.yyx)-shape(p-e.yyx)));
 }
+`;
+
+// Advected material samples form a dense, rolling particle fluid inside a
+// recessed canvas. Individual grains are lit spheres with depth and shadow.
+const vertex = `#version 300 es
+precision highp float;
+uniform vec2 resolution;
+uniform vec2 grid;
+uniform vec2 pointer;
+uniform float time;
+uniform float activity;
+uniform float opacity;
+uniform float pixelScale;
+uniform sampler2D surfaceMap;
+out vec3 tint;
+out float alpha;
+${field}
 
 void main() {
   float id=float(gl_VertexID);
@@ -63,70 +67,136 @@ void main() {
   vec2 cell=vec2(mod(id,grid.x),floor(id/grid.x));
   vec2 jitter=vec2(hash(vec3(id,4.1,2.0)),hash(vec3(id,7.3,1.0)))-.5;
   vec2 screen=((cell+.5+jitter*.95)/grid)*2.0-1.0;
+  // Transport the samples themselves through two broad vortices. The
+  // density evolves with the currents rather than blinking at fixed pixels.
+  vec2 material=screen;
+  float t=time*.16;
+  screen.x += .11*sin(material.y*4.0+t)+.06*sin(material.y*7.0-t*.7);
+  screen.y += .12*sin(material.x*3.2-t*.8)+.045*cos(material.x*6.0+t);
+  screen = mod(screen+1.0,2.0)-1.0;
   float aspect=resolution.x/resolution.y;
   vec3 ro=vec3(0,.15,7.8);
-  vec3 rd=normalize(vec3(screen.x*aspect*2.7,screen.y*2.7,-7.0));
-  float spread=max(1.0,aspect*.85);
-  float distance=3.0;
-  vec3 p=ro;
-  bool hit=false;
-  for(int i=0;i<76;i++) {
-    p=ro+rd*distance;
-    float d=shape(vec3(p.x/spread,p.y,p.z));
-    if(d<.009) {hit=true;break;}
-    distance+=max(d*.48,.006);
-    if(distance>12.0) break;
-  }
+  vec3 rd=normalize(vec3(screen.x*aspect*2.5,screen.y*2.5,-7.0));
+  float spread=max(1.0,aspect*1.05);
+  vec4 surface=texture(surfaceMap,screen*.5+.5);
   tint=vec3(0); alpha=0.0; gl_PointSize=1.0;
   gl_Position=vec4(2.0,2.0,2.0,1.0);
-  if(!hit) return;
+  if(surface.b<.98) return;
+  float distance=(surface.r+surface.g/255.0)*12.0;
+  vec3 p=ro+rd*distance;
   vec3 local=vec3(p.x/spread,p.y,p.z);
   vec3 n=normalAt(local);
   float light=max(dot(n,normalize(vec3(-.65,.9,1.3))),0.0);
   float rim=pow(1.0-abs(dot(n,-rd)),2.0);
   float region=noise(local*.85+vec3(0,-time*.03,time*.01));
   float band=sin(local.y*1.3-local.x*.8+region*5.0+time*.035);
-  vec3 blue=vec3(.035,.23,1.0);
-  vec3 cyan=vec3(.03,.9,1.0);
-  vec3 violet=vec3(.57,.10,1.0);
-  tint=mix(violet,blue,smoothstep(-.7,.1,band));
-  tint=mix(tint,cyan,smoothstep(.05,.7,band));
-  tint=mix(tint,vec3(.65,.94,1.0),pow(light,5.0)*.35);
-  // A narrow moving current carries energy across the form. Every grain
-  // has its own phase, depth and size, so the cloud never becomes a mesh.
-  float pulse=pow(.5+.5*sin(local.y*3.0-local.x*1.8-time*1.4),14.0);
-  float loose=step(.94,seed);
-  float drift=.018+loose*.18;
-  p+=vec3(sin(time*.35+id*.73),cos(time*.29+id*.51),sin(time*.4+id*.31))*drift;
-  p+=vec3(n.x*spread,n.y,n.z)*(seed-.5)*.12;
+  vec3 forest=vec3(.035,.15,.045);
+  vec3 lime=vec3(.58,.88,.045);
+  vec3 citron=vec3(.83,1.0,.17);
+  tint=mix(forest,lime,smoothstep(-.85,.12,band));
+  tint=mix(tint,citron,smoothstep(.05,.8,band));
+  float cavity=clamp(1.0-max(0.0,.2-shape(local+n*.2))*2.4,.3,1.0);
+  tint*= (.32+.85*light)*cavity;
+  float pulse=pow(.5+.5*sin(local.y*2.0-local.x-time*.8),8.0);
+  tint=mix(tint,citron,pulse*.13);
+  // Close, unequal grains build mass; a small fraction lifts in the wake.
+  float loose=step(.98,seed);
+  p+=n*(seed-.5)*(.045+loose*.15);
+  p.xy+=vec2(sin(time*.6+id),cos(time*.5+id))*.006;
   vec3 view=p-ro;
-  gl_Position=vec4(view.x/(aspect*2.7/7.0),view.y/(2.7/7.0),0.0,-view.z);
-  gl_PointSize=clamp((2.2+seed*1.5+rim*.65)*pixelScale*7.0/(-view.z),1.0,7.0*pixelScale);
-  alpha=(.6+.65*light+.3*rim+pulse*.3)*opacity;
-  alpha*=mix(.48,1.0,smoothstep(-.95,.45,screen.y));
-  alpha*=.85+.15*sin(time*.5+seed*30.0);
-  tint+=cyan*pulse*.25;
+  gl_Position=vec4(view.x/(aspect*2.5/7.0),view.y/(2.5/7.0),0.0,-view.z);
+  gl_PointSize=clamp((3.0+seed*1.6)*pixelScale*7.0/(-view.z),1.0,8.0*pixelScale);
+  alpha=(.8+light*.18)*opacity;
+  alpha*=mix(.6,1.0,smoothstep(-.95,.4,screen.y));
 }`;
 const fragment = `#version 300 es
 precision highp float;
 in vec3 tint;
 in float alpha;
+uniform vec2 resolution;
 out vec4 color;
 void main() {
-  vec2 p=gl_PointCoord-.5;
-  float r=length(p);
-  if(r>.5 || alpha<.005) discard;
-  float core=1.0-smoothstep(.08,.34,r);
-  float halo=exp(-r*r*16.0)*.2;
-  color=vec4(tint*1.3,(core+halo)*alpha);
+  vec2 inset=min(gl_FragCoord.xy,resolution-gl_FragCoord.xy);
+  float border=min(resolution.x,resolution.y)*.028;
+  if(min(inset.x,inset.y)<border) discard;
+  vec2 p=(gl_PointCoord-.5)*2.0;
+  float r2=dot(p,p);
+  if(r2>1.0 || alpha<.005) discard;
+  vec3 n=vec3(p.x,-p.y,sqrt(1.0-r2));
+  vec3 lamp=normalize(vec3(-.4,.6,1.0));
+  float light=.38+.72*max(dot(n,lamp),0.0);
+  float spec=pow(max(dot(n,normalize(vec3(-.2,.3,1.0))),0.0),24.0);
+  float edge=1.0-smoothstep(.68,1.0,r2);
+  color=vec4(tint*light+vec3(.87,1.0,.58)*spec*.25,edge*alpha);
+}`;
+const canvasVertex = `#version 300 es
+precision highp float;
+out vec2 uv;
+void main() {
+  vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));
+  uv=p;gl_Position=vec4(p*2.0-1.0,0.0,1.0);
+}`;
+const canvasFragment = `#version 300 es
+precision highp float;
+in vec2 uv;
+uniform vec2 resolution;
+uniform float opacity;
+out vec4 color;
+void main() {
+  float unit=min(resolution.x,resolution.y);
+  vec2 d=min(uv,1.0-uv)*resolution;
+  float edge=min(d.x,d.y)/unit;
+  vec3 frame=vec3(.89,.90,.86);
+  vec3 paper=vec3(.73,.76,.68);
+  float inner=step(.028,edge);
+  float shadow=exp(-max(edge-.028,0.0)*90.0);
+  paper*=1.0-shadow*.45;
+  vec3 c=mix(frame,paper,inner);
+  // Light on the top bevel, shadow under the lip; the whole viewport is
+  // the vessel, not a floating object on an unbounded background.
+  c+=vec3(.07)*exp(-abs(edge-.023)*900.0);
+  float reading=1.0-smoothstep(.06,.64,uv.y);
+  c=mix(c,vec3(.006,.009,.004),reading*.94*inner);
+  color=vec4(c,opacity);
+}`;
+
+// Ray marching is shared by all grains through a small depth map. RGBA8
+// packs depth into two channels; no float-render-target extension is needed.
+const surfaceFragment = `#version 300 es
+precision highp float;
+in vec2 uv;
+uniform vec2 resolution;
+uniform vec2 pointer;
+uniform float time;
+uniform float activity;
+out vec4 color;
+${field}
+void main() {
+  vec2 screen=uv*2.0-1.0;
+  float aspect=resolution.x/resolution.y;
+  vec3 ro=vec3(0,.15,7.8);
+  vec3 rd=normalize(vec3(screen.x*aspect*2.5,screen.y*2.5,-7.0));
+  float spread=max(1.0,aspect*1.05);
+  float distance=3.0;
+  float hit=0.0;
+  for(int i=0;i<76;i++) {
+    vec3 p=ro+rd*distance;
+    float d=shape(vec3(p.x/spread,p.y,p.z));
+    if(d<.009) {hit=1.0;break;}
+    distance+=max(d*.48,.006);
+    if(distance>12.0) break;
+  }
+  float packed=clamp(distance/12.0,0.0,1.0)*255.0;
+  color=vec4(floor(packed)/255.0,fract(packed),hit,1.0);
 }`;
 
 export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean) {
+  const makeProgram=(vertexSource: string,fragmentSource: string) => {
   const program=gl.createProgram();
   if(!program) throw new Error("Particle sculpture allocation failed");
   const shaders: WebGLShader[]=[];
   try {
-    for(const [type,source] of [[gl.VERTEX_SHADER,vertex],[gl.FRAGMENT_SHADER,fragment]] as const) {
+    for(const [type,source] of [[gl.VERTEX_SHADER,vertexSource],[gl.FRAGMENT_SHADER,fragmentSource]] as const) {
       const shader=gl.createShader(type);
       if(!shader) throw new Error("Particle shader allocation failed");
       shaders.push(shader); gl.shaderSource(shader,source); gl.compileShader(shader);
@@ -137,22 +207,59 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
     if(!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "Particle link failed");
   } catch(error) {gl.deleteProgram(program);throw error;}
   finally {shaders.forEach(shader=>gl.deleteShader(shader));}
+    return program;
+  };
+  const program=makeProgram(vertex,fragment);
+  const canvasProgram=makeProgram(canvasVertex,canvasFragment);
+  const surfaceProgram=makeProgram(canvasVertex,surfaceFragment);
+  const surfaceUniforms=Object.fromEntries(["resolution","pointer","time","activity"].map(name=>[name,gl.getUniformLocation(surfaceProgram,name)]));
+  const surfaceMap=gl.getUniformLocation(program,"surfaceMap");
+  const texture=gl.createTexture();
+  const target=gl.createFramebuffer();
+  gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,texture);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  let mapWidth=0,mapHeight=0;
+  const canvasResolution=gl.getUniformLocation(canvasProgram,"resolution");
+  const canvasOpacity=gl.getUniformLocation(canvasProgram,"opacity");
   const vao=gl.createVertexArray();
   const uniforms=Object.fromEntries(["resolution","grid","pointer","time","activity","opacity","pixelScale"].map(name=>[name,gl.getUniformLocation(program,name)]));
   return {
     render(w: number,h: number,time: number,opacity: number,px: number,py: number,activity: number) {
       if(opacity<.002) return;
-      const count=mobile?36000:110000;
+      const count=mobile?70000:220000;
       const columns=Math.round(Math.sqrt(count*w/h));
       const rows=Math.ceil(count/columns);
-      gl.bindVertexArray(vao); gl.useProgram(program);
-      gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+      gl.bindVertexArray(vao);
+      gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+      gl.useProgram(canvasProgram);
+      gl.uniform2f(canvasResolution,w,h);gl.uniform1f(canvasOpacity,opacity);
+      gl.drawArrays(gl.TRIANGLES,0,3);
+      const scale=Math.min(1,(mobile?256:384)/Math.max(w,h));
+      const mw=Math.max(1,Math.round(w*scale)),mh=Math.max(1,Math.round(h*scale));
+      gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,texture);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,target);
+      if(mw!==mapWidth || mh!==mapHeight) {
+        mapWidth=mw;mapHeight=mh;
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,mw,mh,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,texture,0);
+        if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE) throw new Error("Fluid depth target unavailable");
+      }
+      gl.viewport(0,0,mw,mh);gl.disable(gl.BLEND);gl.useProgram(surfaceProgram);
+      gl.uniform2f(surfaceUniforms.resolution,w,h);gl.uniform2f(surfaceUniforms.pointer,px,py);
+      gl.uniform1f(surfaceUniforms.time,time);gl.uniform1f(surfaceUniforms.activity,activity);
+      gl.drawArrays(gl.TRIANGLES,0,3);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.enable(gl.BLEND);
+      gl.useProgram(program);gl.uniform1i(surfaceMap,4);
       gl.uniform2f(uniforms.resolution,w,h); gl.uniform2f(uniforms.grid,columns,rows);
       gl.uniform2f(uniforms.pointer,px,py); gl.uniform1f(uniforms.time,time);
       gl.uniform1f(uniforms.activity,activity); gl.uniform1f(uniforms.opacity,opacity);
       gl.uniform1f(uniforms.pixelScale,h/900);
       gl.drawArrays(gl.POINTS,0,columns*rows);
+      gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
     },
-    dispose() {gl.deleteProgram(program);gl.deleteVertexArray(vao);},
+    dispose() {gl.deleteProgram(program);gl.deleteProgram(canvasProgram);gl.deleteProgram(surfaceProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteVertexArray(vao);},
   };
 }

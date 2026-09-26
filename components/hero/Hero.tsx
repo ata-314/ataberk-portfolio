@@ -95,7 +95,7 @@ export function Hero({ t }: { t: HeroStrings }) {
           data-hero-identity
           className="hero-copy pointer-events-none relative z-10 mx-auto flex h-full w-full max-w-7xl flex-col justify-end pt-28 pb-24 md:pb-28"
         >
-          <div className="hero-enter mb-6 flex items-center gap-3 md:mb-8" style={{ ["--d" as string]: "0.05s" }}>
+          <div className="hero-enter mb-6 flex w-fit items-center gap-3 rounded-full border border-white/10 bg-black/65 px-3 py-2 md:mb-8" style={{ ["--d" as string]: "0.05s" }}>
             <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
             <p lang="en" className="font-mono text-[10px] tracking-[0.16em] text-bone-dim uppercase md:text-[11px] md:tracking-[0.26em]">
               {t.title}
