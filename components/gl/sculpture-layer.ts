@@ -85,6 +85,18 @@ float grainRandom(uint value) {
   return float(value >> 8u) / 16777216.0;
 }
 
+// Surface point for a screen position, read from the raymarched depth map with
+// texelFetch (the depth is packed in two bytes, so filtering would corrupt it).
+vec3 surfacePoint(ivec2 texel, vec3 ro, float aspect, vec3 fallback) {
+  ivec2 size=textureSize(surfaceMap,0);
+  texel=clamp(texel,ivec2(0),size-1);
+  vec4 m=texelFetch(surfaceMap,texel,0);
+  if(m.b<.98) return fallback;
+  vec2 s=(vec2(texel)+.5)/vec2(size)*2.0-1.0;
+  vec3 d=normalize(vec3(s.x*aspect*2.5,s.y*2.5,-7.0));
+  return ro+d*(m.r+m.g/255.0)*12.0;
+}
+
 void renderGrain(float id) {
   float seed=grainRandom(uint(id)+41u);
   vec2 cell=vec2(mod(id,grid.x),floor(id/grid.x));
@@ -110,7 +122,17 @@ void renderGrain(float id) {
   vec3 local=vec3(p.x/spread,p.y,p.z);
   float assembly=smoothstep(.055+seed*.055,.61+seed*.055,hero)*birdReady;
   assembly*=1.0-finale;
-  vec3 n=assembly>.999?vec3(0,0,1):normalAt(local);
+  // Normal from neighbouring depth texels: four fetches instead of six full
+  // noise-field evaluations per grain per frame.
+  vec3 n=vec3(0,0,1);
+  if(assembly<.999) {
+    ivec2 c=ivec2((screen*.5+.5)*vec2(textureSize(surfaceMap,0)));
+    vec3 dx=surfacePoint(c+ivec2(1,0),ro,aspect,p)-surfacePoint(c-ivec2(1,0),ro,aspect,p);
+    vec3 dy=surfacePoint(c+ivec2(0,1),ro,aspect,p)-surfacePoint(c-ivec2(0,1),ro,aspect,p);
+    vec3 cn=cross(dx,dy);
+    if(dot(cn,cn)>1e-10) n=normalize(cn);
+    if(n.z<0.0) n=-n;
+  }
   float light=max(dot(n,normalize(vec3(-.65,.9,1.3))),0.0);
   float rim=pow(1.0-abs(dot(n,-rd)),2.0);
   float region=noise(local*.85+vec3(0,-fieldTime*.03,fieldTime*.01));
@@ -122,7 +144,8 @@ void renderGrain(float id) {
   vec3 citron=mix(vec3(.83,1.0,.17),mix(accent,vec3(.7,1.,1.),.4),cycle*.7);
   tint=mix(forest,lime,smoothstep(-.85,.12,band));
   tint=mix(tint,citron,smoothstep(.05,.8,band));
-  float cavity=assembly>.999?1.0:clamp(1.0-max(0.0,.2-shape(local+n*.2))*2.4,.3,1.0);
+  // Slopes turned away from the camera read as occluded folds.
+  float cavity=assembly>.999?1.0:mix(.45,1.0,smoothstep(.15,.85,n.z));
   float emergence=smoothstep(-1.05,.45,local.z);
   tint*= (.18+.95*light)*cavity*mix(.012,1.0,emergence);
   float pulse=pow(.5+.5*sin(local.y*2.0-local.x-time*.8),8.0);
@@ -305,11 +328,11 @@ void main() {
   float spread=max(1.0,aspect*1.05);
   float distance=3.0;
   float hit=0.0;
-  for(int i=0;i<76;i++) {
+  for(int i=0;i<60;i++) {
     vec3 p=ro+rd*distance;
     float d=shape(vec3(p.x/spread,p.y,p.z));
     if(d<.009) {hit=1.0;break;}
-    distance+=max(d*.48,.006);
+    distance+=max(d*.55,.008);
     if(distance>12.0) break;
   }
   float packed=clamp(distance/12.0,0.0,1.0)*255.0;
@@ -362,9 +385,33 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   const impactAt=new Float32Array([-100,-100,-100,-100]);
   const edgeAges=new Float32Array(4);
   const edgeTouching=[false,false,false,false];
-  let edgePixels=new Uint8Array(384*4);
+  let edgePixels=new Uint8Array(0);
+  // Edge contact probe reads back asynchronously (PBO + fence): a plain
+  // readPixels stalls until the GPU drains, which caused periodic hitches.
+  const probeBuffer=gl.createBuffer();
+  let probeFence: WebGLSync|null=null;
+  let probeEdges: number[][]=[];
+  const collectProbe=()=>{
+    if(!probeFence) return;
+    const status=gl.clientWaitSync(probeFence,0,0);
+    if(status!==gl.ALREADY_SIGNALED && status!==gl.CONDITION_SATISFIED) return;
+    gl.deleteSync(probeFence);probeFence=null;
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER,probeBuffer);
+    gl.getBufferSubData(gl.PIXEL_PACK_BUFFER,0,edgePixels);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
+    let offset=0;
+    probeEdges.forEach(([,,width,height],edge)=>{
+      let contacts=0;
+      for(let i=0;i<width*height;i++) if(edgePixels[(offset+i)*4+2]>250) contacts++;
+      offset+=width*height;
+      const touching=contacts>2;
+      if(touching && !edgeTouching[edge] && flowTime-impactAt[edge]>4.0) impactAt[edge]=flowTime;
+      edgeTouching[edge]=touching;
+    });
+  };
   return {
     render(w: number,h: number,time: number,opacity: number,px: number,py: number,activity: number,flight: SculptureFlight) {
+      collectProbe();
       if(opacity<.002) return;
       const delta=Math.max(0,Math.min(time-lastTime,.05)); lastTime=time;
       const flowing=flight.hero<.015 || flight.finale>.98 || flight.ready<.95;
@@ -377,7 +424,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       const rows=Math.ceil(count/columns);
       gl.bindVertexArray(vao);
       gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-      const scale=Math.min(1,(mobile?256:384)/Math.max(w,h));
+      const scale=Math.min(1,(mobile?224:320)/Math.max(w,h));
       const mw=Math.max(1,Math.round(w*scale)),mh=Math.max(1,Math.round(h*scale));
       gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,texture);
       gl.bindFramebuffer(gl.FRAMEBUFFER,target);
@@ -395,18 +442,22 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         gl.drawArrays(gl.TRIANGLES,0,3);mapDirty=false;
         // Only tiny boundary strips are read, at 4 Hz, never the whole image.
         // The B channel is the actual hit mask produced by the surface pass.
-        if(flowing && flowTime-lastProbe>.25) {
+        if(flowing && !probeFence && flowTime-lastProbe>.25) {
           lastProbe=flowTime;
-          if(edgePixels.length<Math.max(mw,mh)*4) edgePixels=new Uint8Array(Math.max(mw,mh)*4);
-          const edges=[[0,0,1,mh],[mw-1,0,1,mh],[0,0,mw,1],[0,mh-1,mw,1]];
-          edges.forEach(([x,y,width,height],edge)=>{
-            gl.readPixels(x,y,width,height,gl.RGBA,gl.UNSIGNED_BYTE,edgePixels);
-            let contacts=0;
-            for(let i=0;i<width*height;i++) if(edgePixels[i*4+2]>250) contacts++;
-            const touching=contacts>2;
-            if(touching && !edgeTouching[edge] && flowTime-impactAt[edge]>4.0) impactAt[edge]=flowTime;
-            edgeTouching[edge]=touching;
+          probeEdges=[[0,0,1,mh],[mw-1,0,1,mh],[0,0,mw,1],[0,mh-1,mw,1]];
+          const bytes=(mw+mh)*2*4;
+          gl.bindBuffer(gl.PIXEL_PACK_BUFFER,probeBuffer);
+          if(edgePixels.length!==bytes) {
+            edgePixels=new Uint8Array(bytes);
+            gl.bufferData(gl.PIXEL_PACK_BUFFER,bytes,gl.STREAM_READ);
+          }
+          let offset=0;
+          probeEdges.forEach(([x,y,width,height])=>{
+            gl.readPixels(x,y,width,height,gl.RGBA,gl.UNSIGNED_BYTE,offset);
+            offset+=width*height*4;
           });
+          gl.bindBuffer(gl.PIXEL_PACK_BUFFER,null);
+          probeFence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);
         }
       }
       gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.enable(gl.BLEND);
@@ -444,6 +495,6 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         gl.uniform1f(uniforms.glowPass,0);
       }
     },
-    dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteVertexArray(vao);},
+    dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteBuffer(probeBuffer);if(probeFence) gl.deleteSync(probeFence);gl.deleteVertexArray(vao);},
   };
 }

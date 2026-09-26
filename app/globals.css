@@ -136,23 +136,38 @@ header {
 /* next/font defines its family variables on <body>, so they are referenced
    directly here (a :root token built from them would resolve as invalid). */
 .hero-name {
-  font-family: var(--font-space), sans-serif;
-  font-size: clamp(3rem, 8.6vw, 9rem);
-  font-weight: 700;
-  line-height: 0.88;
-  letter-spacing: -0.045em;
+  font-family: var(--font-orbitron), var(--font-space), sans-serif;
+  font-size: clamp(2.6rem, 7.4vw, 7.8rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
   color: var(--bone);
 }
 
 @media (max-width: 767px) {
   .hero-name {
-    font-size: 17.5vw;
+    font-size: 12.8vw;
   }
 }
 
 /* Technical frame: crop marks at the corners of the name block. */
 .hero-frame {
   position: relative;
+  isolation: isolate;
+}
+
+/* Static dark shade behind the name. A CSS filter on the per-frame glyph
+   canvas was re-rasterized every frame and dominated frame time. */
+.hero-frame::before {
+  content: "";
+  position: absolute;
+  inset: -12% -8%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(6, 8, 6, 0.78) 0%, rgba(6, 8, 6, 0.45) 55%, transparent 100%);
+}
+
+.hero-frame {
   padding: clamp(1.25rem, 2.6vw, 2.6rem) clamp(1rem, 3.2vw, 3.4rem);
 }
 
@@ -197,9 +212,6 @@ header {
 }
 
 .code-name-canvas {
-  /* A dark contact shadow first lifts the glyphs off bright relief, then the
-     soft light glow. */
-  filter: drop-shadow(0 0 3px rgb(6 8 6 / 0.95)) drop-shadow(0 0 10px rgb(6 8 6 / 0.8)) drop-shadow(0 0 2px rgb(255 255 245 / 0.45));
   position: absolute;
   pointer-events: none;
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Archivo, JetBrains_Mono, Orbitron, Space_Grotesk } from "next/font/google";
 import { notFound } from "next/navigation";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
 import { site } from "@/content/site";
@@ -8,8 +8,10 @@ import { Cursor } from "@/components/cursor/Cursor";
 import "../globals.css";
 
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin", "latin-ext"] });
-// Technical grotesk for the hero identity (mono DNA, not a futuristic face)
-// and a code mono for labels and the glyphs that build the name.
+// Futuristic display face for the hero name (human decision 2026-09-26),
+// a technical grotesk for supporting hero copy, and a code mono for labels
+// and the glyphs that build the name.
+const orbitron = Orbitron({ variable: "--font-orbitron", subsets: ["latin"], weight: ["900"] });
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space",
   subsets: ["latin", "latin-ext"],
@@ -101,7 +103,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <body
-        className={`${archivo.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${archivo.variable} ${orbitron.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <noscript>
           <style>{`header, [data-hero-identity], [data-hero-rail] { opacity: 1 !important; pointer-events: auto !important; }`}</style>

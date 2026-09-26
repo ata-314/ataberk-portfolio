@@ -78,7 +78,7 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
       const style = getComputedStyle(heading);
       const fontSize = parseFloat(style.fontSize);
       cell = Math.max(3, fontSize / 34);
-      dpr = Math.min(devicePixelRatio || 1, 3);
+      dpr = Math.min(devicePixelRatio || 1, 2);
       atlasBone = makeAtlas(BONE);
       atlasLime = makeAtlas(LIME);
       const font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
