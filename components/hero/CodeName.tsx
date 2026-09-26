@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 // Dense glyphs carry the letterforms; a few light ones keep it reading as code.
 const CHARSET = "01#$%&@0189<>{}[]/\\*+=?ABDEHKMNRSWX";
-const BONE = "243, 239, 231";
+const BONE = "255, 255, 250";
 const LIME = "200, 255, 62";
 
 // Cheap stable hash → [0, 1).
@@ -49,7 +49,7 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
       atlas.height = size;
       const a = atlas.getContext("2d")!;
       a.fillStyle = `rgb(${rgb})`;
-      a.font = `700 ${Math.round(size * 1.05)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      a.font = `800 ${Math.round(size * 1.10)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
       a.textAlign = "center";
       a.textBaseline = "middle";
       for (let i = 0; i < CHARSET.length; i++) a.fillText(CHARSET[i], i * size + size / 2, size / 2 + size * 0.04);
@@ -127,19 +127,18 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const rect = canvas.getBoundingClientRect();
         for (const c of cells) {
-          // Perspective brings the name forward from a deep, narrow field.
-          // The letter structure is present from the start, rather than a box
-          // of random symbols which suddenly turns into text.
+          // Individual code fragments emerge from depth, then converge on the
+          // letter positions. Their offsets vanish fully after assembly.
           const delay = (c.x / line.w) * .15 + c.seed * .08;
           const progress = Math.max(0, Math.min(1, (reveal - delay) / .77));
-          const ease = 1 - Math.pow(1 - progress, 3);
+          const ease = progress * progress * (3 - 2 * progress);
           const settling = 1 - ease;
           const depth = .18 + ease * .82;
           const x = line.w * .52 + (c.x - line.w * .52) * depth
-            + Math.sin(c.row * .16 + progress * 3) * settling * cell * 2;
+            + Math.sin(c.seed * Math.PI * 2 + progress * 2) * settling * line.w * .2;
           const y = line.h * .72 + (c.y - line.h * .72) * depth
-            + settling * cell * 2;
-          const drawSize = size * (.35 + ease * .65);
+            + (hash(c.col + 83, c.row) - .5) * settling * line.h * .35;
+          const drawSize = size * (.85 + ease * .15);
           const colSeed = hash(c.col, 7.3);
           const speed = 5 + colSeed * 11;
           const span = rows + 14 + colSeed * 18;
@@ -152,12 +151,12 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
           const rate = 0.6 + c.seed * 3 + trail * 10 + near * 14 + settling * 20;
           const glyph = Math.floor(c.seed * 997 + t * rate) % CHARSET.length;
           const wave = 0.08 * Math.sin(c.col * 0.09 - t * 1.4 + c.row * 0.05);
-          const bright = Math.min(1, 0.9 + wave + trail * 0.2 + near * 0.3 + settling * 0.4);
+          const bright = Math.min(1, 1.0 + wave * .35 + trail * 0.2 + near * 0.3 + settling * 0.4);
           // Lime stays an accent: stream heads, a sparse subset under the pointer,
           // and cells still decoding on entrance.
           const hot = behind >= 0 && behind < 1.2 ? 1 : Math.max(c.seed < 0.22 ? near : 0, settling);
           const atlas = hot > 0.5 ? atlasLime! : atlasBone!;
-          ctx.globalAlpha = bright * Math.min(1, c.cover * 1.2) * Math.min(1, reveal * 8) * (.12 + ease * .88);
+          ctx.globalAlpha = bright * Math.min(1, c.cover * 1.65) * Math.min(1, reveal * 8) * (.45 + ease * .55);
           const opacity = ctx.globalAlpha;
           // Fine code echoes suggest depth, with no filled letter backing.
           ctx.globalAlpha = opacity * .16;

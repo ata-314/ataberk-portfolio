@@ -173,6 +173,7 @@ header {
 }
 
 .code-name-canvas {
+  filter: drop-shadow(0 0 2px rgb(255 255 245 / 0.55)) drop-shadow(0 0 7px rgb(200 255 62 / 0.25));
   position: absolute;
   pointer-events: none;
 }
