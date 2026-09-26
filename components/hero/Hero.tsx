@@ -61,21 +61,21 @@ export function Hero({ t }: { t: HeroStrings }) {
         .to(
           "[data-hero-identity]",
           { autoAlpha: 0, y: -64, duration: 0.16 },
-          0.2,
+          0.12,
         )
         .fromTo(
           "[data-hero-direction]",
           { autoAlpha: 0, y: 34 },
           { autoAlpha: 1, y: 0, duration: 0.12, ease: "power2.out" },
-          0.5,
+          0.72,
         )
         .fromTo(
           "[data-hero-actions]",
           { autoAlpha: 0, y: 20 },
           { autoAlpha: 1, y: 0, duration: 0.08, ease: "power2.out" },
-          0.58,
+          0.78,
         )
-        .to("[data-hero-direction]", { autoAlpha: 0, y: -42, duration: 0.12 }, 0.84);
+        .to("[data-hero-direction]", { autoAlpha: 0, y: -42, duration: 0.08 }, 0.92);
     },
     { scope: wrapper },
   );
@@ -83,7 +83,7 @@ export function Hero({ t }: { t: HeroStrings }) {
   return (
     <div
       ref={wrapper}
-      className="relative h-[210svh] md:h-[240svh] motion-reduce:h-auto"
+      className="relative h-[240svh] md:h-[280svh] motion-reduce:h-auto"
     >
       <section
         aria-label={t.name}

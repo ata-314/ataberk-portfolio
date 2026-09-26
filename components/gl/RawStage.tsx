@@ -254,7 +254,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // Sparse grains supply the handoff; the particle sculpture carries entry.
     const count = mobile ? 10000 : 24000;
     const birdCount = mobile ? 2400 : 6000;
-    const flightCount = mobile ? 3000 : 7500;
     let randomState = 0x9e3779b9;
     const random = () => {
       randomState ^= randomState << 13;
@@ -318,7 +317,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         linkBuckets.delete(key);
       }
     }
-    const linkCount = linkIndices.length;
     const linkBuffer = gl.createBuffer();
     if (linkBuffer) {
       buffers.push(linkBuffer);
@@ -588,7 +586,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const direction: Vec3 = [flight.direction[0] / directionLength, flight.direction[1] / directionLength, flight.direction[2] / directionLength];
       const yawTarget = (direction[0] >= 0 ? 1 : -1) * 1.07;
       yaw = damp(yaw, yawTarget, 2.5, delta);
-      compose(birdMatrix, flight.position, flight.scale, yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)));
+      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)));
       flap = (flap + delta) % 1;
 
       // A short dolly-in settles the camera as the field assembles.
@@ -637,22 +635,13 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      const sculptureAlpha = (1 - smoothstep(hero, 0.08, 0.4)) * smoothstep(intro, 0, 0.65);
+      const sculptureAlpha = smoothstep(intro, 0, 0.65);
       sculpture.render(canvas.width, canvas.height, time, sculptureAlpha,
-        scanSmooth[0] * 0.6, scanSmooth[1] * 0.6, scanVelocity);
-      gl.useProgram(program);
-      gl.bindVertexArray(vao);
-      // Use undamped scroll intent for workload shedding: the dense opening
-      // remains rich at rest, then drops its draw budget before the cinematic
-      // interpolation catches up, avoiding a heavy first-scroll frame.
-      const flightLoad = smoothstep(scrollState.hero.current, 0.015, 0.2);
-      const drawCount = Math.round(mix(count, flightCount, flightLoad));
-      gl.uniform1f(u("uLineMode"), 0);
-      if (hero > 0.04 || finale > 0.01) gl.drawArrays(gl.POINTS, 0, drawCount);
-      if (linkCount > 0 && videoMix > 0.03 && intro > 0.9 && hero > 0.08) {
-        gl.uniform1f(u("uLineMode"), 1);
-        gl.drawElements(gl.LINES, linkCount, gl.UNSIGNED_INT, 0);
-      }
+        scanSmooth[0] * 0.6, scanSmooth[1] * 0.6, scanVelocity, {
+          hero, ready: readyMix, flap, finale,
+          matrix: birdMatrix, view, projection,
+          positions: positionTexture, normals: normalTexture,
+        });
       if (firstFrame) {
         firstFrame = false;
         onReady?.();

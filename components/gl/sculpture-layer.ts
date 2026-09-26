@@ -15,7 +15,7 @@ float smin(float a,float b,float k) {
   return mix(b,a,h)-k*h*(1.0-h);
 }
 float shape(vec3 p) {
-  float t=time*.38;
+  float t=fieldTime*.38;
   vec3 q=p;
   q.x += .42*sin(p.y*1.1+t*.8)+.21*sin(p.z*1.6-t);
   q.y += .48*sin(p.x*1.1-t*.8)+.18*cos(p.z*1.3+t);
@@ -45,18 +45,29 @@ vec3 normalAt(vec3 p) {
 }
 `;
 
-// Advected material samples form a dense, rolling particle fluid inside a
-// recessed canvas. Individual grains are lit spheres with depth and shadow.
+// One persistent population: fluid grains, boundary waves and bird anatomy.
+// Scroll changes each grain's position, never its membership or visibility.
 const vertex = `#version 300 es
 precision highp float;
 uniform vec2 resolution;
 uniform vec2 grid;
 uniform vec2 pointer;
 uniform float time;
+uniform float fieldTime;
 uniform float activity;
 uniform float opacity;
 uniform float pixelScale;
 uniform sampler2D surfaceMap;
+uniform sampler2D birdPositions;
+uniform sampler2D birdNormals;
+uniform mat4 birdMatrix;
+uniform mat4 birdView;
+uniform mat4 birdProjection;
+uniform float hero;
+uniform float birdReady;
+uniform float flap;
+uniform float finale;
+uniform vec4 edgeAges;
 out vec3 tint;
 out float alpha;
 ${field}
@@ -70,10 +81,11 @@ void main() {
   // Transport the samples themselves through two broad vortices. The
   // density evolves with the currents rather than blinking at fixed pixels.
   vec2 material=screen;
-  float t=time*.16;
+  float t=fieldTime*.16;
   screen.x += .11*sin(material.y*4.0+t)+.06*sin(material.y*7.0-t*.7);
   screen.y += .12*sin(material.x*3.2-t*.8)+.045*cos(material.x*6.0+t);
-  screen = mod(screen+1.0,2.0)-1.0;
+  // Reflect at the physical screen edges; never teleport to the opposite side.
+  screen=1.0-abs(mod(screen+1.0,4.0)-2.0);
   float aspect=resolution.x/resolution.y;
   vec3 ro=vec3(0,.15,7.8);
   vec3 rd=normalize(vec3(screen.x*aspect*2.5,screen.y*2.5,-7.0));
@@ -85,29 +97,73 @@ void main() {
   float distance=(surface.r+surface.g/255.0)*12.0;
   vec3 p=ro+rd*distance;
   vec3 local=vec3(p.x/spread,p.y,p.z);
-  vec3 n=normalAt(local);
+  float assembly=smoothstep(.055+seed*.055,.61+seed*.055,hero)*birdReady;
+  assembly*=1.0-finale;
+  vec3 n=assembly>.999?vec3(0,0,1):normalAt(local);
   float light=max(dot(n,normalize(vec3(-.65,.9,1.3))),0.0);
   float rim=pow(1.0-abs(dot(n,-rd)),2.0);
-  float region=noise(local*.85+vec3(0,-time*.03,time*.01));
+  float region=noise(local*.85+vec3(0,-fieldTime*.03,fieldTime*.01));
   float band=sin(local.y*1.3-local.x*.8+region*5.0+time*.035);
-  vec3 forest=vec3(.035,.15,.045);
-  vec3 lime=vec3(.58,.88,.045);
-  vec3 citron=vec3(.83,1.0,.17);
+  float cycle=.5-.5*cos(time*.065);
+  vec3 accent=mix(vec3(.02,.75,1.0),vec3(.59,.12,1.0),.5+.5*sin(time*.043));
+  vec3 forest=mix(vec3(.035,.15,.045),accent*.18,cycle*.7);
+  vec3 lime=mix(vec3(.58,.88,.045),accent,cycle*.85);
+  vec3 citron=mix(vec3(.83,1.0,.17),mix(accent,vec3(.7,1.,1.),.4),cycle*.7);
   tint=mix(forest,lime,smoothstep(-.85,.12,band));
   tint=mix(tint,citron,smoothstep(.05,.8,band));
-  float cavity=clamp(1.0-max(0.0,.2-shape(local+n*.2))*2.4,.3,1.0);
+  float cavity=assembly>.999?1.0:clamp(1.0-max(0.0,.2-shape(local+n*.2))*2.4,.3,1.0);
   tint*= (.32+.85*light)*cavity;
   float pulse=pow(.5+.5*sin(local.y*2.0-local.x-time*.8),8.0);
   tint=mix(tint,citron,pulse*.13);
   // Close, unequal grains build mass; a small fraction lifts in the wake.
   float loose=step(.98,seed);
   p+=n*(seed-.5)*(.045+loose*.15);
-  p.xy+=vec2(sin(time*.6+id),cos(time*.5+id))*.006;
+  p.xy+=vec2(sin(fieldTime*.6+id),cos(fieldTime*.5+id))*.006;
+  // A contact wave travels inward from each side and decays in time.
+  // The timers come from actual surface contact measured at the viewport.
+  vec4 edgeDistance=vec4(screen.x+1.0,1.0-screen.x,screen.y+1.0,1.0-screen.y);
+  float wave=0.0;
+  for(int i=0;i<4;i++) {
+    if(edgeAges[i]>=0.0) {
+      float front=edgeDistance[i]-edgeAges[i]*.85;
+      float ripple=sin(front*24.0)*exp(-front*front*24.0)*exp(-edgeAges[i]*.8);
+      wave+=ripple;
+      vec2 inward=i==0?vec2(1,0):i==1?vec2(-1,0):i==2?vec2(0,1):vec2(0,-1);
+      p.xy+=inward*ripple*.16*(1.0-assembly);
+    }
+  }
+  p.z+=wave*.22*(1.0-assembly);
+  tint+=citron*abs(wave)*.18*(1.0-assembly);
   vec3 view=p-ro;
-  gl_Position=vec4(view.x/(aspect*2.5/7.0),view.y/(2.5/7.0),0.0,-view.z);
-  gl_PointSize=clamp((3.0+seed*1.6)*pixelScale*7.0/(-view.z),1.0,8.0*pixelScale);
-  alpha=(.8+light*.18)*opacity;
-  alpha*=mix(.6,1.0,smoothstep(-.95,.4,screen.y));
+  vec4 sourceClip=vec4(view.x/(aspect*2.5/7.0),view.y/(2.5/7.0),0.0,-view.z);
+  vec2 source=sourceClip.xy/sourceClip.w;
+  vec2 destination=source;
+  float birdLight=1.0;
+  if(assembly>0.0) {
+    // Every source ID maps to baked anatomy; repeated samples receive a
+    // tiny normal offset so all grains remain separate within the feathers.
+    float index=mod(id*37.0,9000.0);
+    float frame=flap*16.0;
+    float row=floor(index/2048.0);
+    float column=(mod(index,2048.0)+.5)/2048.0;
+    vec3 a=texture(birdPositions,vec2(column,(floor(frame)*5.0+row+.5)/80.0)).xyz;
+    vec3 b=texture(birdPositions,vec2(column,(mod(floor(frame)+1.0,16.0)*5.0+row+.5)/80.0)).xyz;
+    vec3 normal=texture(birdNormals,vec2(column,(row+.5)/5.0)).xyz;
+    vec3 anatomy=mix(a,b,fract(frame))+normal*(seed-.5)*.028;
+    vec4 target=birdProjection*birdView*birdMatrix*vec4(anatomy,1.0);
+    destination=target.xy/target.w;
+    vec3 worldNormal=normalize(mat3(birdMatrix)*normal);
+    birdLight=.65+.85*max(dot(worldNormal,normalize(vec3(-.6,.8,1.0))),0.0);
+  }
+  vec2 travel=destination-source;
+  vec2 arc=vec2(-travel.y,travel.x)*sin(assembly*3.14159265)*.14;
+  vec2 position=mix(source,destination,assembly)+arc;
+  gl_Position=vec4(position,0.0,1.0);
+  float fluidSize=(3.0+seed*1.6)*pixelScale*7.0/(-view.z);
+  gl_PointSize=max(1.0,mix(fluidSize,(1.8+seed*.65)*pixelScale,assembly));
+  tint=mix(tint,mix(lime*.7+citron*.3,vec3(.8,.96,1.0),.3)*birdLight*1.25,assembly*.8);
+  alpha=mix(.8+light*.18,.9,assembly)*opacity;
+  alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
 }`;
 const fragment = `#version 300 es
 precision highp float;
@@ -116,9 +172,6 @@ in float alpha;
 uniform vec2 resolution;
 out vec4 color;
 void main() {
-  vec2 inset=min(gl_FragCoord.xy,resolution-gl_FragCoord.xy);
-  float border=min(resolution.x,resolution.y)*.028;
-  if(min(inset.x,inset.y)<border) discard;
   vec2 p=(gl_PointCoord-.5)*2.0;
   float r2=dot(p,p);
   if(r2>1.0 || alpha<.005) discard;
@@ -136,30 +189,6 @@ void main() {
   vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));
   uv=p;gl_Position=vec4(p*2.0-1.0,0.0,1.0);
 }`;
-const canvasFragment = `#version 300 es
-precision highp float;
-in vec2 uv;
-uniform vec2 resolution;
-uniform float opacity;
-out vec4 color;
-void main() {
-  float unit=min(resolution.x,resolution.y);
-  vec2 d=min(uv,1.0-uv)*resolution;
-  float edge=min(d.x,d.y)/unit;
-  vec3 frame=vec3(.89,.90,.86);
-  vec3 paper=vec3(.73,.76,.68);
-  float inner=step(.028,edge);
-  float shadow=exp(-max(edge-.028,0.0)*90.0);
-  paper*=1.0-shadow*.45;
-  vec3 c=mix(frame,paper,inner);
-  // Light on the top bevel, shadow under the lip; the whole viewport is
-  // the vessel, not a floating object on an unbounded background.
-  c+=vec3(.07)*exp(-abs(edge-.023)*900.0);
-  float reading=1.0-smoothstep(.06,.64,uv.y);
-  c=mix(c,vec3(.006,.009,.004),reading*.94*inner);
-  color=vec4(c,opacity);
-}`;
-
 // Ray marching is shared by all grains through a small depth map. RGBA8
 // packs depth into two channels; no float-render-target extension is needed.
 const surfaceFragment = `#version 300 es
@@ -168,6 +197,7 @@ in vec2 uv;
 uniform vec2 resolution;
 uniform vec2 pointer;
 uniform float time;
+uniform float fieldTime;
 uniform float activity;
 out vec4 color;
 ${field}
@@ -190,6 +220,12 @@ void main() {
   color=vec4(floor(packed)/255.0,fract(packed),hit,1.0);
 }`;
 
+export type SculptureFlight = {
+  hero: number; ready: number; flap: number; finale: number;
+  matrix: Float32Array; view: Float32Array; projection: Float32Array;
+  positions: WebGLTexture | null; normals: WebGLTexture | null;
+};
+
 export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean) {
   const makeProgram=(vertexSource: string,fragmentSource: string) => {
   const program=gl.createProgram();
@@ -210,9 +246,8 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
     return program;
   };
   const program=makeProgram(vertex,fragment);
-  const canvasProgram=makeProgram(canvasVertex,canvasFragment);
   const surfaceProgram=makeProgram(canvasVertex,surfaceFragment);
-  const surfaceUniforms=Object.fromEntries(["resolution","pointer","time","activity"].map(name=>[name,gl.getUniformLocation(surfaceProgram,name)]));
+  const surfaceUniforms=Object.fromEntries(["resolution","pointer","time","fieldTime","activity"].map(name=>[name,gl.getUniformLocation(surfaceProgram,name)]));
   const surfaceMap=gl.getUniformLocation(program,"surfaceMap");
   const texture=gl.createTexture();
   const target=gl.createFramebuffer();
@@ -222,44 +257,78 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
-  const canvasResolution=gl.getUniformLocation(canvasProgram,"resolution");
-  const canvasOpacity=gl.getUniformLocation(canvasProgram,"opacity");
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","activity","opacity","pixelScale"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  let flowTime=0,lastTime=0,lastProbe=-1;
+  let sourceX=0,sourceY=0,sourceActivity=0;
+  let mapDirty=true;
+  const impactAt=new Float32Array([-100,-100,-100,-100]);
+  const edgeAges=new Float32Array(4);
+  let edgePixels=new Uint8Array(384*4);
   return {
-    render(w: number,h: number,time: number,opacity: number,px: number,py: number,activity: number) {
+    render(w: number,h: number,time: number,opacity: number,px: number,py: number,activity: number,flight: SculptureFlight) {
       if(opacity<.002) return;
+      const delta=Math.max(0,Math.min(time-lastTime,.05)); lastTime=time;
+      const flowing=flight.hero<.015 || flight.finale>.98 || flight.ready<.95;
+      if(flowing) {
+        flowTime+=delta;sourceX=px;sourceY=py;sourceActivity=activity;mapDirty=true;
+      }
       const count=mobile?70000:220000;
       const columns=Math.round(Math.sqrt(count*w/h));
       const rows=Math.ceil(count/columns);
       gl.bindVertexArray(vao);
       gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-      gl.useProgram(canvasProgram);
-      gl.uniform2f(canvasResolution,w,h);gl.uniform1f(canvasOpacity,opacity);
-      gl.drawArrays(gl.TRIANGLES,0,3);
       const scale=Math.min(1,(mobile?256:384)/Math.max(w,h));
       const mw=Math.max(1,Math.round(w*scale)),mh=Math.max(1,Math.round(h*scale));
       gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,texture);
       gl.bindFramebuffer(gl.FRAMEBUFFER,target);
       if(mw!==mapWidth || mh!==mapHeight) {
-        mapWidth=mw;mapHeight=mh;
+        mapWidth=mw;mapHeight=mh;mapDirty=true;
         gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,mw,mh,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
         gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,texture,0);
         if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE) throw new Error("Fluid depth target unavailable");
       }
-      gl.viewport(0,0,mw,mh);gl.disable(gl.BLEND);gl.useProgram(surfaceProgram);
-      gl.uniform2f(surfaceUniforms.resolution,w,h);gl.uniform2f(surfaceUniforms.pointer,px,py);
-      gl.uniform1f(surfaceUniforms.time,time);gl.uniform1f(surfaceUniforms.activity,activity);
-      gl.drawArrays(gl.TRIANGLES,0,3);
+      if(mapDirty) {
+        gl.viewport(0,0,mw,mh);gl.disable(gl.BLEND);gl.useProgram(surfaceProgram);
+        gl.uniform2f(surfaceUniforms.resolution,w,h);gl.uniform2f(surfaceUniforms.pointer,sourceX,sourceY);
+        gl.uniform1f(surfaceUniforms.time,time);gl.uniform1f(surfaceUniforms.fieldTime,flowTime);
+        gl.uniform1f(surfaceUniforms.activity,sourceActivity);
+        gl.drawArrays(gl.TRIANGLES,0,3);mapDirty=false;
+        // Only tiny boundary strips are read, at 4 Hz, never the whole image.
+        // The B channel is the actual hit mask produced by the surface pass.
+        if(flowing && flowTime-lastProbe>.25) {
+          lastProbe=flowTime;
+          if(edgePixels.length<Math.max(mw,mh)*4) edgePixels=new Uint8Array(Math.max(mw,mh)*4);
+          const edges=[[0,0,1,mh],[mw-1,0,1,mh],[0,0,mw,1],[0,mh-1,mw,1]];
+          edges.forEach(([x,y,width,height],edge)=>{
+            gl.readPixels(x,y,width,height,gl.RGBA,gl.UNSIGNED_BYTE,edgePixels);
+            let contacts=0;
+            for(let i=0;i<width*height;i++) if(edgePixels[i*4+2]>250) contacts++;
+            if(contacts>2 && flowTime-impactAt[edge]>2.4) impactAt[edge]=flowTime;
+          });
+        }
+      }
       gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.enable(gl.BLEND);
       gl.useProgram(program);gl.uniform1i(surfaceMap,4);
       gl.uniform2f(uniforms.resolution,w,h); gl.uniform2f(uniforms.grid,columns,rows);
-      gl.uniform2f(uniforms.pointer,px,py); gl.uniform1f(uniforms.time,time);
-      gl.uniform1f(uniforms.activity,activity); gl.uniform1f(uniforms.opacity,opacity);
+      gl.uniform2f(uniforms.pointer,sourceX,sourceY); gl.uniform1f(uniforms.time,time);
+      gl.uniform1f(uniforms.fieldTime,flowTime);
+      gl.uniform1f(uniforms.activity,sourceActivity); gl.uniform1f(uniforms.opacity,opacity);
       gl.uniform1f(uniforms.pixelScale,h/900);
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,flight.positions);
+      gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,flight.normals);
+      gl.uniform1i(uniforms.birdPositions,0);gl.uniform1i(uniforms.birdNormals,1);
+      gl.uniform1f(uniforms.hero,flight.hero);gl.uniform1f(uniforms.birdReady,flight.ready);
+      gl.uniform1f(uniforms.flap,flight.flap);gl.uniform1f(uniforms.finale,flight.finale);
+      gl.uniformMatrix4fv(uniforms.birdMatrix,false,flight.matrix);
+      gl.uniformMatrix4fv(uniforms.birdView,false,flight.view);
+      gl.uniformMatrix4fv(uniforms.birdProjection,false,flight.projection);
+      for(let i=0;i<4;i++) edgeAges[i]=flowTime-impactAt[i]<3.0?flowTime-impactAt[i]:-1;
+      gl.uniform4fv(uniforms.edgeAges,edgeAges);
+      // Constant draw count and frozen source mask throughout assembly.
       gl.drawArrays(gl.POINTS,0,columns*rows);
       gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
     },
-    dispose() {gl.deleteProgram(program);gl.deleteProgram(canvasProgram);gl.deleteProgram(surfaceProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteVertexArray(vao);},
+    dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteVertexArray(vao);},
   };
 }
