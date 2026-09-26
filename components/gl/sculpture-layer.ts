@@ -15,11 +15,11 @@ float smin(float a,float b,float k) {
   return mix(b,a,h)-k*h*(1.0-h);
 }
 float shape(vec3 p) {
-  float t=fieldTime*.38;
+  float t=fieldTime*.20;
   vec3 q=p;
-  q.x += .42*sin(p.y*1.1+t*.8)+.21*sin(p.z*1.6-t);
-  q.y += .48*sin(p.x*1.1-t*.8)+.18*cos(p.z*1.3+t);
-  q.z += .36*sin(p.y*1.2+p.x*.7+t*.6);
+  q.x += .24*sin(p.y*.8+t)+.08*sin(p.z*1.1-t*.5);
+  q.y += .26*sin(p.x*.8-t)+.08*cos(p.z+t*.5);
+  q.z += .18*sin(p.y*.8+p.x*.5+t*.6);
   // Large lobes rise, lean and merge; no repeating sheet or uniform wave.
   float d=length((q-vec3(.1,-.6,0))/vec3(2.4,1.05,1.0))-.98;
   d=smin(d,length(q-vec3(-1.15,.15,.0))-.98,.65);
@@ -33,9 +33,9 @@ float shape(vec3 p) {
   float fold=sin(q.y*3.8 + q.x*1.7 + n*6.0 + t);
   float fine=noise(flow*3.1+vec3(n*2.0));
   float sediment=noise(flow*8.0+fine*2.0);
-  d += fold*.19 + (n-.5)*.4 + (fine-.5)*.09 + (sediment-.5)*.018;
+  d += fold*.10 + (n-.5)*.28 + (fine-.5)*.09 + (sediment-.5)*.018;
   float touch=exp(-dot(p.xy-pointer,p.xy-pointer)*1.5)*activity;
-  d -= touch*.15*sin(p.y*4.0+p.x*2.0-t*3.0);
+  d -= touch*.045*sin(p.y*4.0+p.x*2.0-t*3.0);
   return d;
 }
 vec3 normalAt(vec3 p) {
@@ -71,6 +71,14 @@ uniform vec4 edgeAges;
 out vec3 tint;
 out float alpha;
 ${field}
+float grainRandom(uint value) {
+  value ^= value >> 16u;
+  value *= 0x7feb352du;
+  value ^= value >> 15u;
+  value *= 0x846ca68bu;
+  value ^= value >> 16u;
+  return float(value >> 8u) / 16777216.0;
+}
 
 void main() {
   float id=float(gl_VertexID);
@@ -78,12 +86,11 @@ void main() {
   vec2 cell=vec2(mod(id,grid.x),floor(id/grid.x));
   vec2 jitter=vec2(hash(vec3(id,4.1,2.0)),hash(vec3(id,7.3,1.0)))-.5;
   vec2 screen=((cell+.5+jitter*.95)/grid)*2.0-1.0;
-  // Transport the samples themselves through two broad vortices. The
-  // density evolves with the currents rather than blinking at fixed pixels.
+  // A shared, broad current carries neighboring grains together.
   vec2 material=screen;
-  float t=fieldTime*.16;
-  screen.x += .11*sin(material.y*4.0+t)+.06*sin(material.y*7.0-t*.7);
-  screen.y += .12*sin(material.x*3.2-t*.8)+.045*cos(material.x*6.0+t);
+  float t=fieldTime*.10;
+  screen.x += .065*sin(material.y*1.5+t);
+  screen.y += .055*cos(material.x*1.4+t);
   // Reflect at the physical screen edges; never teleport to the opposite side.
   screen=1.0-abs(mod(screen+1.0,4.0)-2.0);
   float aspect=resolution.x/resolution.y;
@@ -126,14 +133,14 @@ void main() {
   for(int i=0;i<4;i++) {
     if(edgeAges[i]>=0.0) {
       float front=edgeDistance[i]-edgeAges[i]*.85;
-      float ripple=sin(front*24.0)*exp(-front*front*24.0)*exp(-edgeAges[i]*.8);
+      float ripple=sin(front*10.0)*exp(-front*front*12.0)*exp(-edgeAges[i]*1.5);
       wave+=ripple;
       vec2 inward=i==0?vec2(1,0):i==1?vec2(-1,0):i==2?vec2(0,1):vec2(0,-1);
-      p.xy+=inward*ripple*.16*(1.0-assembly);
+      p.xy+=inward*ripple*.045*(1.0-assembly);
     }
   }
-  p.z+=wave*.22*(1.0-assembly);
-  tint+=citron*abs(wave)*.18*(1.0-assembly);
+  p.z+=wave*.055*(1.0-assembly);
+  tint+=citron*abs(wave)*.06*(1.0-assembly);
   vec3 view=p-ro;
   vec4 sourceClip=vec4(view.x/(aspect*2.5/7.0),view.y/(2.5/7.0),0.0,-view.z);
   vec2 source=sourceClip.xy/sourceClip.w;
@@ -155,9 +162,12 @@ void main() {
     vec3 worldNormal=normalize(mat3(birdMatrix)*normal);
     birdLight=.65+.85*max(dot(worldNormal,normalize(vec3(-.6,.8,1.0))),0.0);
   }
-  vec2 travel=destination-source;
-  vec2 arc=vec2(-travel.y,travel.x)*sin(assembly*3.14159265)*.14;
-  vec2 position=mix(source,destination,assembly)+arc;
+  // Release the entire population into an even, screen-wide cloud before
+  // gathering it into anatomy. Both stages ease to zero velocity at the join.
+  vec2 scatter=vec2(grainRandom(uint(gl_VertexID)+173u),grainRandom(uint(gl_VertexID)+7919u))*2.0-1.0;
+  float release=smoothstep(0.0,.43,assembly);
+  float gather=smoothstep(.43,1.0,assembly);
+  vec2 position=mix(mix(source,scatter,release),destination,gather);
   gl_Position=vec4(position,0.0,1.0);
   float fluidSize=(3.0+seed*1.6)*pixelScale*7.0/(-view.z);
   gl_PointSize=max(1.0,mix(fluidSize,(1.8+seed*.65)*pixelScale,assembly));
@@ -264,6 +274,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   let mapDirty=true;
   const impactAt=new Float32Array([-100,-100,-100,-100]);
   const edgeAges=new Float32Array(4);
+  const edgeTouching=[false,false,false,false];
   let edgePixels=new Uint8Array(384*4);
   return {
     render(w: number,h: number,time: number,opacity: number,px: number,py: number,activity: number,flight: SculptureFlight) {
@@ -304,7 +315,9 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
             gl.readPixels(x,y,width,height,gl.RGBA,gl.UNSIGNED_BYTE,edgePixels);
             let contacts=0;
             for(let i=0;i<width*height;i++) if(edgePixels[i*4+2]>250) contacts++;
-            if(contacts>2 && flowTime-impactAt[edge]>2.4) impactAt[edge]=flowTime;
+            const touching=contacts>2;
+            if(touching && !edgeTouching[edge] && flowTime-impactAt[edge]>4.0) impactAt[edge]=flowTime;
+            edgeTouching[edge]=touching;
           });
         }
       }
