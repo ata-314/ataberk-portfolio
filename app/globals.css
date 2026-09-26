@@ -93,10 +93,10 @@ html[data-stage-static="true"] .hero-static-field {
   opacity: 1;
 }
 
+/* A tight legibility shadow only — wide soft shadows read as a dark layer
+   over the field. */
 .hero-copy {
-  text-shadow:
-    0 2px 28px rgba(10, 10, 11, 0.98),
-    0 0 72px rgba(10, 10, 11, 0.88);
+  text-shadow: 0 1px 14px rgba(10, 10, 11, 0.75);
 }
 
 /* Keep entrance animations at their authored first frame while WebGL performs
@@ -120,15 +120,6 @@ html:not([data-stage-intro="done"]):not([data-stage-static="true"])
 
 header {
   transition: opacity 0.8s ease;
-}
-
-/* Quiet the field behind the centred copy and under the nav, leaving the
-   edges of the sea at full strength. */
-.hero-scrim {
-  background:
-    radial-gradient(ellipse 50% 34% at 50% 44%, rgba(8, 9, 8, 0.82) 0%, rgba(8, 9, 8, 0.5) 50%, transparent 85%),
-    radial-gradient(ellipse 40% 26% at 50% 66%, rgba(8, 9, 8, 0.6) 0%, transparent 80%),
-    linear-gradient(180deg, rgba(10, 10, 11, 0.4) 0%, transparent 16%, transparent 70%, rgba(10, 10, 11, 0.55) 100%);
 }
 
 /* Editorial identity: the name set large in the display grotesk, each line
@@ -156,17 +147,6 @@ header {
 .hero-frame {
   position: relative;
   isolation: isolate;
-}
-
-/* Static dark shade behind the name. A CSS filter on the per-frame glyph
-   canvas was re-rasterized every frame and dominated frame time. */
-.hero-frame::before {
-  content: "";
-  position: absolute;
-  inset: -12% -8%;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(6, 8, 6, 0.78) 0%, rgba(6, 8, 6, 0.45) 55%, transparent 100%);
 }
 
 .hero-frame {
@@ -211,6 +191,7 @@ header {
 /* Once the glyph canvas has drawn, the typeset text only holds the layout. */
 [data-code-ready="true"] .code-name-text {
   color: transparent;
+  text-shadow: none;
 }
 
 .code-name-canvas {

@@ -8,6 +8,10 @@ const BONE = "255, 255, 250";
 const LIME = "200, 255, 62";
 // Room around the name for glyphs the pointer scatters.
 const PAD = 160;
+// Entrance: code streams fall from the top of the viewport through each
+// column of the name; a glyph locks in as its column's stream passes it.
+const RAIN_TRAIL = 26;
+const RAIN_END = 3.4;
 
 // Cheap stable hash → [0, 1).
 const hash = (a: number, b = 0) => {
@@ -28,7 +32,7 @@ type Glyph = {
 // Springs hold the name together; the pointer pushes glyphs away and drags
 // them along its motion, a click bursts them, and displaced glyphs heat up
 // (lime, faster mutation) until they settle back. On entrance the glyphs
-// converge from a scattered cloud. The real text stays in the DOM
+// are written by code streams raining from above. The real text stays in the DOM
 // (transparent once drawn) for layout, a11y and no-JS.
 export function CodeName({ words, label, className }: { words: string[]; label?: string; className?: string }) {
   const root = useRef<HTMLHeadingElement>(null);
@@ -49,12 +53,17 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
     let cell = 8;
     let dpr = 1;
     let rows = 1;
+    let padTop = PAD;
+    let rainH = 1;
+    // Per-column stream timing (seconds) and the columns that carry rain.
+    let colDelay = new Float32Array(0);
+    let colSpeed = new Float32Array(0);
+    let rainCols: number[] = [];
     let atlasBone: HTMLCanvasElement | null = null;
     let atlasLime: HTMLCanvasElement | null = null;
     let frame = 0;
     let last = 0;
     let visible = true;
-    let assembled = false;
     let assembleStart = -1;
     const pointer = { x: -1e4, y: -1e4, vx: 0, vy: 0, active: false };
 
@@ -96,14 +105,17 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
       atlasLime = makeAtlas(LIME);
       const font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
       const box = heading.getBoundingClientRect();
+      // Extend the canvas up to the top of the viewport so the rain enters
+      // from the screen edge rather than out of nowhere above the name.
+      padTop = Math.min(1200, Math.max(PAD, Math.ceil(box.top) + 24));
       const w = Math.ceil(box.width + PAD * 2);
-      const h = Math.ceil(box.height + PAD * 2);
+      const h = Math.ceil(box.height + padTop + PAD);
       canvas.width = Math.ceil(w * dpr);
       canvas.height = Math.ceil(h * dpr);
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
       canvas.style.left = `${-PAD}px`;
-      canvas.style.top = `${-PAD}px`;
+      canvas.style.top = `${-padTop}px`;
 
       // Rasterize every character at 1/cell scale: anti-aliasing yields
       // per-cell coverage. x comes from DOM Ranges (exact tracking/kerning),
@@ -122,7 +134,7 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
         const marker = document.createElement("span");
         marker.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
         el.appendChild(marker);
-        const baseline = marker.getBoundingClientRect().top - box.top + PAD;
+        const baseline = marker.getBoundingClientRect().top - box.top + padTop;
         marker.remove();
         const node = el.firstChild;
         const text = node?.textContent ?? "";
@@ -134,6 +146,14 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
         }
       }
       const data = m.getImageData(0, 0, cols, rows).data;
+      rainH = h;
+      colDelay = new Float32Array(cols);
+      colSpeed = new Float32Array(cols);
+      const inName = new Uint8Array(cols);
+      for (let col = 0; col < cols; col++) {
+        colDelay[col] = hash(col, 3.1) * 0.95;
+        colSpeed[col] = (h + RAIN_TRAIL * cell * 2) / (1.05 + hash(col, 5.7) * 0.7);
+      }
       const next: Glyph[] = [];
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
@@ -142,23 +162,17 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
           const hx = col * cell;
           const hy = row * cell;
           const seed = hash(col, row);
-          // Entrance: glyphs start compressed toward the name's centre (as if
-          // far away in depth) with a scattered offset, and the springs pull
-          // them out onto the letterforms.
-          const cx = w / 2;
-          const cy = h / 2;
-          const settled = assembled || reduced;
-          const angle = seed * Math.PI * 2 * 7.13;
-          const scatter = settled ? 0 : 40 + hash(row, col) * 220;
-          next.push({
-            hx, hy,
-            x: settled ? hx : cx + (hx - cx) * 0.18 + Math.cos(angle) * scatter,
-            y: settled ? hy : cy + (hy - cy) * 0.18 + Math.sin(angle) * scatter * 0.5,
-            vx: 0, vy: 0, col, row, cover, seed,
-          });
+          inName[col] = 1;
+          next.push({ hx, hy, x: hx, y: hy, vx: 0, vy: 0, col, row, cover, seed });
         }
       }
       glyphs = next;
+      // Every letter column streams; a sparse share of the columns around the
+      // name rain too, so the name reads as written out of a code shower.
+      rainCols = [];
+      for (let col = 0; col < cols; col++) {
+        if (inName[col] ? hash(col, 9.2) < 0.7 : hash(col, 9.2) < 0.12) rainCols.push(col);
+      }
     };
 
     const step = (now: number, dt: number) => {
@@ -169,11 +183,8 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
       const pvx = pointer.vx;
       const pvy = pointer.vy;
       const t = now / 1000;
-      const assembly = assembleStart < 0 ? -1 : (now - assembleStart) / 1000;
       for (const g of glyphs) {
-        // Springs release in a seeded stagger so the name condenses in waves.
-        const release = assembly < 0 ? 0 : Math.min(1, Math.max(0, (assembly - g.seed * 0.35) * 3));
-        const k = 60 * release;
+        const k = 60;
         g.vx += (g.hx - g.x) * k * dt;
         g.vy += (g.hy - g.y) * k * dt;
         if (pointer.active) {
@@ -223,9 +234,13 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
         const rate = 0.5 + g.seed * 2.5 + trail * 8 + displaced * 22;
         const glyph = Math.floor(g.seed * 997 + t * rate) % CHARSET.length;
         const bright = Math.min(1, 0.9 + trail * 0.2 + displaced * 0.3);
-        // Lime marks energy: stream heads and a share of displaced glyphs.
-        const hot = (behind >= 0 && behind < 1.1) || displaced * (0.4 + g.seed) > 0.62;
-        const fadeIn = assembly < 0 ? 0 : Math.min(1, Math.max(0, (assembly - g.seed * 0.5) * 3));
+        // A glyph appears when its column's stream head reaches its home row,
+        // flashing lime for a moment as it locks in.
+        const since = assembly < 0 ? -1 : assembly - revealAt(g.col, g.hy);
+        const fadeIn = Math.min(1, Math.max(0, since * 7));
+        const locking = since >= 0 && since < 0.35;
+        // Lime marks energy: stream heads, freshly written glyphs and a share of displaced glyphs.
+        const hot = (behind >= 0 && behind < 1.1) || displaced * (0.4 + g.seed) > 0.62 || locking;
         const alpha = bright * Math.min(1, g.cover * 1.65) * fadeIn * (1 - displaced * 0.25);
         if (alpha < 0.01) continue;
         // A faint offset lime echo gives each glyph depth without a backing.
@@ -233,6 +248,37 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
         ctx.drawImage(atlasLime!, glyph * size, 0, size, size, (g.x + 1.5) * dpr, (g.y + 2) * dpr, size, size);
         ctx.globalAlpha = alpha;
         ctx.drawImage(hot ? atlasLime! : atlasBone!, glyph * size, 0, size, size, g.x * dpr, g.y * dpr, size, size);
+      }
+      if (assembly >= 0 && assembly < RAIN_END) drawRain(assembly, t, size);
+      ctx.globalAlpha = 1;
+    };
+
+    // Stream head y (canvas CSS px) of a column at a given intro time.
+    const headY = (col: number, a: number) => -RAIN_TRAIL * cell + colSpeed[col] * (a - colDelay[col]);
+    const revealAt = (col: number, y: number) => colDelay[col] + (y + RAIN_TRAIL * cell) / colSpeed[col];
+
+    // Matrix-style streams: a lime head snapped to the glyph grid with a
+    // decaying bone trail above it, fading in from the screen edge and out
+    // below the name.
+    const drawRain = (a: number, t: number, size: number) => {
+      const edge = cell * 14;
+      for (const col of rainCols) {
+        const head = headY(col, a);
+        if (head < 0 || head - RAIN_TRAIL * cell > rainH) continue;
+        const headRow = Math.floor(head / cell);
+        const length = Math.round(RAIN_TRAIL * (0.55 + hash(col, 1.9) * 0.45));
+        const x = col * cell * dpr;
+        for (let k = 0; k < length; k++) {
+          const row = headRow - k;
+          const y = row * cell;
+          if (y < 0 || y > rainH) continue;
+          const ramp = Math.min(1, y / edge, (rainH - y) / edge);
+          const alpha = Math.exp(-k * 0.14) * ramp * (k === 0 ? 1 : 0.55);
+          if (alpha < 0.02) continue;
+          const glyph = Math.floor(hash(col, row) * 997 + t * (k === 0 ? 30 : 9)) % CHARSET.length;
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(k === 0 ? atlasLime! : atlasBone!, glyph * size, 0, size, size, x, y * dpr, size, size);
+        }
       }
     };
 
@@ -246,7 +292,6 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
       if (assembleStart < 0 && (html.dataset.stageIntro === "done" || html.dataset.stageStatic === "true")) {
         assembleStart = now;
       }
-      if (!assembled && assembleStart >= 0 && now - assembleStart > 2200) assembled = true;
       const steps = Math.max(1, Math.ceil(elapsed * 60));
       for (let i = 0; i < steps; i++) step(now, elapsed / steps);
       draw(now);

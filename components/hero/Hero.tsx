@@ -91,7 +91,6 @@ export function Hero({ t }: { t: HeroStrings }) {
         className="sticky top-0 z-30 flex h-svh flex-col justify-center overflow-hidden px-6 md:px-10 motion-reduce:relative motion-reduce:min-h-svh"
       >
         <StaticField />
-        <div aria-hidden className="hero-scrim pointer-events-none absolute inset-0" />
         <div
           data-hero-identity
           className="hero-copy pointer-events-none relative z-10 mx-auto flex h-full w-full max-w-7xl flex-col items-center justify-center pt-24 pb-20 text-center"
