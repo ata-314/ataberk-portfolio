@@ -264,32 +264,26 @@ void main() {
     energy += ring;
   }
 
-  // Opening flight: the field starts stretched into a deep data bore that the
-  // camera genuinely passes through — the z span reaches behind the camera's
-  // start position and the data itself streams toward the viewer, wrapping at
-  // the far end, so information rushes past on both sides of the flight path.
-  // Particles anneal into the painting as uIntro eases to 1.
+  // Opening assembly: every point launches from a deep, compact core and
+  // spirals outward into its place in the painting on a staggered expo-out
+  // curve — one decisive gather instead of a long flight. The start depth sits
+  // far behind the focal plane, so no point ever passes the camera and flares
+  // into an out-of-focus blob. A sparse subset carries an acid-lime glint
+  // while in transit and cools to base colour as it lands.
   vScanLime = 0.0;
-  float introLife = 1.0 - smoothstep(0.34, 1.0, uIntro);
+  float introT = clamp((uIntro - seed * 0.4) / 0.6, 0.0, 1.0);
+  float introLife = introT >= 1.0 ? 0.0 : pow(2.0, -10.0 * introT);
   if (introLife > 0.001) {
-    float lane = fract(aSeed * 3.917) * 6.28318;
-    float bore = 1.35 + fract(aSeed * 6.31) * 3.9;
-    float zSpan = 92.0;
-    float zSeed = fract(aSeed * 9.271) * zSpan;
-    float zFlow = mod(zSeed + uTime * (9.0 + fract(aSeed * 5.7) * 13.0), zSpan);
-    vec3 tunnel = vec3(
-      cos(lane) * bore + flow.x * 0.7,
-      sin(lane) * bore * 0.62 + flow.y * 0.7,
-      44.0 - zFlow
-    );
-    point = mix(point, tunnel, introLife);
-    float lime = 0.0;
-    for (int k = 0; k < 2; k++) {
-      float sweep = mix(-46.0, 40.0, fract(uTime * 0.3 + float(k) * 0.5));
-      lime += exp(-pow((point.z - sweep) * 0.45, 2.0));
-    }
-    vScanLime = lime * introLife * 1.2;
-    energy += vScanLime * 0.9 + introLife * 0.12;
+    float spin = introLife * (1.6 + seed * 1.2);
+    float cs = cos(spin);
+    float sn = sin(spin);
+    vec2 core = mat2(cs, -sn, sn, cs) * point.xy * (0.18 + seed * 0.2);
+    vec3 origin = vec3(core, point.z - 20.0 - fract(aSeed * 9.271) * 16.0);
+    point = mix(point, origin, introLife);
+    alpha *= smoothstep(0.0, 0.18, introT);
+    float glint = step(0.86, fract(aSeed * 7.13)) * introLife * (1.0 - introLife) * 4.0;
+    vScanLime = glint * 0.7;
+    energy += glint * 0.4;
   }
   // The pointer sweep shares the acid-lime scan identity.
   vScanLime += pointerScan;

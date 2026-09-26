@@ -32,9 +32,9 @@ export default function StageLoader() {
     };
 
     if ("requestIdleCallback" in window) {
-      idleId = window.requestIdleCallback(warm, { timeout: 1200 });
+      idleId = window.requestIdleCallback(warm, { timeout: 400 });
     } else {
-      timer = setTimeout(warm, 700);
+      timer = setTimeout(warm, 300);
     }
 
     // Content is hidden until the intro reports done; if the WebGL chunk
@@ -44,7 +44,7 @@ export default function StageLoader() {
       if (!document.documentElement.dataset.stageIntro) {
         document.documentElement.dataset.stageIntro = "done";
       }
-    }, 9000);
+    }, 5000);
 
     return () => {
       cancelled = true;

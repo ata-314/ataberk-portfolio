@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -20,93 +20,15 @@ export type HeroStrings = {
   locale: string;
 };
 
-// The hero is a transparent stage over the global CodeField canvas.
-// Text is server-rendered HTML — visible before any WebGL loads.
+// The hero is a transparent stage over the global WebGL canvas. Text is
+// server-rendered HTML — visible before any WebGL loads. Entrance motion is
+// pure CSS, held on its first frame until the stage reports the intro done.
 export function Hero({ t }: { t: HeroStrings }) {
   const wrapper = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLSpanElement>(null);
   const tr = t.locale === "tr";
-
-  // Matrix-style decode: the name resolves out of cycling code glyphs when
-  // the opening flight lands, then rests with rare single-character flickers.
-  useEffect(() => {
-    const el = titleRef.current;
-    if (!el) return;
-    const FINAL = "Ataberk Soylu";
-    const CODE = "01<>{}/*+=:;#|";
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      el.textContent = FINAL;
-      return;
-    }
-    const timers: number[] = [];
-    let decodeInterval = 0;
-    let started = false;
-    const glyph = () => CODE[Math.floor(Math.random() * CODE.length)];
-    const restFlicker = () => {
-      timers.push(
-        window.setTimeout(() => {
-          const idx = Math.floor(Math.random() * FINAL.length);
-          if (FINAL[idx] !== " ") {
-            let frames = 0;
-            const flick = window.setInterval(() => {
-              const chars = FINAL.split("");
-              chars[idx] = frames < 3 ? glyph() : FINAL[idx];
-              el.textContent = chars.join("");
-              if (++frames > 3) clearInterval(flick);
-            }, 55);
-            timers.push(flick);
-          }
-          restFlicker();
-        }, 4200 + Math.random() * 3800),
-      );
-    };
-    const start = () => {
-      if (started) return;
-      started = true;
-      const t0 = performance.now();
-      decodeInterval = window.setInterval(() => {
-        const elapsed = performance.now() - t0;
-        let out = "";
-        let done = true;
-        for (let i = 0; i < FINAL.length; i++) {
-          if (FINAL[i] === " ") {
-            out += " ";
-          } else if (elapsed >= 260 + i * 95) {
-            out += FINAL[i];
-          } else {
-            out += glyph();
-            done = false;
-          }
-        }
-        el.textContent = out;
-        if (done) {
-          clearInterval(decodeInterval);
-          restFlicker();
-        }
-      }, 46);
-    };
-    const html = document.documentElement;
-    const ready = () =>
-      html.dataset.stageIntro === "done" || html.dataset.stageStatic === "true";
-    if (ready()) start();
-    const observer = new MutationObserver(() => {
-      if (ready()) start();
-    });
-    observer.observe(html, {
-      attributes: true,
-      attributeFilter: ["data-stage-intro", "data-stage-static"],
-    });
-    timers.push(window.setTimeout(start, 9500));
-    return () => {
-      observer.disconnect();
-      clearInterval(decodeInterval);
-      timers.forEach((timer) => {
-        clearTimeout(timer);
-        clearInterval(timer);
-      });
-      el.textContent = FINAL;
-    };
-  }, []);
+  const disciplines = tr
+    ? ["Yapay Zekâ", "Motion", "3D", "Web"]
+    : ["AI", "Motion", "3D", "Web"];
 
   useGSAP(
     () => {
@@ -134,9 +56,10 @@ export function Hero({ t }: { t: HeroStrings }) {
 
       timeline
         .to("[data-hero-hint]", { autoAlpha: 0, duration: 0.06 }, 0.06)
+        .to("[data-hero-rail]", { autoAlpha: 0, y: 24, duration: 0.1 }, 0.1)
         .to(
           "[data-hero-identity]",
-          { autoAlpha: 0, y: -72, scale: 0.94, duration: 0.16 },
+          { autoAlpha: 0, y: -64, duration: 0.16 },
           0.2,
         )
         .fromTo(
@@ -167,48 +90,72 @@ export function Hero({ t }: { t: HeroStrings }) {
       >
         <StaticField />
         <div aria-hidden className="hero-scrim pointer-events-none absolute inset-0" />
-        <div data-hero-identity className="hero-focus hero-copy pointer-events-none relative z-10 mx-auto w-full max-w-5xl origin-center text-center">
-          <div className="mb-7 flex items-center justify-center gap-3 [animation:heroRise_0.8s_ease_0.1s_both]">
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime shadow-[0_0_16px_rgba(200,255,62,0.75)]" />
-            <p lang="en" className="font-mono text-[10px] tracking-[0.28em] text-bone-dim uppercase md:text-[11px]">
+        <div
+          data-hero-identity
+          className="hero-copy pointer-events-none relative z-10 mx-auto flex h-full w-full max-w-7xl flex-col justify-end pt-28 pb-24 md:pb-28"
+        >
+          <div className="hero-enter mb-6 flex items-center gap-3 md:mb-8" style={{ ["--d" as string]: "0.05s" }}>
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
+            <p lang="en" className="font-mono text-[10px] tracking-[0.16em] text-bone-dim uppercase md:text-[11px] md:tracking-[0.26em]">
               {t.title}
             </p>
           </div>
-          <h1
-            lang="en"
-            aria-label="Ataberk Soylu"
-            className="hero-title overflow-hidden leading-none"
-            style={{ fontSize: "clamp(1.9rem, 5.4vw, 5.4rem)" }}
-          >
-            <span aria-hidden className="hero-type-shell">
-              <span className="hero-type-prompt">&gt;</span>
-              <span ref={titleRef} className="hero-type-text">
-                Ataberk Soylu
+
+          <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-16">
+            <h1 aria-label={t.name} className="hero-name">
+              <span aria-hidden className="hero-line">
+                <span style={{ ["--d" as string]: "0.1s" }}>Ataberk</span>
               </span>
-              <span className="hero-type-cursor" />
-            </span>
-          </h1>
-          <div className="pointer-events-auto mx-auto mt-7 max-w-2xl [animation:heroRise_0.9s_ease_0.5s_both]">
-            <p className="text-base leading-relaxed text-bone/85 text-balance md:text-xl">{t.tagline}</p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <a
-                href="#work"
-                data-cursor="view"
-                className="rounded-full bg-bone px-6 py-3.5 font-mono text-[11px] font-semibold tracking-widest text-ink uppercase shadow-[0_12px_36px_-18px_rgba(243,239,231,0.75)] transition-all hover:-translate-y-0.5 hover:bg-white"
-              >
-                {t.ctaWork}
-              </a>
-              <a
-                href={`/${t.locale}/about`}
-                className="rounded-full border border-white/15 bg-white/[0.07] px-6 py-3.5 font-mono text-[11px] tracking-widest text-bone uppercase backdrop-blur-xl backdrop-saturate-150 transition-colors hover:border-white/30 hover:bg-white/[0.12]"
-              >
-                {t.ctaAbout}
-              </a>
+              <span aria-hidden className="hero-line">
+                <span style={{ ["--d" as string]: "0.2s" }}>Soylu</span>
+              </span>
+            </h1>
+
+            <div className="pointer-events-auto max-w-md lg:pb-[0.9vw]">
+              <p className="hero-enter text-lg leading-snug text-bone text-balance md:text-xl" style={{ ["--d" as string]: "0.38s" }}>
+                {t.tagline}
+              </p>
+              <p className="hero-enter mt-4 text-sm leading-relaxed text-bone-dim text-pretty" style={{ ["--d" as string]: "0.46s" }}>
+                {t.intro}
+              </p>
+              <div className="hero-enter mt-8 flex flex-wrap gap-3" style={{ ["--d" as string]: "0.54s" }}>
+                <a
+                  href="#work"
+                  data-cursor="view"
+                  className="group inline-flex items-center gap-2.5 rounded-full bg-bone px-6 py-3.5 text-sm font-medium text-ink transition-colors hover:bg-white"
+                >
+                  {t.ctaWork}
+                  <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+                </a>
+                <a
+                  href={`/${t.locale}/about`}
+                  className="inline-flex items-center rounded-full border border-white/15 px-6 py-3.5 text-sm text-bone transition-colors hover:border-white/35 hover:bg-white/[0.06]"
+                >
+                  {t.ctaAbout}
+                </a>
+              </div>
             </div>
-            <p className="mx-auto mt-7 max-w-xl font-mono text-[9px] leading-relaxed tracking-[0.16em] text-bone-dim/55 uppercase md:text-[10px]">
-              {t.intro}
-            </p>
           </div>
+        </div>
+
+        <div
+          data-hero-rail
+          className="hero-rail pointer-events-none absolute inset-x-6 bottom-6 z-10 mx-auto flex max-w-7xl items-center justify-between gap-6 border-t border-white/10 pt-4 font-mono text-[10px] tracking-[0.2em] text-bone-dim/70 uppercase md:inset-x-10 motion-reduce:hidden"
+        >
+          <ul lang="en" className="flex flex-wrap gap-x-4 gap-y-1 md:gap-x-5">
+            {disciplines.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p className="hidden text-bone-dim/45 lg:block">
+            {tr
+              ? "Kaydırma kuşu biçimlendirir · İmleç yön verir"
+              : "Scroll shapes the bird · Cursor gives direction"}
+          </p>
+          <p data-hero-hint className="flex items-center gap-3">
+            {t.scrollHint}
+            <span aria-hidden className="hero-scroll-line" />
+          </p>
         </div>
 
         <div
@@ -244,17 +191,6 @@ export function Hero({ t }: { t: HeroStrings }) {
           </div>
         </div>
 
-        <p
-          data-hero-hint
-          className="pointer-events-none absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 font-mono text-[10px] tracking-widest text-bone-dim/80 uppercase backdrop-blur-xl backdrop-saturate-150 motion-reduce:hidden"
-        >
-          {t.scrollHint} <span aria-hidden className="text-lime">↓</span>
-        </p>
-        <p data-hero-corner className="pointer-events-none absolute right-6 bottom-7 hidden font-mono text-[9px] tracking-[0.2em] text-bone-dim/40 uppercase lg:block motion-reduce:hidden">
-          {tr
-            ? "Kaydırma kuşu biçimlendirir · İmleç yön verir"
-            : "Scroll shapes the bird · Cursor gives direction"}
-        </p>
       </section>
     </div>
   );

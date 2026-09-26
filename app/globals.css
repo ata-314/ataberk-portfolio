@@ -100,21 +100,20 @@ html[data-stage-static="true"] .hero-static-field {
 }
 
 /* Keep entrance animations at their authored first frame while WebGL performs
-   its setup and the opening tunnel flight plays. The copy begins typing as the
-   camera eases into the hero position (data-stage-intro), so neither shader
-   initialization nor the intro can present as a frozen typing animation. */
+   its setup and the opening assembly plays. The copy begins rising as the
+   field settles (data-stage-intro), so shader initialization can never
+   present as a frozen entrance. */
 html:not([data-stage-intro="done"]):not([data-stage-static="true"])
-  [data-hero-identity]
-  * {
+  :is([data-hero-identity] *, [data-hero-rail]) {
   animation-play-state: paused !important;
 }
 
-/* Nothing on screen before the tunnel flight lands: site chrome and hero
+/* Nothing on screen before the opening assembly lands: site chrome and hero
    copy are hidden from the very first paint and only return once the stage
    reports the intro done (or the static fallback engages). A <noscript>
    override in the layout restores everything for no-JS visitors. */
 html:not([data-stage-intro="done"]):not([data-stage-static="true"])
-  :is(header, [data-hero-identity], [data-hero-hint], [data-hero-corner]) {
+  :is(header, [data-hero-identity], [data-hero-rail]) {
   opacity: 0 !important;
   pointer-events: none !important;
 }
@@ -123,55 +122,80 @@ header {
   transition: opacity 0.8s ease;
 }
 
+/* Quiet the field behind the copy (the lower band, deepest bottom-left) and
+   under the nav, leaving the upper painting at full strength. */
 .hero-scrim {
-  background: linear-gradient(
-    180deg,
-    rgba(10, 10, 11, 0.34) 0%,
-    transparent 18%,
-    transparent 78%,
-    rgba(10, 10, 11, 0.32) 100%
-  );
+  background:
+    radial-gradient(ellipse 70% 62% at 12% 88%, rgba(10, 10, 11, 0.62) 0%, rgba(10, 10, 11, 0.24) 48%, transparent 76%),
+    linear-gradient(180deg, rgba(10, 10, 11, 0.4) 0%, transparent 16%, transparent 52%, rgba(10, 10, 11, 0.62) 100%);
 }
 
-/* Futuristic terminal identity: the name decodes out of cycling glyphs
-   (driven from Hero.tsx) inside a fixed-height shell, prompt and caret in
-   acid lime. Orbitron carries the machined, engineered voice. */
-.hero-title {
-  font-family: var(--font-orbitron), var(--font-mono);
-  font-weight: 800;
-  letter-spacing: 0.005em;
+/* Editorial identity: the name set large in the display grotesk, each line
+   rising out of its own mask. Delays come from the --d custom property. */
+.hero-name {
+  font-family: var(--font-display);
+  font-size: clamp(4.1rem, 13.2vw, 14rem);
+  font-weight: 600;
+  line-height: 0.84;
+  letter-spacing: -0.058em;
+  color: var(--bone);
 }
 
-.hero-type-shell {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.22em;
-  height: 1.06em;
-  max-width: 100%;
-  white-space: nowrap;
+@media (max-width: 767px) {
+  .hero-name {
+    font-size: 24vw;
+  }
 }
 
-.hero-type-prompt {
-  color: rgba(200, 255, 62, 0.72);
-  font-weight: 500;
+.hero-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
 }
 
-.hero-type-text {
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+.hero-line > span {
+  display: block;
+  animation: heroMask 1.05s cubic-bezier(0.19, 1, 0.22, 1) var(--d, 0s) both;
 }
 
-.hero-type-cursor {
-  align-self: center;
-  width: 0.085em;
-  height: 0.74em;
+.hero-enter {
+  animation: heroRise 0.9s cubic-bezier(0.19, 1, 0.22, 1) var(--d, 0s) both;
+}
+
+.hero-rail {
+  animation: heroFade 1s ease 0.7s both;
+}
+
+.hero-scroll-line {
+  position: relative;
+  width: 2.5rem;
+  height: 1px;
+  overflow: hidden;
+  background: rgba(243, 239, 231, 0.18);
+}
+
+.hero-scroll-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   background: var(--lime);
-  box-shadow: 0 0 18px rgba(200, 255, 62, 0.45);
-  animation: heroCaret 0.72s steps(1, end) infinite;
+  animation: heroScrollLine 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-@keyframes heroCaret {
-  50% { opacity: 0.16; }
+@keyframes heroMask {
+  from { transform: translateY(105%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes heroFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes heroScrollLine {
+  0% { transform: translateX(-100%); }
+  55%, 100% { transform: translateX(100%); }
 }
 
 /* Motion grammar — shared entrance primitives (GSAP drives the rest) */
@@ -255,20 +279,6 @@ header {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 32px 90px -42px rgba(0, 0, 0, 0.98);
-}
-
-.hero-focus {
-  position: relative;
-  isolation: isolate;
-  padding-block: clamp(1.25rem, 3vw, 2.5rem);
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.hero-focus::after {
-  content: none;
 }
 
 /* Compact control glass. Keeping this material quieter than content cards
@@ -431,10 +441,6 @@ header {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-type-cursor {
-    animation: none !important;
-  }
-
   *,
   *::before,
   *::after {

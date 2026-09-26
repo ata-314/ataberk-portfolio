@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, Orbitron } from "next/font/google";
+import { Archivo } from "next/font/google";
 import { notFound } from "next/navigation";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
 import { site } from "@/content/site";
@@ -7,12 +7,7 @@ import { Nav } from "@/components/nav/Nav";
 import { Cursor } from "@/components/cursor/Cursor";
 import "../globals.css";
 
-const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"] });
-const orbitron = Orbitron({
-  variable: "--font-orbitron",
-  subsets: ["latin"],
-  weight: ["500", "700", "800"],
-});
+const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin", "latin-ext"] });
 
 const BASE_URL = "https://ataberk-portfolio-rho.vercel.app";
 
@@ -94,10 +89,10 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <body
-        className={`${archivo.variable} ${orbitron.variable} antialiased`}
+        className={`${archivo.variable} antialiased`}
       >
         <noscript>
-          <style>{`header, [data-hero-identity], [data-hero-hint], [data-hero-corner] { opacity: 1 !important; pointer-events: auto !important; }`}</style>
+          <style>{`header, [data-hero-identity], [data-hero-rail] { opacity: 1 !important; pointer-events: auto !important; }`}</style>
         </noscript>
         <a href="#content" className="skip-link">
           {t.a11y.skip}

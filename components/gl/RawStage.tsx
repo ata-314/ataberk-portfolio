@@ -6,6 +6,7 @@ import { scrollState } from "../three/scroll-state";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
 const BIRD_SAMPLES = 9000;
+const INTRO_SECONDS = 1.9;
 const BIRD_FRAMES = 16;
 const TEX_W = 2048;
 const ROWS_PER_FRAME = 5;
@@ -222,15 +223,19 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let runtimeCleanup = () => {};
     let frameId = 0;
     let firstFrame = true;
-    // During the opening flight nothing but the tunnel is on screen: the nav
-    // and hero copy hide on "flying" and return when the flight lands. The
+    // During the opening assembly nothing but the field is on screen: the nav
+    // and hero copy hide on "flying" and return as the field lands. The
     // safety timer guarantees the copy can never stay hidden if the render
     // loop dies before marking the intro done.
     const skipIntro = window.scrollY > 40;
     document.documentElement.dataset.stageIntro = skipIntro ? "done" : "flying";
     const introSafety = setTimeout(() => {
       document.documentElement.dataset.stageIntro = "done";
-    }, 9000);
+    }, 5000);
+    // The bird bake is the largest startup payload; request it alongside
+    // shader compilation instead of after it.
+    const birdBake = fetch("/models/bird-bake.bin");
+    birdBake.catch(() => {});
     void (async () => {
     const program = await createProgram(gl);
     if (disposed) {
@@ -374,7 +379,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
 
     let birdReady = 0;
     try {
-      const response = await fetch("/models/bird-bake.bin");
+      const response = await birdBake;
       if (!response.ok) throw new Error(`bird bake: ${response.status}`);
       const buffer = await response.arrayBuffer();
       if (disposed) return;
@@ -543,7 +548,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let last = performance.now();
     let time = 0;
     let reveal = 0;
-    // Opening tunnel flight. Skipped when the page restores an existing
+    // Opening assembly. Skipped when the page restores an existing
     // scroll position, so mid-page reloads never replay the intro.
     let intro = skipIntro ? 1 : 0;
     let introMarked = false;
@@ -563,19 +568,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const delta = Math.min(Math.max(now - last, 0) / 1000, 0.05);
       last = now;
       time += delta;
-      reveal = Math.min(1, reveal + delta / 2.2);
-      intro = Math.min(1, intro + delta / 4.4);
-      // Ease-in-out flight: lift off from a standstill, rush through the bore
-      // at mid-flight, then decelerate into the hero position. The data keeps
-      // streaming past even before the camera itself picks up speed.
-      const introEase =
-        intro < 0.5 ? 4 * intro * intro * intro : 1 - Math.pow(-2 * intro + 2, 3) / 2;
-      const scanBoost = 1 - smoothstep(intro, 0.72, 1);
-      if (!introMarked && intro >= 0.8) {
+      reveal = Math.min(1, reveal + delta / 0.8);
+      // The assembly runs on one short linear clock; each particle applies its
+      // own staggered expo-out curve in the shader.
+      intro = Math.min(1, intro + delta / INTRO_SECONDS);
+      const introEase = 1 - Math.pow(1 - intro, 3);
+      if (!introMarked && intro >= 0.45) {
         introMarked = true;
         clearTimeout(introSafety);
-        // Hero entrance animations wait on this flag; the copy starts typing
-        // while the camera is still easing into its resting position.
+        // Hero entrance animations wait on this flag; the copy starts rising
+        // while the last particles are still settling into place.
         document.documentElement.dataset.stageIntro = "done";
       }
       hero = damp(hero, scrollState.hero.current, 24, delta);
@@ -642,13 +644,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       compose(birdMatrix, flight.position, flight.scale, yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)));
       flap = (flap + delta) % 1;
 
-      // A gentle banked drift while flying keeps the bore from reading as a
-      // straight rail; it fades to nothing as the camera lands.
-      const introDrift = 1 - introEase;
+      // A short dolly-in settles the camera as the field assembles.
       const camera: Vec3 = [
-        Math.sin(hero * Math.PI) * 0.14 + Math.sin(intro * Math.PI * 2.2) * 0.42 * introDrift,
-        -0.02 - hero * 0.03 + Math.cos(intro * Math.PI * 1.7) * 0.26 * introDrift,
-        mix(40, 8.2 - hero * 1.5 * (1 - finale), introEase),
+        Math.sin(hero * Math.PI) * 0.14,
+        -0.02 - hero * 0.03,
+        mix(10.4, 8.2 - hero * 1.5 * (1 - finale), introEase),
       ];
       lookAt(view, camera, [0, 0.08, 0]);
       gl.useProgram(program);
@@ -686,7 +686,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uFlap"), flap);
       gl.uniform1f(u("uBirdReady"), readyMix);
       gl.uniform1f(u("uIntro"), intro);
-      gl.uniform1f(u("uScanBoost"), scanBoost);
+      gl.uniform1f(u("uScanBoost"), 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       // Use undamped scroll intent for workload shedding: the dense opening
       // remains rich at rest, then drops its draw budget before the cinematic
