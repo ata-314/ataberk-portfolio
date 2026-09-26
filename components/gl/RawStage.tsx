@@ -637,7 +637,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.clear(gl.COLOR_BUFFER_BIT);
       const sculptureAlpha = smoothstep(intro, 0, 0.65);
       sculpture.render(canvas.width, canvas.height, time, sculptureAlpha,
-        scanSmooth[0] * 0.6, scanSmooth[1] * 0.6, scanVelocity, {
+        scanSmooth[0] / (8.2 * Math.tan(Math.PI / 8) * (innerWidth / innerHeight)),
+        scanSmooth[1] / (8.2 * Math.tan(Math.PI / 8)),
+        Math.min(1.4, scanVelocity + pointerActive * .3), {
           hero, ready: readyMix, flap, finale,
           matrix: birdMatrix, view, projection,
           positions: positionTexture, normals: normalTexture,

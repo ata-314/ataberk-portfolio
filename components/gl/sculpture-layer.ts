@@ -15,28 +15,27 @@ float smin(float a,float b,float k) {
   return mix(b,a,h)-k*h*(1.0-h);
 }
 float shape(vec3 p) {
-  float t=fieldTime*.20;
-  vec3 q=p;
-  q.x += .24*sin(p.y*.8+t)+.08*sin(p.z*1.1-t*.5);
-  q.y += .26*sin(p.x*.8-t)+.08*cos(p.z+t*.5);
-  q.z += .18*sin(p.y*.8+p.x*.5+t*.6);
-  // Large lobes rise, lean and merge; no repeating sheet or uniform wave.
-  float d=length((q-vec3(.1,-.6,0))/vec3(2.4,1.05,1.0))-.98;
-  d=smin(d,length(q-vec3(-1.15,.15,.0))-.98,.65);
-  d=smin(d,length((q-vec3(.75,.4,.1))/vec3(.92,1.4,1.0))-.92,.58);
-  d=smin(d,length(q-vec3(-.2+.22*sin(t*.8),1.45+.18*sin(t*.6),-.4))-.8,.55);
-  d=smin(d,length(q-vec3(1.65,-.2,-.3))-.85,.55);
-  vec3 flow=q*1.65+vec3(t*.24,-t*.38,t*.12);
-  float n=noise(flow);
-  // Nested folds deform the actual surface, so foreground ridges hide
-  // recessed matter and catch the key light on their lip.
-  float fold=sin(q.y*3.8 + q.x*1.7 + n*6.0 + t);
-  float fine=noise(flow*3.1+vec3(n*2.0));
-  float sediment=noise(flow*8.0+fine*2.0);
-  d += fold*.10 + (n-.5)*.28 + (fine-.5)*.09 + (sediment-.5)*.018;
-  float touch=exp(-dot(p.xy-pointer,p.xy-pointer)*1.5)*activity;
-  d -= touch*.045*sin(p.y*4.0+p.x*2.0-t*3.0);
-  return d;
+  float t=fieldTime*.24;
+  // A continuous relief grows out of the dark backing, across the viewport.
+  vec2 q=p.xy;
+  vec2 drift=vec2(t*.24,-t*.32);
+  float broad=noise(vec3(q*.65+drift,t*.18));
+  q+=vec2(sin(q.y*.85+t*.6),cos(q.x*.75-t*.5))*.42;
+  q+=vec2(broad-.5,noise(vec3(q*.7-drift,4.0+t*.12))-.5)*.8;
+  float mass=noise(vec3(q*.85+drift,t*.22));
+  float fold=sin(q.y*2.7+q.x*1.1+broad*7.0+t*.65);
+  float curl=noise(vec3(q*2.4+vec2(fold,broad),t*.3));
+  float detail=noise(vec3(q*6.5+curl,t*.2));
+  float height=-1.75+mass*2.8+fold*.58+(curl-.5)*.8+(detail-.5)*.09;
+  // Project the cursor ray onto this depth so the response stays under it.
+  float aspect=resolution.x/resolution.y;
+  float spread=max(1.0,aspect*1.05);
+  vec2 cursor=vec2(pointer.x*aspect*2.5/spread,pointer.y*2.5)*(7.8-p.z)/7.0+vec2(0,.15);
+  vec2 offset=p.xy-cursor;
+  float radius=length(offset);
+  float influence=exp(-radius*radius*2.2)*activity;
+  height+=influence*(.48+.17*sin(radius*7.0-fieldTime*1.8));
+  return (p.z-height)*.42;
 }
 vec3 normalAt(vec3 p) {
   vec2 e=vec2(.006,0);
@@ -82,15 +81,15 @@ float grainRandom(uint value) {
 
 void main() {
   float id=float(gl_VertexID);
-  float seed=hash(vec3(id,.7,3.1));
+  float seed=grainRandom(uint(gl_VertexID)+41u);
   vec2 cell=vec2(mod(id,grid.x),floor(id/grid.x));
-  vec2 jitter=vec2(hash(vec3(id,4.1,2.0)),hash(vec3(id,7.3,1.0)))-.5;
+  vec2 jitter=vec2(grainRandom(uint(gl_VertexID)+83u),grainRandom(uint(gl_VertexID)+307u))-.5;
   vec2 screen=((cell+.5+jitter*.95)/grid)*2.0-1.0;
   // A shared, broad current carries neighboring grains together.
   vec2 material=screen;
   float t=fieldTime*.10;
-  screen.x += .065*sin(material.y*1.5+t);
-  screen.y += .055*cos(material.x*1.4+t);
+  screen.x += .065*sin(material.y*1.5+t)*(1.0-material.x*material.x);
+  screen.y += .055*cos(material.x*1.4+t)*(1.0-material.y*material.y);
   // Reflect at the physical screen edges; never teleport to the opposite side.
   screen=1.0-abs(mod(screen+1.0,4.0)-2.0);
   float aspect=resolution.x/resolution.y;
@@ -119,9 +118,10 @@ void main() {
   tint=mix(forest,lime,smoothstep(-.85,.12,band));
   tint=mix(tint,citron,smoothstep(.05,.8,band));
   float cavity=assembly>.999?1.0:clamp(1.0-max(0.0,.2-shape(local+n*.2))*2.4,.3,1.0);
-  tint*= (.32+.85*light)*cavity;
+  float emergence=smoothstep(-1.05,.45,local.z);
+  tint*= (.18+.95*light)*cavity*mix(.012,1.0,emergence);
   float pulse=pow(.5+.5*sin(local.y*2.0-local.x-time*.8),8.0);
-  tint=mix(tint,citron,pulse*.13);
+  tint=mix(tint,citron,pulse*.07*emergence);
   // Close, unequal grains build mass; a small fraction lifts in the wake.
   float loose=step(.98,seed);
   p+=n*(seed-.5)*(.045+loose*.15);
@@ -169,7 +169,7 @@ void main() {
   float gather=smoothstep(.43,1.0,assembly);
   vec2 position=mix(mix(source,scatter,release),destination,gather);
   gl_Position=vec4(position,0.0,1.0);
-  float fluidSize=(3.0+seed*1.6)*pixelScale*7.0/(-view.z);
+  float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
   gl_PointSize=max(1.0,mix(fluidSize,(1.8+seed*.65)*pixelScale,assembly));
   tint=mix(tint,mix(lime*.7+citron*.3,vec3(.8,.96,1.0),.3)*birdLight*1.25,assembly*.8);
   alpha=mix(.8+light*.18,.9,assembly)*opacity;
@@ -190,7 +190,7 @@ void main() {
   float light=.38+.72*max(dot(n,lamp),0.0);
   float spec=pow(max(dot(n,normalize(vec3(-.2,.3,1.0))),0.0),24.0);
   float edge=1.0-smoothstep(.68,1.0,r2);
-  color=vec4(tint*light+vec3(.87,1.0,.58)*spec*.25,edge*alpha);
+  color=vec4(tint*light+vec3(.87,1.0,.58)*spec*.35*max(tint.r,max(tint.g,tint.b)),edge*alpha);
 }`;
 const canvasVertex = `#version 300 es
 precision highp float;
@@ -282,7 +282,8 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       const delta=Math.max(0,Math.min(time-lastTime,.05)); lastTime=time;
       const flowing=flight.hero<.015 || flight.finale>.98 || flight.ready<.95;
       if(flowing) {
-        flowTime+=delta;sourceX=px;sourceY=py;sourceActivity=activity;mapDirty=true;
+        flowTime+=delta;sourceX=px;sourceY=py;
+        sourceActivity+=(activity-sourceActivity)*(1-Math.exp(-5*delta));mapDirty=true;
       }
       const count=mobile?70000:220000;
       const columns=Math.round(Math.sqrt(count*w/h));
