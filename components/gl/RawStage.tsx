@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { leanFragment, leanVertex } from "./lean-field-shaders";
+import { createSculptureLayer } from "./sculpture-layer";
 import { scrollState } from "../three/scroll-state";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
@@ -247,8 +248,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.useProgram(program);
 
     const mobile = window.matchMedia("(pointer: coarse)").matches || innerWidth < 768;
-    // No video decode or uploads any more, so the sea can afford density.
-    const count = mobile ? 24000 : 96000;
+    const sculpture = createSculptureLayer(gl, mobile);
+    gl.bindVertexArray(vao);
+    gl.useProgram(program);
+    // Sparse grains supply the handoff; the opaque sculpture carries entry.
+    const count = mobile ? 10000 : 24000;
     const birdCount = mobile ? 2400 : 6000;
     const flightCount = mobile ? 3000 : 7500;
     let randomState = 0x9e3779b9;
@@ -633,14 +637,19 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
+      const sculptureAlpha = (1 - smoothstep(hero, 0.08, 0.4)) * smoothstep(intro, 0, 0.65);
+      sculpture.render(canvas.width, canvas.height, time, sculptureAlpha,
+        scanSmooth[0] * 0.6, scanSmooth[1] * 0.6, scanVelocity);
+      gl.useProgram(program);
+      gl.bindVertexArray(vao);
       // Use undamped scroll intent for workload shedding: the dense opening
       // remains rich at rest, then drops its draw budget before the cinematic
       // interpolation catches up, avoiding a heavy first-scroll frame.
       const flightLoad = smoothstep(scrollState.hero.current, 0.015, 0.2);
       const drawCount = Math.round(mix(count, flightCount, flightLoad));
       gl.uniform1f(u("uLineMode"), 0);
-      gl.drawArrays(gl.POINTS, 0, drawCount);
-      if (linkCount > 0 && videoMix > 0.03 && intro > 0.9) {
+      if (hero > 0.04 || finale > 0.01) gl.drawArrays(gl.POINTS, 0, drawCount);
+      if (linkCount > 0 && videoMix > 0.03 && intro > 0.9 && hero > 0.08) {
         gl.uniform1f(u("uLineMode"), 1);
         gl.drawElements(gl.LINES, linkCount, gl.UNSIGNED_INT, 0);
       }
@@ -659,6 +668,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       removeEventListener("pointermove", onPointerMove);
       removeEventListener("pointerdown", onPointerDown);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
+      sculpture.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
       gl.deleteTexture(normalTexture);

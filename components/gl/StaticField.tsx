@@ -4,10 +4,10 @@ export function StaticField() {
   return (
     <div aria-hidden className="hero-static-field absolute inset-0 overflow-hidden">
       <div
-        className="absolute -inset-[20%] rotate-[-18deg] opacity-70"
+        className="absolute inset-0 opacity-80"
         style={{
           backgroundImage:
-            "radial-gradient(ellipse 85% 32% at 45% 25%, transparent 36%, #173947 49%, #779a9e 55%, #e2dfd0 57%, #377682 60%, #0b1b29 65%, transparent 76%), radial-gradient(ellipse 90% 36% at 65% 84%, transparent 30%, #214c60 46%, #a8bfbd 54%, #317383 58%, #0a1725 68%, transparent 78%)",
+            "radial-gradient(ellipse 35% 26% at 53% 30%, #e5dcc1 15%, #84a8a1 47%, #1b4e50 61%, transparent 70%), radial-gradient(ellipse 43% 28% at 62% 47%, #cf7150 20%, #864431 53%, transparent 72%), radial-gradient(ellipse 36% 32% at 35% 48%, #85a39b 20%, #234448 54%, transparent 72%), linear-gradient(180deg, #c9bda2, #84725b 38%, #0a0a0b 92%)",
         }}
       />
       <div
