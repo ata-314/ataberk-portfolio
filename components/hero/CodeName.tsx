@@ -74,7 +74,20 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
       return atlas;
     };
 
+    // Keep the name on one line at any width: start from the CSS size and
+    // scale down only when the typeset line would overflow its block.
+    const fit = () => {
+      heading.style.fontSize = "";
+      const avail = (identity?.clientWidth ?? innerWidth) * 0.88;
+      const natural = heading.scrollWidth;
+      if (natural > avail) {
+        const size = parseFloat(getComputedStyle(heading).fontSize);
+        heading.style.fontSize = `${Math.floor(size * (avail / natural) * 100) / 100}px`;
+      }
+    };
+
     const build = () => {
+      fit();
       const style = getComputedStyle(heading);
       const fontSize = parseFloat(style.fontSize);
       cell = Math.max(3, fontSize / 34);
