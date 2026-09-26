@@ -30,7 +30,7 @@ type Glyph = {
 // (lime, faster mutation) until they settle back. On entrance the glyphs
 // converge from a scattered cloud. The real text stays in the DOM
 // (transparent once drawn) for layout, a11y and no-JS.
-export function CodeName({ words, className }: { words: string[]; className?: string }) {
+export function CodeName({ words, label, className }: { words: string[]; label?: string; className?: string }) {
   const root = useRef<HTMLHeadingElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -58,6 +58,8 @@ export function CodeName({ words, className }: { words: string[]; className?: st
     let assembleStart = -1;
     const pointer = { x: -1e4, y: -1e4, vx: 0, vy: 0, active: false };
 
+    // The glyphs use the site's code mono (next/font exposes its family on body).
+    const codeFont = `${getComputedStyle(document.body).getPropertyValue("--font-jetbrains").trim() || "ui-monospace"}, ui-monospace, monospace`;
     const makeAtlas = (rgb: string) => {
       const size = Math.ceil(cell * dpr);
       const atlas = document.createElement("canvas");
@@ -65,7 +67,7 @@ export function CodeName({ words, className }: { words: string[]; className?: st
       atlas.height = size;
       const a = atlas.getContext("2d")!;
       a.fillStyle = `rgb(${rgb})`;
-      a.font = `800 ${Math.round(size * 1.1)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      a.font = `800 ${Math.round(size * 1.1)}px ${codeFont}`;
       a.textAlign = "center";
       a.textBaseline = "middle";
       for (let i = 0; i < CHARSET.length; i++) a.fillText(CHARSET[i], i * size + size / 2, size / 2 + size * 0.04);
@@ -157,8 +159,8 @@ export function CodeName({ words, className }: { words: string[]; className?: st
       const assembly = assembleStart < 0 ? -1 : (now - assembleStart) / 1000;
       for (const g of glyphs) {
         // Springs release in a seeded stagger so the name condenses in waves.
-        const release = assembly < 0 ? 0 : Math.min(1, Math.max(0, (assembly - g.seed * 0.5) * 2.2));
-        const k = 38 * release;
+        const release = assembly < 0 ? 0 : Math.min(1, Math.max(0, (assembly - g.seed * 0.35) * 3));
+        const k = 60 * release;
         g.vx += (g.hx - g.x) * k * dt;
         g.vy += (g.hy - g.y) * k * dt;
         if (pointer.active) {
@@ -223,14 +225,17 @@ export function CodeName({ words, className }: { words: string[]; className?: st
 
     const loop = (now: number) => {
       frame = requestAnimationFrame(loop);
-      const dt = Math.min(Math.max((now - last) / 1000, 0), 1 / 30);
+      // Real elapsed time (capped), integrated in ≤1/60s substeps, so the
+      // springs run in real time even when the page renders slowly.
+      const elapsed = Math.min(Math.max((now - last) / 1000, 0), 0.1);
       last = now;
       if (!visible || (identity && identity.style.visibility === "hidden")) return;
       if (assembleStart < 0 && (html.dataset.stageIntro === "done" || html.dataset.stageStatic === "true")) {
         assembleStart = now;
       }
       if (!assembled && assembleStart >= 0 && now - assembleStart > 2200) assembled = true;
-      step(now, dt);
+      const steps = Math.max(1, Math.ceil(elapsed * 60));
+      for (let i = 0; i < steps; i++) step(now, elapsed / steps);
       draw(now);
     };
 
@@ -304,7 +309,7 @@ export function CodeName({ words, className }: { words: string[]; className?: st
   }, []);
 
   return (
-    <h1 ref={root} aria-label={words.join(" ")} className={`relative ${className ?? ""}`}>
+    <h1 ref={root} aria-label={label ?? words.join(" ")} className={`relative ${className ?? ""}`}>
       {words.map((word, i) => (
         <span key={word} aria-hidden>
           {i > 0 ? " " : null}

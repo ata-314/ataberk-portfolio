@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo } from "next/font/google";
+import { Archivo, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { notFound } from "next/navigation";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
 import { site } from "@/content/site";
@@ -8,6 +8,18 @@ import { Cursor } from "@/components/cursor/Cursor";
 import "../globals.css";
 
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin", "latin-ext"] });
+// Technical grotesk for the hero identity (mono DNA, not a futuristic face)
+// and a code mono for labels and the glyphs that build the name.
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "700"],
+});
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "800"],
+});
 
 const BASE_URL = "https://ataberk-portfolio-rho.vercel.app";
 
@@ -89,7 +101,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <body
-        className={`${archivo.variable} antialiased`}
+        className={`${archivo.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <noscript>
           <style>{`header, [data-hero-identity], [data-hero-rail] { opacity: 1 !important; pointer-events: auto !important; }`}</style>

@@ -27,6 +27,7 @@ export type HeroStrings = {
 export function Hero({ t }: { t: HeroStrings }) {
   const wrapper = useRef<HTMLDivElement>(null);
   const tr = t.locale === "tr";
+  const [roleA, roleB] = t.title.split(" & ");
   const disciplines = tr
     ? ["Yapay Zekâ", "Motion", "3D", "Web"]
     : ["AI", "Motion", "3D", "Web"];
@@ -95,34 +96,59 @@ export function Hero({ t }: { t: HeroStrings }) {
           data-hero-identity
           className="hero-copy pointer-events-none relative z-10 mx-auto flex h-full w-full max-w-7xl flex-col items-center justify-center pt-24 pb-20 text-center"
         >
-          <div className="hero-enter mb-7 flex items-center gap-3 md:mb-9" style={{ ["--d" as string]: "0.05s" }}>
+          <div className="hero-enter mb-6 flex items-center gap-3 font-mono text-[10px] tracking-[0.18em] text-bone-dim uppercase md:mb-8 md:text-[11px] md:tracking-[0.28em]" style={{ ["--d" as string]: "0.05s" }}>
             <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
-            <p lang="en" className="font-mono text-[10px] tracking-[0.16em] text-bone-dim uppercase md:text-[11px] md:tracking-[0.26em]">
-              {t.title}
+            <p lang="en">
+              {roleA}
+              {roleB ? (
+                <>
+                  <span aria-hidden className="mx-2 text-lime md:mx-3">/</span>
+                  {roleB}
+                </>
+              ) : null}
             </p>
           </div>
 
-          <CodeName words={["Ataberk", "Soylu"]} className="hero-name" />
+          <div className="hero-frame">
+            <i aria-hidden />
+            <i aria-hidden />
+            <i aria-hidden />
+            <i aria-hidden />
+            <span aria-hidden className="hero-meta hero-enter top-2 left-6 hidden md:block" style={{ ["--d" as string]: "0.5s" }}>
+              N°001
+            </span>
+            <span aria-hidden className="hero-meta hero-enter top-2 right-6 hidden md:block" style={{ ["--d" as string]: "0.55s" }}>
+              Portfolio — {new Date().getFullYear()}
+            </span>
+            <span aria-hidden className="hero-meta hero-enter bottom-2 left-6 hidden md:flex md:items-center md:gap-2" style={{ ["--d" as string]: "0.6s" }}>
+              <span className="h-1 w-1 animate-pulse rounded-full bg-lime" />
+              {tr ? "Etkileşimli · İmleci gezdir" : "Interactive · Move the cursor"}
+            </span>
+            <span aria-hidden className="hero-meta hero-enter right-6 bottom-2 hidden md:block" style={{ ["--d" as string]: "0.65s" }}>
+              {t.locale.toUpperCase()} / {tr ? "EN" : "TR"}
+            </span>
+            <CodeName words={["ATABERK", "SOYLU"]} label={t.name} className="hero-name" />
+          </div>
 
-          <div className="pointer-events-auto mt-9 flex max-w-xl flex-col items-center md:mt-11">
-            <p className="hero-enter text-lg leading-snug text-bone text-balance md:text-xl" style={{ ["--d" as string]: "0.9s" }}>
+          <div className="pointer-events-auto mt-8 flex max-w-2xl flex-col items-center md:mt-10">
+            <p className="hero-enter hero-tagline text-xl leading-[1.25] text-bone text-balance md:text-[1.7rem]" style={{ ["--d" as string]: "0.9s" }}>
               {t.tagline}
             </p>
-            <p className="hero-enter mt-3 max-w-md text-sm leading-relaxed text-bone-dim text-balance" style={{ ["--d" as string]: "1s" }}>
+            <p className="hero-enter mt-4 max-w-md font-mono text-[11px] leading-relaxed tracking-[0.04em] text-bone-dim text-balance" style={{ ["--d" as string]: "1s" }}>
               {t.intro}
             </p>
             <div className="hero-enter mt-8 flex flex-wrap justify-center gap-3" style={{ ["--d" as string]: "1.1s" }}>
               <a
                 href="#work"
                 data-cursor="view"
-                className="group inline-flex items-center gap-2.5 rounded-full bg-bone px-6 py-3.5 text-sm font-medium text-ink transition-colors hover:bg-white"
+                className="group inline-flex items-center gap-2.5 rounded-full bg-bone px-6 py-3.5 font-[family-name:var(--font-space)] text-sm font-medium text-ink transition-colors hover:bg-white"
               >
                 {t.ctaWork}
                 <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
               </a>
               <a
                 href={`/${t.locale}/about`}
-                className="inline-flex items-center rounded-full border border-white/15 px-6 py-3.5 text-sm text-bone transition-colors hover:border-white/35 hover:bg-white/[0.06]"
+                className="inline-flex items-center rounded-full border border-white/15 px-6 py-3.5 font-[family-name:var(--font-space)] text-sm text-bone transition-colors hover:border-white/35 hover:bg-white/[0.06]"
               >
                 {t.ctaAbout}
               </a>

@@ -37,7 +37,7 @@
   --color-cyan: var(--cyan);
   --font-display: var(--font-archivo);
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 html {
@@ -126,25 +126,64 @@ header {
    edges of the sea at full strength. */
 .hero-scrim {
   background:
-    radial-gradient(ellipse 56% 44% at 50% 52%, rgba(10, 10, 11, 0.6) 0%, rgba(10, 10, 11, 0.25) 55%, transparent 80%),
+    radial-gradient(ellipse 50% 34% at 50% 44%, rgba(8, 9, 8, 0.82) 0%, rgba(8, 9, 8, 0.5) 50%, transparent 85%),
+    radial-gradient(ellipse 40% 26% at 50% 66%, rgba(8, 9, 8, 0.6) 0%, transparent 80%),
     linear-gradient(180deg, rgba(10, 10, 11, 0.4) 0%, transparent 16%, transparent 70%, rgba(10, 10, 11, 0.55) 100%);
 }
 
 /* Editorial identity: the name set large in the display grotesk, each line
    rising out of its own mask. Delays come from the --d custom property. */
+/* next/font defines its family variables on <body>, so they are referenced
+   directly here (a :root token built from them would resolve as invalid). */
 .hero-name {
-  font-family: var(--font-display);
-  font-size: clamp(3.6rem, 10.8vw, 11rem);
-  font-weight: 600;
-  line-height: 0.92;
-  letter-spacing: -0.055em;
+  font-family: var(--font-space), sans-serif;
+  font-size: clamp(3rem, 8.6vw, 9rem);
+  font-weight: 700;
+  line-height: 0.88;
+  letter-spacing: -0.045em;
   color: var(--bone);
 }
 
 @media (max-width: 767px) {
   .hero-name {
-    font-size: 23vw;
+    font-size: 17.5vw;
   }
+}
+
+/* Technical frame: crop marks at the corners of the name block. */
+.hero-frame {
+  position: relative;
+  padding: clamp(1.25rem, 2.6vw, 2.6rem) clamp(1rem, 3.2vw, 3.4rem);
+}
+
+.hero-frame > i {
+  position: absolute;
+  width: clamp(0.8rem, 1.4vw, 1.3rem);
+  height: clamp(0.8rem, 1.4vw, 1.3rem);
+  border-color: rgba(243, 239, 231, 0.35);
+  border-style: solid;
+  border-width: 0;
+}
+
+.hero-frame > i:nth-of-type(1) { top: 0; left: 0; border-top-width: 1px; border-left-width: 1px; }
+.hero-frame > i:nth-of-type(2) { top: 0; right: 0; border-top-width: 1px; border-right-width: 1px; }
+.hero-frame > i:nth-of-type(3) { bottom: 0; left: 0; border-bottom-width: 1px; border-left-width: 1px; }
+.hero-frame > i:nth-of-type(4) { bottom: 0; right: 0; border-bottom-width: 1px; border-right-width: 1px; }
+
+.hero-meta {
+  position: absolute;
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(185, 181, 172, 0.6);
+  white-space: nowrap;
+}
+
+.hero-tagline {
+  font-family: var(--font-space), sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.015em;
 }
 
 .code-name-text {
@@ -158,7 +197,9 @@ header {
 }
 
 .code-name-canvas {
-  filter: drop-shadow(0 0 2px rgb(255 255 245 / 0.55)) drop-shadow(0 0 7px rgb(200 255 62 / 0.25));
+  /* A dark contact shadow first lifts the glyphs off bright relief, then the
+     soft light glow. */
+  filter: drop-shadow(0 0 3px rgb(6 8 6 / 0.95)) drop-shadow(0 0 10px rgb(6 8 6 / 0.8)) drop-shadow(0 0 2px rgb(255 255 245 / 0.45));
   position: absolute;
   pointer-events: none;
 }
