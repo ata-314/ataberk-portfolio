@@ -248,7 +248,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
 
     const mobile = window.matchMedia("(pointer: coarse)").matches || innerWidth < 768;
     // No video decode or uploads any more, so the sea can afford density.
-    const count = mobile ? 14000 : 60000;
+    const count = mobile ? 24000 : 96000;
     const birdCount = mobile ? 2400 : 6000;
     const flightCount = mobile ? 3000 : 7500;
     let randomState = 0x9e3779b9;
@@ -319,7 +319,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     if (linkBuffer) {
       buffers.push(linkBuffer);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, linkBuffer);
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(linkIndices), gl.STATIC_DRAW);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(linkIndices), gl.STATIC_DRAW);
     }
 
     const location = (name: string) => gl.getUniformLocation(program, name);
@@ -413,12 +413,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // deep → mid → bright → peak stops. The CPU crossfades between them and
     // uploads the blended ramp every frame.
     const PALETTES: number[][][] = [
-      [[0.01, 0.024, 0.075], [0.031, 0.196, 0.53], [0.164, 0.72, 0.95], [0.83, 0.97, 1.0]],
-      [[0.055, 0.012, 0.11], [0.36, 0.06, 0.52], [0.93, 0.22, 0.6], [1.0, 0.86, 0.93]],
-      [[0.078, 0.024, 0.012], [0.69, 0.17, 0.055], [1.0, 0.58, 0.14], [1.0, 0.93, 0.74]],
-      [[0.006, 0.055, 0.05], [0.02, 0.35, 0.31], [0.2, 0.88, 0.66], [0.88, 1.0, 0.94]],
+      [[0.012, 0.035, 0.09], [0.04, 0.28, 0.42], [0.48, 0.8, 0.85], [1.0, 0.96, 0.87]],
+      [[0.025, 0.018, 0.095], [0.2, 0.18, 0.48], [0.65, 0.65, 0.86], [0.98, 0.92, 0.86]],
+      [[0.05, 0.025, 0.04], [0.42, 0.19, 0.12], [0.88, 0.58, 0.34], [1.0, 0.95, 0.83]],
+      [[0.008, 0.04, 0.06], [0.03, 0.28, 0.3], [0.44, 0.76, 0.69], [0.92, 0.98, 0.89]],
     ];
-    const PALETTE_PERIOD = 16;
+    const PALETTE_PERIOD = 24;
     const gradient = new Float32Array(12);
 
     // Edge waves: left, right, bottom, top. Age -1 = idle; a fired wave
@@ -434,7 +434,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
 
     // Pointer scan: cursor position in the fluid sheet's own coordinate
-    // space (±5.4 × ±3.2) plus a motion-driven sweep strength that charges
+    // space at the resting camera plane, plus a sweep strength that charges
     // while the cursor moves and decays in the render loop when it rests.
     const scanPointer = [0, 0];
     const scanSmooth = [0, 0];
@@ -445,8 +445,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       pointer[1] = -(event.clientY / innerHeight * 2 - 1) * 2;
       pointerActive = mobile ? 0 : 1;
       if (!mobile) {
-        const sx = (event.clientX / innerWidth * 2 - 1) * 5.4;
-        const sy = -(event.clientY / innerHeight * 2 - 1) * 3.2;
+        const halfY = 8.2 * Math.tan(Math.PI / 8);
+        const sx = (event.clientX / innerWidth * 2 - 1) * halfY * aspect;
+        const sy = -(event.clientY / innerHeight * 2 - 1) * halfY;
         scanVelocity = Math.min(
           1.4,
           scanVelocity + Math.hypot(sx - scanPointer[0], sy - scanPointer[1]) * 0.55,
@@ -641,7 +642,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.drawArrays(gl.POINTS, 0, drawCount);
       if (linkCount > 0 && videoMix > 0.03 && intro > 0.9) {
         gl.uniform1f(u("uLineMode"), 1);
-        gl.drawElements(gl.LINES, linkCount, gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(gl.LINES, linkCount, gl.UNSIGNED_INT, 0);
       }
       if (firstFrame) {
         firstFrame = false;

@@ -1,5 +1,5 @@
 // Lean production shader for the homepage. It keeps the authored states —
-// video matter, gathering, glyph bird, pointer response and dissolve — in a
+// folded pigment currents, gathering, glyph bird, pointer response and dissolve — in a
 // compact program that compiles quickly on Safari and integrated GPUs.
 export const leanVertex = /* glsl */ `
 uniform float uTime;
@@ -84,18 +84,6 @@ float vnoise(vec2 p) {
   );
 }
 
-float fbm(vec2 p) {
-  float value = 0.0;
-  float amplitude = 0.5;
-  mat2 octave = mat2(1.6, 1.2, -1.2, 1.6);
-  for (int i = 0; i < 4; i++) {
-    value += amplitude * vnoise(p);
-    p = octave * p;
-    amplitude *= 0.5;
-  }
-  return value;
-}
-
 // Two-octave fbm: the smooth stream function the sea's currents follow.
 float fbm2(vec2 p) {
   return 0.667 * vnoise(p) + 0.333 * vnoise(mat2(1.6, 1.2, -1.2, 1.6) * p);
@@ -127,49 +115,42 @@ void main() {
   // Uniform branch: once the data sea has handed off, integrated GPUs skip
   // every noise, exp and liquid-wave operation during bird flight.
   if (uVideoOn > 0.015) {
-    // Procedural data sea. Two domain-warp layers fold an fbm field into
-    // pigment currents; the final density drives brightness, relief and the
-    // palette ramp. Everything is a pure function of grid position and time,
-    // so the sea never loops and costs no texture uploads.
-    // uSheet is the half-extent of the visible frame (plus bleed) in world
-    // units, so the sea always fills the viewport at any aspect and the
-    // pattern keeps one physical scale from phone to ultrawide.
+    // A continuous folded volume: broad currents carry fine sediment along
+    // their contours. The same relief controls position, pigment and light.
     vec2 world = (aGrid - 0.5) * 2.0 * uSheet;
-    vec2 q = world * 0.52;
-    float st = uTime * 0.045;
-    vec2 w1 = vec2(fbm(q + vec2(0.0, st)), fbm(q + vec2(5.2, 1.3) - st));
-    vec2 w2 = vec2(
-      fbm(q + 3.2 * w1 + vec2(1.7, 9.2) + st * 1.6),
-      fbm(q + 3.2 * w1 + vec2(8.3, 2.8) - st * 1.2)
+    float st = uTime * 0.12;
+    vec2 q = world * 0.36;
+    vec2 warp = vec2(
+      fbm2(q + vec2(st * 0.22, -st * 0.16)),
+      fbm2(q + vec2(7.2, 2.8) + st * 0.18)
     );
-    vec2 warped = q + 3.6 * w2 + vec2(st * 0.6, 0.0);
-    float dens = fbm(warped);
-    // Flow runs along the contours of a smooth stream function built on the
-    // same first warp, so strokes sweep in broad coherent swirls that match
-    // the marbling instead of following the finest noise octave.
-    vec2 sq = q * 0.9 + 1.4 * w1 + vec2(st * 0.8, -st * 0.5);
-    float psi = fbm2(sq);
-    vec2 grad = vec2(fbm2(sq + vec2(0.05, 0.0)) - psi, fbm2(sq + vec2(0.0, 0.05)) - psi) / 0.05;
-    float flowStrength = length(grad);
-    vec2 flowDir = flowStrength > 0.0001 ? vec2(-grad.y, grad.x) / flowStrength : vec2(1.0, 0.0);
-    // The warped density is the pigment tone: a contrast curve, no threshold.
-    luminance = pow(smoothstep(0.06, 0.76, dens), 1.2);
-    float fold = length(w2 - w1);
-    pigmentDensity = smoothstep(0.05, 0.9, luminance + fold * 0.35);
+    float bend = sin(world.x * 0.58 + st * 0.32);
+    float current = world.y * 1.4 + bend * 1.65
+      + sin(world.x * 0.28 - st * 0.2) * 1.4
+      + (warp.x - 0.5) * 2.8;
+    float ridge = sin(current);
+    float crest = pow(0.5 + 0.5 * ridge, 2.0);
+    float grain = fbm2(q * 5.0 + warp * 2.0 - st * 0.12);
+    float filament = sin(current * 24.0 + grain * 3.0);
+    // Depth layers break the sheet into suspended grains, keeping the broad
+    // folds intact while giving the camera actual thickness and parallax.
+    float depthLayer = fract(aSeed * 2.719) - 0.5;
+    vec3 sheet = vec3(world,
+      crest * 2.0 - 0.9 + (warp.y - 0.5) * 0.9
+      + depthLayer * (0.12 + crest * 0.42));
+    sheet.y += ridge * 0.48 + (warp.y - 0.5) * 0.5;
+    sheet.x += (warp.x - 0.5) * 0.65;
+    sheet.xy += uTide * 0.09;
+    // Raking light across the slopes: pearl peaks, saturated blue recesses.
+    float slope = cos(current);
+    luminance = clamp(0.25 + crest * 0.47 + slope * 0.22
+      + grain * 0.12 + filament * 0.035, 0.0, 1.0);
+    pigmentDensity = crest;
     vVideo = vec3(luminance);
-    vec2 centered = aGrid - 0.5;
-    // The sea is a relief surface: marbled density lifts toward the camera,
-    // so bright currents gain depth and parallax without scrambling the
-    // pattern. Motion comes from the evolving field itself, a slow swell and
-    // a gentle tide that sloshes the body against the frame.
-    float swell = sin(centered.x * 4.2 + centered.y * 2.3 - uTime * 0.35) * 0.5
-      + sin(centered.x * -2.1 + centered.y * 5.1 + uTime * 0.27) * 0.5;
-    vec3 sheet = vec3(
-      world,
-      (dens - 0.45) * 1.6 + swell * 0.2 + (seed - 0.5) * 0.08
-    );
-    sheet.xy += (w2 - 0.5) * 0.18;
-    sheet.xy += uTide * 0.12;
+    float derivative = cos(world.x * 0.58 + st * 0.32) * 0.96
+      + cos(world.x * 0.28 - st * 0.2) * 0.39;
+    vec2 flowDir = normalize(vec2(1.0, -derivative / 1.4));
+    float flowStrength = 0.8 + crest * 0.8;
     // Pointer scanning: moving the cursor sweeps a lime scan through the
     // pigment — data near the sweep lights up and ripples in its wake, and
     // the effect fades as the cursor comes to rest.
@@ -193,9 +174,9 @@ void main() {
     // fades at both ends; the fragment stage draws it as a stroke aligned to
     // the same direction, so the sea reads as brushed flow lines.
     float life = fract(uTime * (0.05 + seed * 0.05) + fract(aSeed * 0.618));
-    float reach = 0.1 + min(flowStrength, 3.0) * 0.05;
+    float reach = 0.28 + crest * 0.24;
     sheet.xy += flowDir * (life - 0.5) * reach;
-    streamFade = sin(3.14159 * life);
+    streamFade = 0.62 + 0.38 * sin(3.14159 * life);
     vFlow = flowDir;
     vStreak = smoothstep(0.1, 0.9, flowStrength);
     field = mix(field, sheet, smoothstep(0.0, 0.72, uVideoOn));
@@ -318,7 +299,7 @@ void main() {
   vGlyph = aGlyph;
   vBird = bird;
   vVideoMix = uVideoOn * (1.0 - bird) * (1.0 - uFinale);
-  alpha *= mix(1.0, (0.16 + luminance * 0.78) * streamFade, vVideoMix);
+  alpha *= mix(1.0, (0.3 + luminance * 0.7) * streamFade, vVideoMix);
   vAlpha = alpha * appear;
   // Link pass: the same particles redrawn as line pairs. Each endpoint pulses
   // on a short offset cycle, so thin connections surface briefly between
@@ -344,7 +325,7 @@ void main() {
   // Bright currents swell into overlapping glow; quiet water stays a fine
   // dust, which gives the sea its luminous-pigment depth.
   // Strokes need a larger sprite to hold their length.
-  float pigmentSize = mix(1.6 + seed * 0.4, 3.2 + seed * 0.8, luminance) * (1.0 + vStreak * 0.8);
+  float pigmentSize = mix(1.05 + seed * 0.4, 1.95 + seed * 0.6, luminance) * (1.0 + vStreak * 0.35);
   size = mix(size, pigmentSize, vVideoMix);
   size *= 1.0 + electric * 0.75;
   // The fly-through brings particles right up to the camera plane: clamp the
@@ -395,25 +376,6 @@ varying float vScanLime;
 varying vec2 vFlow;
 varying float vStreak;
 
-float hash1(float n) { return fract(sin(n) * 43758.5453); }
-
-// One holographic scan column: a sharp leading edge, a decaying data wake
-// carved by micro scanlines and row ticks, and cyan/magenta diffraction
-// fringes hugging either side of the edge. rowHash shears occasional rows
-// sideways for a glitched-readout feel.
-vec4 scanColumn(vec2 screen, float pixelY, float head, float dir, float rowHash) {
-  float x = head + (rowHash - 0.5) * 0.016 * step(0.86, rowHash);
-  float ahead = (screen.x - x) * dir;
-  float front = exp(-pow(abs(ahead) * 150.0, 2.0)) * 1.35;
-  float wake = exp(-max(-ahead, 0.0) * 13.0) * step(ahead, 0.0) * (1.0 - front);
-  float micro = 0.5 + 0.5 * sin(pixelY * 1.7 + uTime * 26.0);
-  float tick = 0.22 + 0.78 * step(0.55, rowHash);
-  vec3 fringe = vec3(0.86, 1.0, 0.42) * exp(-pow((ahead - 0.006) * 150.0, 2.0))
-    + vec3(0.32, 0.9, 0.5) * exp(-pow((ahead + 0.009) * 130.0, 2.0));
-  float body = front + wake * micro * tick * 0.8;
-  return vec4(fringe, body);
-}
-
 void main() {
   if (vAlpha < 0.01) discard;
   float shape;
@@ -436,7 +398,7 @@ void main() {
     // along it. Strong currents give long thin strokes, calm water stays round.
     float along = dot(pc, vFlow);
     float across = dot(pc, vec2(-vFlow.y, vFlow.x));
-    float stretch = mix(1.0, 3.4, vStreak * vVideoMix);
+    float stretch = mix(1.0, 2.1, vStreak * vVideoMix);
     float radius = length(vec2(along, across * stretch));
     if (radius > 0.5) discard;
     // Depth of field: near droplets stay tight and bright, far ones widen
@@ -463,24 +425,9 @@ void main() {
   videoColor = mix(videoColor, uGradC, smoothstep(0.3, 0.68, rampLevel));
   videoColor = mix(videoColor, uGradD, smoothstep(0.68, 0.98, rampLevel));
 
-  // Two holographic scan columns sweep the field in opposite directions,
-  // gated so they surface occasionally instead of sitting permanently. Rows
-  // are hashed per time-step: some shear sideways, some read brighter, and a
-  // fast flicker keeps the projection feeling volumetric rather than printed.
-  vec2 screen = gl_FragCoord.xy / max(uResolution, vec2(1.0));
-  float rowBand = floor(screen.y * 40.0);
-  float rowHash = hash1(rowBand * 12.9898 + floor(uTime * 9.0) * 0.173);
-  float gateA = max(smoothstep(0.5, 0.88, 0.5 + 0.5 * sin(uTime * 0.52)), uScanBoost);
-  float gateB = max(smoothstep(0.55, 0.9, 0.5 + 0.5 * sin(uTime * 0.34 + 2.6)), uScanBoost * 0.8);
-  float flicker = 0.82 + 0.18 * sin(uTime * 31.0 + rowBand * 0.7);
-  vec4 colA = scanColumn(screen, gl_FragCoord.y, fract(uTime * 0.058), 1.0, rowHash);
-  vec4 colB = scanColumn(screen, gl_FragCoord.y, 1.0 - fract(uTime * 0.041 + 0.37), -1.0, rowHash);
-  float scan = (colA.a * gateA + colB.a * gateB) * flicker * vVideoMix;
-  vec3 scanChroma = (colA.rgb * gateA + colB.rgb * gateB) * flicker * vVideoMix;
-  // The columns carry the site's acid-lime identity: a lime core with a faint
-  // thin-film shimmer so the wake still refracts like a hologram.
-  vec3 iridescence = 0.5 + 0.5 * cos(6.28318 * (screen.y * 1.4 + vec3(0.0, 0.33, 0.66)) + uTime * 0.4);
-  videoColor += (uColorAccent * 0.66 + vec3(0.12) + iridescence * 0.18) * scan + scanChroma * 1.2;
+  // Quiet pigment lighting lets the sculptural currents read without
+  // periodic screen-space scanning bars interrupting their movement.
+  float scan = 0.0;
 
   color = mix(color, videoColor, vVideoMix * 0.98);
   color = mix(color, uColorAccent, smoothstep(0.38, 1.0, vEnergy) * (1.0 - vVideoMix));
@@ -488,7 +435,7 @@ void main() {
   color = mix(color, uGradD, smoothstep(0.42, 1.0, vEnergy) * vVideoMix * 0.85);
   // The opening scan planes light passing data points in acid lime, and link
   // segments carry the same identity color.
-  color = mix(color, uColorAccent, clamp(vScanLime * 0.9, 0.0, 0.85));
+  color = mix(color, mix(uGradC, uGradD, 0.65), clamp(vScanLime * 0.6, 0.0, 0.65));
   if (uLineMode > 0.5) color = mix(color, uColorAccent, 0.45);
   color *= mix(1.0, vLight, vBird * (1.0 - vElectric * 0.45));
   vec3 electricColor = mix(uColorCyan, uColorAccent, 0.35 + 0.35 * sin(vGlyph));

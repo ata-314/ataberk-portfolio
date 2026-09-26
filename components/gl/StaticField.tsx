@@ -1,23 +1,22 @@
-// Reduced-motion, no-WebGL and pre-activation state: a designed still of the
-// same glyph-matter idea. Pure CSS, server-rendered and content-neutral.
+// A still pigment relief for reduced-motion and unavailable WebGL.
+// Pure CSS keeps the scene available before JavaScript or GPU initialization.
 export function StaticField() {
   return (
     <div aria-hidden className="hero-static-field absolute inset-0 overflow-hidden">
       <div
-        className="absolute inset-0 opacity-60"
+        className="absolute -inset-[20%] rotate-[-18deg] opacity-70"
         style={{
           backgroundImage:
-            "radial-gradient(ellipse 58% 46% at 50% 48%, #1e1e23 0%, #131316 56%, transparent 100%)",
+            "radial-gradient(ellipse 85% 32% at 45% 25%, transparent 36%, #173947 49%, #779a9e 55%, #e2dfd0 57%, #377682 60%, #0b1b29 65%, transparent 76%), radial-gradient(ellipse 90% 36% at 65% 84%, transparent 30%, #214c60 46%, #a8bfbd 54%, #317383 58%, #0a1725 68%, transparent 78%)",
         }}
       />
       <div
-        className="absolute inset-0 opacity-30"
+        className="absolute inset-0 opacity-25"
         style={{
           backgroundImage:
-            "radial-gradient(circle at center, rgba(243,239,231,.7) 0 1px, transparent 1.6px), linear-gradient(90deg, transparent 48%, rgba(200,255,62,.3) 50%, transparent 52%)",
-          backgroundSize: "23px 23px, 113px 37px",
-          maskImage: "radial-gradient(ellipse 54% 44% at 50% 48%, black 0%, transparent 80%)",
-          WebkitMaskImage: "radial-gradient(ellipse 54% 44% at 50% 48%, black 0%, transparent 80%)",
+            "radial-gradient(circle, rgba(225,241,239,.7) 0 .6px, transparent 1px)",
+          backgroundSize: "5px 5px",
+          maskImage: "linear-gradient(180deg, black, transparent 90%)",
         }}
       />
     </div>
