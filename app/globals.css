@@ -122,54 +122,39 @@ header {
   transition: opacity 0.8s ease;
 }
 
-/* Quiet the field behind the copy (the lower band, deepest bottom-left) and
-   under the nav, leaving the upper painting at full strength. */
+/* Quiet the field behind the centred copy and under the nav, leaving the
+   edges of the sea at full strength. */
 .hero-scrim {
   background:
-    radial-gradient(ellipse 70% 62% at 12% 88%, rgba(10, 10, 11, 0.62) 0%, rgba(10, 10, 11, 0.24) 48%, transparent 76%),
-    linear-gradient(180deg, rgba(10, 10, 11, 0.4) 0%, transparent 16%, transparent 52%, rgba(10, 10, 11, 0.62) 100%);
+    radial-gradient(ellipse 56% 44% at 50% 52%, rgba(10, 10, 11, 0.6) 0%, rgba(10, 10, 11, 0.25) 55%, transparent 80%),
+    linear-gradient(180deg, rgba(10, 10, 11, 0.4) 0%, transparent 16%, transparent 70%, rgba(10, 10, 11, 0.55) 100%);
 }
 
 /* Editorial identity: the name set large in the display grotesk, each line
    rising out of its own mask. Delays come from the --d custom property. */
 .hero-name {
   font-family: var(--font-display);
-  font-size: clamp(4.1rem, 11.8vw, 12.5rem);
+  font-size: clamp(3.6rem, 10.8vw, 11rem);
   font-weight: 600;
-  line-height: 1.04;
-  letter-spacing: -0.058em;
+  line-height: 0.92;
+  letter-spacing: -0.055em;
   color: var(--bone);
 }
 
 @media (max-width: 767px) {
   .hero-name {
-    font-size: 22vw;
+    font-size: 23vw;
   }
-}
-
-.hero-line {
-  display: block;
-  overflow: visible;
-  padding-bottom: 0.08em;
-  margin-bottom: -0.08em;
-}
-
-.hero-line > span {
-  display: block;
-  animation: heroMask 1.05s cubic-bezier(0.19, 1, 0.22, 1) var(--d, 0s) both;
 }
 
 .code-name-text {
   display: inline-block;
+  white-space: nowrap;
 }
 
 /* Once the glyph canvas has drawn, the typeset text only holds the layout. */
 [data-code-ready="true"] .code-name-text {
   color: transparent;
-}
-
-[data-code-ready="true"] .hero-line > span {
-  animation: none;
 }
 
 .code-name-canvas {
@@ -200,11 +185,6 @@ header {
   inset: 0;
   background: var(--lime);
   animation: heroScrollLine 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
-
-@keyframes heroMask {
-  from { transform: translateY(105%); }
-  to { transform: translateY(0); }
 }
 
 @keyframes heroFade {

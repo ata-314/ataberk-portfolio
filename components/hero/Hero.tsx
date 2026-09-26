@@ -93,41 +93,39 @@ export function Hero({ t }: { t: HeroStrings }) {
         <div aria-hidden className="hero-scrim pointer-events-none absolute inset-0" />
         <div
           data-hero-identity
-          className="hero-copy pointer-events-none relative z-10 mx-auto flex h-full w-full max-w-7xl flex-col justify-end pt-28 pb-24 md:pb-28"
+          className="hero-copy pointer-events-none relative z-10 mx-auto flex h-full w-full max-w-7xl flex-col items-center justify-center pt-24 pb-20 text-center"
         >
-          <div className="hero-enter mb-6 flex w-fit items-center gap-3 rounded-full border border-white/10 bg-black/65 px-3 py-2 md:mb-8" style={{ ["--d" as string]: "0.05s" }}>
+          <div className="hero-enter mb-7 flex items-center gap-3 md:mb-9" style={{ ["--d" as string]: "0.05s" }}>
             <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
             <p lang="en" className="font-mono text-[10px] tracking-[0.16em] text-bone-dim uppercase md:text-[11px] md:tracking-[0.26em]">
               {t.title}
             </p>
           </div>
 
-          <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-16">
-            <CodeName lines={["Ataberk", "Soylu"]} className="hero-name" />
+          <CodeName words={["Ataberk", "Soylu"]} className="hero-name" />
 
-            <div className="pointer-events-auto max-w-md lg:pb-[0.9vw]">
-              <p className="hero-enter text-lg leading-snug text-bone text-balance md:text-xl" style={{ ["--d" as string]: "0.38s" }}>
-                {t.tagline}
-              </p>
-              <p className="hero-enter mt-4 text-sm leading-relaxed text-bone-dim text-pretty" style={{ ["--d" as string]: "0.46s" }}>
-                {t.intro}
-              </p>
-              <div className="hero-enter mt-8 flex flex-wrap gap-3" style={{ ["--d" as string]: "0.54s" }}>
-                <a
-                  href="#work"
-                  data-cursor="view"
-                  className="group inline-flex items-center gap-2.5 rounded-full bg-bone px-6 py-3.5 text-sm font-medium text-ink transition-colors hover:bg-white"
-                >
-                  {t.ctaWork}
-                  <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
-                </a>
-                <a
-                  href={`/${t.locale}/about`}
-                  className="inline-flex items-center rounded-full border border-white/15 px-6 py-3.5 text-sm text-bone transition-colors hover:border-white/35 hover:bg-white/[0.06]"
-                >
-                  {t.ctaAbout}
-                </a>
-              </div>
+          <div className="pointer-events-auto mt-9 flex max-w-xl flex-col items-center md:mt-11">
+            <p className="hero-enter text-lg leading-snug text-bone text-balance md:text-xl" style={{ ["--d" as string]: "0.9s" }}>
+              {t.tagline}
+            </p>
+            <p className="hero-enter mt-3 max-w-md text-sm leading-relaxed text-bone-dim text-balance" style={{ ["--d" as string]: "1s" }}>
+              {t.intro}
+            </p>
+            <div className="hero-enter mt-8 flex flex-wrap justify-center gap-3" style={{ ["--d" as string]: "1.1s" }}>
+              <a
+                href="#work"
+                data-cursor="view"
+                className="group inline-flex items-center gap-2.5 rounded-full bg-bone px-6 py-3.5 text-sm font-medium text-ink transition-colors hover:bg-white"
+              >
+                {t.ctaWork}
+                <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+              </a>
+              <a
+                href={`/${t.locale}/about`}
+                className="inline-flex items-center rounded-full border border-white/15 px-6 py-3.5 text-sm text-bone transition-colors hover:border-white/35 hover:bg-white/[0.06]"
+              >
+                {t.ctaAbout}
+              </a>
             </div>
           </div>
         </div>

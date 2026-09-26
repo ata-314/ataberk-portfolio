@@ -6,6 +6,8 @@ import { useEffect, useRef } from "react";
 const CHARSET = "01#$%&@0189<>{}[]/\\*+=?ABDEHKMNRSWX";
 const BONE = "255, 255, 250";
 const LIME = "200, 255, 62";
+// Room around the name for glyphs the pointer scatters.
+const PAD = 160;
 
 // Cheap stable hash → [0, 1).
 const hash = (a: number, b = 0) => {
@@ -13,34 +15,48 @@ const hash = (a: number, b = 0) => {
   return x - Math.floor(x);
 };
 
-type Cell = { x: number; y: number; col: number; row: number; cover: number; seed: number };
-type Line = { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; cells: Cell[]; rows: number; w: number; h: number };
+type Glyph = {
+  hx: number; hy: number; // home (canvas CSS px)
+  x: number; y: number;
+  vx: number; vy: number;
+  col: number; row: number;
+  cover: number; seed: number;
+};
 
-// The display name set as living code: each line's letterforms are rasterized
-// into a coverage grid, and every covered cell draws a monospace glyph. Code
-// streams fall through each column (bright lime head, decaying trail), glyphs
-// keep mutating, and the pointer excites nearby cells. The real text stays in
-// the DOM (transparent once the canvas draws) for layout, a11y and no-JS.
-export function CodeName({ lines, className }: { lines: string[]; className?: string }) {
+// The display name as a field of code particles. Every covered cell of the
+// typeset letterforms owns one glyph with position, velocity and a home.
+// Springs hold the name together; the pointer pushes glyphs away and drags
+// them along its motion, a click bursts them, and displaced glyphs heat up
+// (lime, faster mutation) until they settle back. On entrance the glyphs
+// converge from a scattered cloud. The real text stays in the DOM
+// (transparent once drawn) for layout, a11y and no-JS.
+export function CodeName({ words, className }: { words: string[]; className?: string }) {
   const root = useRef<HTMLHeadingElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const heading = root.current;
-    if (!heading) return;
+    const canvas = canvasRef.current;
+    if (!heading || !canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const html = document.documentElement;
+    const identity = heading.closest<HTMLElement>("[data-hero-identity]");
     const textEls = Array.from(heading.querySelectorAll<HTMLSpanElement>("[data-code-text]"));
-    const canvases = Array.from(heading.querySelectorAll<HTMLCanvasElement>("canvas"));
-    let built: Line[] = [];
+
+    let glyphs: Glyph[] = [];
     let cell = 8;
     let dpr = 1;
+    let rows = 1;
     let atlasBone: HTMLCanvasElement | null = null;
     let atlasLime: HTMLCanvasElement | null = null;
     let frame = 0;
+    let last = 0;
     let visible = true;
-    let revealStart = -1;
-    const pointer = { x: -1e4, y: -1e4 };
-    const identity = heading.closest<HTMLElement>("[data-hero-identity]");
+    let assembled = false;
+    let assembleStart = -1;
+    const pointer = { x: -1e4, y: -1e4, vx: 0, vy: 0, active: false };
 
     const makeAtlas = (rgb: string) => {
       const size = Math.ceil(cell * dpr);
@@ -49,7 +65,7 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
       atlas.height = size;
       const a = atlas.getContext("2d")!;
       a.fillStyle = `rgb(${rgb})`;
-      a.font = `800 ${Math.round(size * 1.10)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      a.font = `800 ${Math.round(size * 1.1)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
       a.textAlign = "center";
       a.textBaseline = "middle";
       for (let i = 0; i < CHARSET.length; i++) a.fillText(CHARSET[i], i * size + size / 2, size / 2 + size * 0.04);
@@ -64,118 +80,157 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
       atlasBone = makeAtlas(BONE);
       atlasLime = makeAtlas(LIME);
       const font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
-      built = textEls.map((el, i) => {
-        const canvas = canvases[i];
-        const box = el.getBoundingClientRect();
-        const padding = Math.ceil(fontSize * .14);
-        const w = Math.ceil(box.width + padding * 2);
-        const h = Math.ceil(box.height + padding * 2);
-        canvas.width = Math.ceil(w * dpr);
-        canvas.height = Math.ceil(h * dpr);
-        canvas.style.width = `${w}px`;
-        canvas.style.height = `${h}px`;
-        canvas.style.left = `${-padding}px`;
-        canvas.style.top = `${-padding}px`;
-        const ctx = canvas.getContext("2d")!;
-        const cols = Math.ceil(w / cell);
-        const rows = Math.ceil(h / cell);
-        // Rasterize the line at 1/cell scale: the rasterizer's anti-aliasing
-        // yields per-cell coverage. Each glyph is placed at its real DOM x so
-        // tracking and kerning match the typeset line exactly.
-        const mask = document.createElement("canvas");
-        mask.width = cols;
-        mask.height = rows;
-        const m = mask.getContext("2d", { willReadFrequently: true })!;
-        m.scale(1 / cell, 1 / cell);
-        m.font = font;
-        m.fillStyle = "#fff";
-        // Reserve the actual ink bounds, including descenders. The old
-        // inline baseline and line mask cut off the bottom of “Soylu”.
-        const metrics = m.measureText(el.textContent ?? "");
-        const inkHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-        const baseline = padding + (box.height - inkHeight) / 2 + metrics.actualBoundingBoxAscent;
+      const box = heading.getBoundingClientRect();
+      const w = Math.ceil(box.width + PAD * 2);
+      const h = Math.ceil(box.height + PAD * 2);
+      canvas.width = Math.ceil(w * dpr);
+      canvas.height = Math.ceil(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      canvas.style.left = `${-PAD}px`;
+      canvas.style.top = `${-PAD}px`;
+
+      // Rasterize every character at 1/cell scale: anti-aliasing yields
+      // per-cell coverage. x comes from DOM Ranges (exact tracking/kerning),
+      // the baseline from a zero-size inline-block marker per word.
+      const cols = Math.ceil(w / cell);
+      rows = Math.ceil(h / cell);
+      const mask = document.createElement("canvas");
+      mask.width = cols;
+      mask.height = rows;
+      const m = mask.getContext("2d", { willReadFrequently: true })!;
+      m.scale(1 / cell, 1 / cell);
+      m.font = font;
+      m.fillStyle = "#fff";
+      const range = document.createRange();
+      for (const el of textEls) {
+        const marker = document.createElement("span");
+        marker.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+        el.appendChild(marker);
+        const baseline = marker.getBoundingClientRect().top - box.top + PAD;
+        marker.remove();
         const node = el.firstChild;
-        if (node) {
-          const range = document.createRange();
-          const text = node.textContent ?? "";
-          for (let c = 0; c < text.length; c++) {
-            range.setStart(node, c);
-            range.setEnd(node, c + 1);
-            const r = range.getBoundingClientRect();
-            m.fillText(text[c], r.left - box.left + padding, baseline);
+        const text = node?.textContent ?? "";
+        for (let c = 0; node && c < text.length; c++) {
+          range.setStart(node, c);
+          range.setEnd(node, c + 1);
+          const r = range.getBoundingClientRect();
+          m.fillText(text[c], r.left - box.left + PAD, baseline);
+        }
+      }
+      const data = m.getImageData(0, 0, cols, rows).data;
+      const next: Glyph[] = [];
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const cover = data[(row * cols + col) * 4 + 3] / 255;
+          if (cover < 0.3) continue;
+          const hx = col * cell;
+          const hy = row * cell;
+          const seed = hash(col, row);
+          // Entrance: glyphs start compressed toward the name's centre (as if
+          // far away in depth) with a scattered offset, and the springs pull
+          // them out onto the letterforms.
+          const cx = w / 2;
+          const cy = h / 2;
+          const settled = assembled || reduced;
+          const angle = seed * Math.PI * 2 * 7.13;
+          const scatter = settled ? 0 : 40 + hash(row, col) * 220;
+          next.push({
+            hx, hy,
+            x: settled ? hx : cx + (hx - cx) * 0.18 + Math.cos(angle) * scatter,
+            y: settled ? hy : cy + (hy - cy) * 0.18 + Math.sin(angle) * scatter * 0.5,
+            vx: 0, vy: 0, col, row, cover, seed,
+          });
+        }
+      }
+      glyphs = next;
+    };
+
+    const step = (now: number, dt: number) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = pointer.x - rect.left;
+      const my = pointer.y - rect.top;
+      const radius = Math.max(70, cell * 16);
+      const pvx = pointer.vx;
+      const pvy = pointer.vy;
+      const t = now / 1000;
+      const assembly = assembleStart < 0 ? -1 : (now - assembleStart) / 1000;
+      for (const g of glyphs) {
+        // Springs release in a seeded stagger so the name condenses in waves.
+        const release = assembly < 0 ? 0 : Math.min(1, Math.max(0, (assembly - g.seed * 0.5) * 2.2));
+        const k = 38 * release;
+        g.vx += (g.hx - g.x) * k * dt;
+        g.vy += (g.hy - g.y) * k * dt;
+        if (pointer.active) {
+          const dx = g.x - mx;
+          const dy = g.y - my;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < radius * radius) {
+            const d = Math.sqrt(d2) + 0.001;
+            const falloff = 1 - d / radius;
+            // Seeded strength and a sideways swirl break the clean ring, so
+            // the code scatters like disturbed particles.
+            const push = falloff * falloff * 5200 * (0.55 + g.seed * 0.9);
+            const swirl = (g.seed - 0.5) * 1.4;
+            g.vx += ((dx - dy * swirl) / d) * push * dt + pvx * falloff * 0.9 * dt * 60;
+            g.vy += ((dy + dx * swirl) / d) * push * dt + pvy * falloff * 0.9 * dt * 60;
           }
         }
-        const data = m.getImageData(0, 0, cols, rows).data;
-        const cells: Cell[] = [];
-        for (let row = 0; row < rows; row++) {
-          for (let col = 0; col < cols; col++) {
-            const cover = data[(row * cols + col) * 4 + 3] / 255;
-            if (cover > 0.3) cells.push({ x: col * cell, y: row * cell, col: col + i * 997, row, cover, seed: hash(col + i * 997, row) });
-          }
-        }
-        return { canvas, ctx, cells, rows, w, h };
-      });
+        // A faint idle drift keeps the settled name breathing.
+        g.vx += Math.sin(t * 1.3 + g.seed * 40) * 6 * dt;
+        g.vy += Math.cos(t * 1.1 + g.seed * 31) * 6 * dt;
+        const damping = Math.exp(-7.5 * dt);
+        g.vx *= damping;
+        g.vy *= damping;
+        g.x += g.vx * dt;
+        g.y += g.vy * dt;
+      }
+      pointer.vx *= Math.exp(-10 * dt);
+      pointer.vy *= Math.exp(-10 * dt);
     };
 
     const draw = (now: number) => {
       const t = now / 1000;
       const size = Math.ceil(cell * dpr);
-      const reveal = revealStart < 0 ? 0 : Math.min(1, (now - revealStart) / 3000);
-      for (const line of built) {
-        const { ctx, cells, rows, canvas } = line;
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const rect = canvas.getBoundingClientRect();
-        for (const c of cells) {
-          // Individual code fragments emerge from depth, then converge on the
-          // letter positions. Their offsets vanish fully after assembly.
-          const delay = (c.x / line.w) * .15 + c.seed * .08;
-          const progress = Math.max(0, Math.min(1, (reveal - delay) / .77));
-          const ease = progress * progress * (3 - 2 * progress);
-          const settling = 1 - ease;
-          const depth = .18 + ease * .82;
-          const x = line.w * .52 + (c.x - line.w * .52) * depth
-            + Math.sin(c.seed * Math.PI * 2 + progress * 2) * settling * line.w * .2;
-          const y = line.h * .72 + (c.y - line.h * .72) * depth
-            + (hash(c.col + 83, c.row) - .5) * settling * line.h * .35;
-          const drawSize = size * (.85 + ease * .15);
-          const colSeed = hash(c.col, 7.3);
-          const speed = 5 + colSeed * 11;
-          const span = rows + 14 + colSeed * 18;
-          const head = (t * speed + colSeed * span * 3) % span;
-          const behind = head - c.row;
-          const trail = behind >= 0 ? Math.exp(-behind * 0.22) : 0;
-          const px = rect.left + c.x + cell / 2 - pointer.x;
-          const py = rect.top + c.y + cell / 2 - pointer.y;
-          const near = Math.exp(-(px * px + py * py) / (2 * 70 * 70));
-          const rate = 0.6 + c.seed * 3 + trail * 10 + near * 14 + settling * 20;
-          const glyph = Math.floor(c.seed * 997 + t * rate) % CHARSET.length;
-          const wave = 0.08 * Math.sin(c.col * 0.09 - t * 1.4 + c.row * 0.05);
-          const bright = Math.min(1, 1.0 + wave * .35 + trail * 0.2 + near * 0.3 + settling * 0.4);
-          // Lime stays an accent: stream heads, a sparse subset under the pointer,
-          // and cells still decoding on entrance.
-          const hot = behind >= 0 && behind < 1.2 ? 1 : Math.max(c.seed < 0.22 ? near : 0, settling);
-          const atlas = hot > 0.5 ? atlasLime! : atlasBone!;
-          ctx.globalAlpha = bright * Math.min(1, c.cover * 1.65) * Math.min(1, reveal * 8) * (.45 + ease * .55);
-          const opacity = ctx.globalAlpha;
-          // Fine code echoes suggest depth, with no filled letter backing.
-          ctx.globalAlpha = opacity * .16;
-          ctx.drawImage(atlasLime!, glyph * size, 0, size, size,
-            (x + 1.5) * dpr, (y + 2) * dpr, drawSize, drawSize);
-          ctx.globalAlpha = opacity;
-          ctx.drawImage(atlas, glyph * size, 0, size, size, x * dpr, y * dpr, drawSize, drawSize);
-        }
+      const assembly = assembleStart < 0 ? -1 : (now - assembleStart) / 1000;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const g of glyphs) {
+        const dx = g.x - g.hx;
+        const dy = g.y - g.hy;
+        const displaced = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (cell * 6));
+        const colSeed = hash(g.col, 7.3);
+        const speed = 5 + colSeed * 11;
+        const span = rows + 14 + colSeed * 18;
+        const head = (t * speed + colSeed * span * 3) % span;
+        const behind = head - g.row;
+        const trail = behind >= 0 ? Math.exp(-behind * 0.25) : 0;
+        const rate = 0.5 + g.seed * 2.5 + trail * 8 + displaced * 22;
+        const glyph = Math.floor(g.seed * 997 + t * rate) % CHARSET.length;
+        const bright = Math.min(1, 0.9 + trail * 0.2 + displaced * 0.3);
+        // Lime marks energy: stream heads and a share of displaced glyphs.
+        const hot = (behind >= 0 && behind < 1.1) || displaced * (0.4 + g.seed) > 0.62;
+        const fadeIn = assembly < 0 ? 0 : Math.min(1, Math.max(0, (assembly - g.seed * 0.5) * 3));
+        const alpha = bright * Math.min(1, g.cover * 1.65) * fadeIn * (1 - displaced * 0.25);
+        if (alpha < 0.01) continue;
+        // A faint offset lime echo gives each glyph depth without a backing.
+        ctx.globalAlpha = alpha * 0.16;
+        ctx.drawImage(atlasLime!, glyph * size, 0, size, size, (g.x + 1.5) * dpr, (g.y + 2) * dpr, size, size);
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(hot ? atlasLime! : atlasBone!, glyph * size, 0, size, size, g.x * dpr, g.y * dpr, size, size);
       }
     };
 
     const loop = (now: number) => {
       frame = requestAnimationFrame(loop);
-      // Skip work while off-screen or while the scroll timeline hides the
-      // identity block (GSAP autoAlpha sets visibility: hidden).
+      const dt = Math.min(Math.max((now - last) / 1000, 0), 1 / 30);
+      last = now;
       if (!visible || (identity && identity.style.visibility === "hidden")) return;
-      if (revealStart < 0 && (html.dataset.stageIntro === "done" || html.dataset.stageStatic === "true")) {
-        revealStart = now;
+      if (assembleStart < 0 && (html.dataset.stageIntro === "done" || html.dataset.stageStatic === "true")) {
+        assembleStart = now;
       }
+      if (!assembled && assembleStart >= 0 && now - assembleStart > 2200) assembled = true;
+      step(now, dt);
       draw(now);
     };
 
@@ -185,22 +240,48 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
       build();
       heading.dataset.codeReady = "true";
       if (reduced) {
-        revealStart = 0;
-        draw(performance.now() + 5000);
+        assembleStart = 0;
+        draw(5000);
         return;
       }
+      last = performance.now();
       frame = requestAnimationFrame(loop);
     };
     void document.fonts.ready.then(start);
 
     const onResize = () => {
-      if (!built.length) return;
+      if (!glyphs.length) return;
       build();
-      if (reduced) draw(performance.now() + 5000);
+      if (reduced) draw(5000);
     };
     const onMove = (e: PointerEvent) => {
+      if (pointer.active) {
+        pointer.vx = pointer.vx * 0.5 + (e.clientX - pointer.x) * 0.5;
+        pointer.vy = pointer.vy * 0.5 + (e.clientY - pointer.y) * 0.5;
+      }
       pointer.x = e.clientX;
       pointer.y = e.clientY;
+      pointer.active = true;
+    };
+    const onLeave = () => {
+      pointer.active = false;
+    };
+    // Click / tap: a radial burst from the contact point.
+    const onDown = (e: PointerEvent) => {
+      if (reduced) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const reach = Math.max(160, cell * 34);
+      for (const g of glyphs) {
+        const dx = g.x - mx;
+        const dy = g.y - my;
+        const d = Math.sqrt(dx * dx + dy * dy) + 0.001;
+        if (d > reach) continue;
+        const f = (1 - d / reach) * (900 + g.seed * 700);
+        g.vx += (dx / d) * f;
+        g.vy += (dy / d) * f;
+      }
     };
     const observer = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting && !document.hidden;
@@ -208,26 +289,29 @@ export function CodeName({ lines, className }: { lines: string[]; className?: st
     observer.observe(heading);
     addEventListener("resize", onResize);
     addEventListener("pointermove", onMove, { passive: true });
+    addEventListener("pointerdown", onDown, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onLeave);
     return () => {
       cancelled = true;
       cancelAnimationFrame(frame);
       observer.disconnect();
       removeEventListener("resize", onResize);
       removeEventListener("pointermove", onMove);
+      removeEventListener("pointerdown", onDown);
+      document.documentElement.removeEventListener("pointerleave", onLeave);
       delete heading.dataset.codeReady;
     };
   }, []);
 
   return (
-    <h1 ref={root} aria-label={lines.join(" ")} className={className}>
-      {lines.map((line, i) => (
-        <span key={line} aria-hidden className="hero-line">
-          <span className="relative block" style={{ ["--d" as string]: `${0.1 + i * 0.1}s` }}>
-            <span data-code-text className="code-name-text">{line}</span>
-            <canvas className="code-name-canvas" />
-          </span>
+    <h1 ref={root} aria-label={words.join(" ")} className={`relative ${className ?? ""}`}>
+      {words.map((word, i) => (
+        <span key={word} aria-hidden>
+          {i > 0 ? " " : null}
+          <span data-code-text className="code-name-text">{word}</span>
         </span>
       ))}
+      <canvas ref={canvasRef} aria-hidden className="code-name-canvas" />
     </h1>
   );
 }
