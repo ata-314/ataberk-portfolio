@@ -136,9 +136,9 @@ header {
 /* next/font defines its family variables on <body>, so they are referenced
    directly here (a :root token built from them would resolve as invalid). */
 .hero-name {
-  font-family: var(--font-oxanium), var(--font-space), sans-serif;
-  font-size: clamp(3rem, 8.6vw, 9rem);
-  font-weight: 800;
+  font-family: var(--font-audiowide), var(--font-space), sans-serif;
+  font-size: clamp(2.8rem, 7.8vw, 8.2rem);
+  font-weight: 400;
   line-height: 0.95;
   letter-spacing: 0.01em;
   /* The name always stays on one line; its size is set to fit the width. */
