@@ -15,10 +15,10 @@ float smin(float a,float b,float k) {
   return mix(b,a,h)-k*h*(1.0-h);
 }
 float shape(vec3 p) {
-  float t=fieldTime*.24;
+  float t=fieldTime*.34;
   // A continuous relief grows out of the dark backing, across the viewport.
   vec2 q=p.xy;
-  vec2 drift=vec2(t*.24,-t*.32);
+  vec2 drift=vec2(t*.38,-t*.44);
   float broad=noise(vec3(q*.65+drift,t*.18));
   q+=vec2(sin(q.y*.85+t*.6),cos(q.x*.75-t*.5))*.42;
   q+=vec2(broad-.5,noise(vec3(q*.7-drift,4.0+t*.12))-.5)*.8;
@@ -67,6 +67,7 @@ uniform float birdReady;
 uniform float flap;
 uniform float finale;
 uniform vec4 edgeAges;
+uniform highp int electricPass;
 out vec3 tint;
 out float alpha;
 ${field}
@@ -79,17 +80,16 @@ float grainRandom(uint value) {
   return float(value >> 8u) / 16777216.0;
 }
 
-void main() {
-  float id=float(gl_VertexID);
-  float seed=grainRandom(uint(gl_VertexID)+41u);
+void renderGrain(float id) {
+  float seed=grainRandom(uint(id)+41u);
   vec2 cell=vec2(mod(id,grid.x),floor(id/grid.x));
-  vec2 jitter=vec2(grainRandom(uint(gl_VertexID)+83u),grainRandom(uint(gl_VertexID)+307u))-.5;
+  vec2 jitter=vec2(grainRandom(uint(id)+83u),grainRandom(uint(id)+307u))-.5;
   vec2 screen=((cell+.5+jitter*.95)/grid)*2.0-1.0;
   // A shared, broad current carries neighboring grains together.
   vec2 material=screen;
-  float t=fieldTime*.10;
-  screen.x += .065*sin(material.y*1.5+t)*(1.0-material.x*material.x);
-  screen.y += .055*cos(material.x*1.4+t)*(1.0-material.y*material.y);
+  float t=fieldTime*.24;
+  screen.x += .12*sin(material.y*1.5+t)*(1.0-material.x*material.x);
+  screen.y += .10*cos(material.x*1.4+t)*(1.0-material.y*material.y);
   // Reflect at the physical screen edges; never teleport to the opposite side.
   screen=1.0-abs(mod(screen+1.0,4.0)-2.0);
   float aspect=resolution.x/resolution.y;
@@ -162,26 +162,61 @@ void main() {
     vec3 worldNormal=normalize(mat3(birdMatrix)*normal);
     birdLight=.65+.85*max(dot(worldNormal,normalize(vec3(-.6,.8,1.0))),0.0);
   }
-  // Release the entire population into an even, screen-wide cloud before
-  // gathering it into anatomy. Both stages ease to zero velocity at the join.
-  vec2 scatter=vec2(grainRandom(uint(gl_VertexID)+173u),grainRandom(uint(gl_VertexID)+7919u))*2.0-1.0;
-  float release=smoothstep(0.0,.43,assembly);
-  float gather=smoothstep(.43,1.0,assembly);
-  vec2 position=mix(mix(source,scatter,release),destination,gather);
+  // The first gathering already traces the actual anatomy. A loose halo
+  // follows the wings and body, then contracts onto the feather samples.
+  vec4 centerClip=birdProjection*birdView*birdMatrix*vec4(0,0,0,1);
+  vec2 center=centerClip.xy/centerClip.w;
+  vec2 looseBird=center+(destination-center)*1.12;
+  vec2 featherDrift=vec2(grainRandom(uint(id)+173u),grainRandom(uint(id)+7919u))-.5;
+  looseBird+=featherDrift*.09;
+  float gather=smoothstep(0.0,.72,assembly);
+  float settle=smoothstep(.45,1.0,assembly);
+  vec2 travel=looseBird-source;
+  vec2 curl=vec2(-travel.y,travel.x)*sin(gather*3.14159265)*.10;
+  vec2 position=mix(mix(source,looseBird,gather)+curl,destination,settle);
   gl_Position=vec4(position,0.0,1.0);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
   gl_PointSize=max(1.0,mix(fluidSize,(1.8+seed*.65)*pixelScale,assembly));
   tint=mix(tint,mix(lime*.7+citron*.3,vec3(.8,.96,1.0),.3)*birdLight*1.25,assembly*.8);
   alpha=mix(.8+light*.18,.9,assembly)*opacity;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
+}
+void main() {
+  if(electricPass==0) { renderGrain(float(gl_VertexID)); return; }
+  // Each arc terminates on two actual grains, so it follows both the fluid
+  // and the bird. Six short segments form a fine, irregular discharge.
+  float bolt=floor(float(gl_VertexID)/12.0);
+  float segment=floor(mod(float(gl_VertexID),12.0)/2.0);
+  float u=(segment+mod(float(gl_VertexID),2.0))/6.0;
+  float total=grid.x*grid.y;
+  float first=mod(bolt*1999.0+317.0,total-grid.x*7.0-14.0);
+  float second=first+grid.x*(2.0+floor(grainRandom(uint(bolt)+37u)*4.0))+9.0;
+  renderGrain(first);
+  vec4 start=gl_Position; float startAlpha=alpha;
+  renderGrain(second);
+  vec4 end=gl_Position;
+  float beat=time*.65+grainRandom(uint(bolt)+71u)*17.0;
+  float phase=fract(beat);
+  float flash=smoothstep(0.0,.06,phase)*(1.0-smoothstep(.17,.36,phase));
+  vec2 tangent=end.xy-start.xy;
+  vec2 perpendicular=normalize(vec2(-tangent.y,tangent.x)+vec2(.00001));
+  float jag=grainRandom(uint(bolt)*31u+uint(segment+mod(float(gl_VertexID),2.0))*7u+uint(floor(beat))*127u)-.5;
+  vec2 point=mix(start.xy,end.xy,u)+perpendicular*jag*.022*sin(u*3.14159265);
+  gl_Position=vec4(point,0,1);
+  tint=mix(vec3(.4,1.0,.65),vec3(.35,.8,1.0),grainRandom(uint(bolt)+53u))*1.8;
+  alpha=min(startAlpha,alpha)*flash*.75*(1.0-smoothstep(.5,.8,hero)*.7)*opacity;
+  if(length(tangent)>.20 || startAlpha==0.0) alpha=0.0;
+
 }`;
 const fragment = `#version 300 es
 precision highp float;
 in vec3 tint;
 in float alpha;
+uniform highp int electricPass;
 uniform vec2 resolution;
 out vec4 color;
 void main() {
+  if(electricPass==1) { color=vec4(tint,alpha); return; }
   vec2 p=(gl_PointCoord-.5)*2.0;
   float r2=dot(p,p);
   if(r2>1.0 || alpha<.005) discard;
@@ -268,7 +303,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","electricPass"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -340,8 +375,11 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       for(let i=0;i<4;i++) edgeAges[i]=flowTime-impactAt[i]<3.0?flowTime-impactAt[i]:-1;
       gl.uniform4fv(uniforms.edgeAges,edgeAges);
       // Constant draw count and frozen source mask throughout assembly.
+      gl.uniform1i(uniforms.electricPass,0);
       gl.drawArrays(gl.POINTS,0,columns*rows);
       gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+      gl.uniform1i(uniforms.electricPass,1);
+      gl.drawArrays(gl.LINES,0,(mobile?48:110)*12);
     },
     dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteVertexArray(vao);},
   };
