@@ -6,8 +6,8 @@ import { HologramBust } from "../gl/HologramBust";
 
 const CONTACT_URL = "https://github.com/ata-314";
 
-// The working systems behind the visual work, as a two-column definition
-// list set directly on the page.
+// The working systems behind the visual work, as glass tiles in a two-column
+// definition grid.
 export function AISystems({ t }: { t: SiteContent["aiSystems"] }) {
   return (
     <section
@@ -17,13 +17,13 @@ export function AISystems({ t }: { t: SiteContent["aiSystems"] }) {
     >
       <div className="mx-auto max-w-[88rem]">
         <SectionIntro title={t.heading} lead={t.lead} />
-        <dl className="mt-16 grid gap-x-16 gap-y-12 md:mt-24 md:grid-cols-2">
+        <dl className="mt-16 grid gap-3 md:mt-24 md:grid-cols-2 md:gap-4">
           {t.entries.map((e) => (
-            <div key={e.name} data-reveal className="hero-copy max-w-xl">
+            <div key={e.name} data-reveal className="glass-tile p-7 md:p-10">
               <dt lang="en" className="font-display text-2xl font-semibold tracking-[-0.03em]">
                 {e.name}
               </dt>
-              <dd className="mt-3 text-[15px] leading-relaxed text-bone-dim">{e.desc}</dd>
+              <dd className="mt-3 max-w-lg text-[15px] leading-relaxed text-bone-dim">{e.desc}</dd>
             </div>
           ))}
         </dl>

@@ -1,9 +1,8 @@
 import type { SiteContent } from "@/content/site";
 import { SectionIntro } from "./SectionIntro";
 
-// Four disciplines set as open editorial columns: the name, what it brings
-// to the others, then the craft it covers as a plain running line.
-// No cards, no counters, no percentage bars.
+// Four disciplines as glass tiles: the name, what it brings to the others,
+// then the craft it covers as a plain running line. No counters, no bars.
 export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
   return (
     <section
@@ -14,9 +13,9 @@ export function Capabilities({ t }: { t: SiteContent["capabilities"] }) {
       <div className="mx-auto max-w-[88rem]">
         <SectionIntro title={t.heading} lead={t.lead} />
 
-        <div className="mt-16 grid gap-x-10 gap-y-14 sm:grid-cols-2 md:mt-24 lg:grid-cols-4">
+        <div className="mt-16 grid gap-3 sm:grid-cols-2 md:mt-24 md:gap-4 lg:grid-cols-4">
           {t.systems.map((sys) => (
-            <div key={sys.key} data-reveal className="hero-copy">
+            <div key={sys.key} data-reveal className="glass-tile p-7 md:p-8">
               <h3 lang="en" className="font-display text-2xl font-semibold tracking-[-0.03em] md:text-[1.75rem]">
                 {sys.name}
               </h3>

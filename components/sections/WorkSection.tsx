@@ -30,9 +30,11 @@ export function WorkSection({ locale }: { locale: Locale }) {
           </p>
         </div>
 
-        <ul className="work-index mt-16 md:mt-24">
-          {t.items.map((item) => (
-            <li key={item.slug} data-reveal>
+        {/* The index sits in one glass pane so the bird's flight behind it
+            reads as soft motion, not as competition for the titles. */}
+        <ul className="work-index glass-tile mt-16 px-6 py-2 md:mt-24 md:px-12 md:py-4">
+          {t.items.map((item, index) => (
+            <li key={item.slug} data-reveal className={index ? "border-t border-white/[0.07]" : ""}>
               <Link
                 href={`/${locale}/work/${item.slug}`}
                 data-cursor="view"
