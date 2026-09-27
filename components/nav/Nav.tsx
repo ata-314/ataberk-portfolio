@@ -7,8 +7,8 @@ import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { scrollState } from "../three/scroll-state";
 
-// Plain editorial top bar: wordmark left, text links right, no container.
-// It sits directly over the stage with only a legibility text shadow.
+// Apple-style liquid glass capsule floating at the top of every page, above
+// all content layers. Always visible; the open menu is a glass sheet.
 export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -16,7 +16,6 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const otherPath = pathname.replace(`/${locale}`, `/${other}`);
   const panel = useRef<HTMLDivElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
-  const bar = useRef<HTMLElement>(null);
 
   const links = [
     { href: `/${locale}#work`, label: t.work },
@@ -30,14 +29,8 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   // never need the GSAP/Lenis runtime just to report scroll position.
   useEffect(() => {
     let raf = 0;
-    let lastY = window.scrollY;
     const update = () => {
       raf = 0;
-      const y = window.scrollY;
-      if (bar.current && Math.abs(y - lastY) > 4) {
-        bar.current.dataset.hidden = String(y > lastY && y > 120);
-        lastY = y;
-      }
       const max = document.documentElement.scrollHeight - window.innerHeight;
       const value = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
       scrollState.page.current = value;
@@ -87,23 +80,23 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   }, [open]);
 
   return (
-    <header ref={bar} className="hero-copy pointer-events-none fixed inset-x-0 top-0 z-50 px-5 md:px-10">
-      <div className="pointer-events-auto mx-auto flex max-w-[88rem] items-center justify-between pt-5 md:pt-7">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-[100] flex justify-center px-3 pt-3 md:pt-5">
+      <div className="liquid-glass pointer-events-auto relative flex w-full max-w-[40rem] items-center justify-between rounded-full py-1.5 pr-1.5 pl-5 md:w-auto md:max-w-none md:gap-6">
         <Link
           href={`/${locale}`}
-          className="font-display text-[17px] font-semibold tracking-[-0.02em] text-bone transition-opacity hover:opacity-70"
+          className="font-display text-[16px] font-semibold tracking-[-0.02em] text-bone transition-opacity hover:opacity-70"
         >
           Ataberk
         </Link>
-        <nav aria-label="Main" className="hidden items-center gap-8 text-sm md:flex">
+        <nav aria-label="Main" className="hidden items-center text-[13px] md:flex">
           {links.map((l) => (
-            <Link key={l.label} href={l.href} className="link-draw text-bone-dim transition-colors hover:text-bone">
+            <Link key={l.label} href={l.href} className="glass-item px-3.5 py-2 text-bone/80">
               {l.label}
             </Link>
           ))}
           <Link
             href={otherPath}
-            className="link-draw text-bone-dim transition-colors hover:text-bone"
+            className="glass-item ml-1 bg-white/[0.07] px-3 py-2 text-[12px] text-bone/80"
             aria-label={other === "en" ? "Switch to English" : "Türkçeye geç"}
           >
             {other.toUpperCase()}
@@ -113,7 +106,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
           ref={menuButton}
           type="button"
           onClick={() => setOpen(true)}
-          className="text-sm text-bone md:hidden"
+          className="glass-item bg-white/[0.08] px-4 py-2 text-[13px] text-bone md:hidden"
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls="mobile-navigation"
@@ -129,11 +122,11 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
             role="dialog"
             aria-modal="true"
             aria-label={t.menu}
-            className="pointer-events-auto fixed inset-0 z-50 flex flex-col bg-ink px-5 pt-5 pb-8 [animation:menuFade_0.25s_ease_both]"
+            className="liquid-glass liquid-glass-dense pointer-events-auto fixed inset-3 z-[100] flex flex-col rounded-[2rem] px-6 pt-5 pb-8 [animation:menuFade_0.25s_ease_both]"
           >
             <div className="flex items-center justify-between">
               <span className="font-display text-[17px] font-semibold tracking-[-0.02em]">Ataberk</span>
-              <button type="button" onClick={() => setOpen(false)} className="text-sm text-bone">
+              <button type="button" onClick={() => setOpen(false)} className="glass-item bg-white/[0.08] px-4 py-2 text-[13px] text-bone">
                 {t.close}
               </button>
             </div>

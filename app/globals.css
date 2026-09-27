@@ -121,14 +121,8 @@ html:not([data-stage-intro="done"]):not([data-stage-static="true"])
   pointer-events: none !important;
 }
 
-/* The bar steps out of the way while reading down and returns on the way up. */
 header {
-  transition:
-    opacity 0.8s ease,
-    transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
-}
-header[data-hidden="true"] {
-  transform: translateY(-110%);
+  transition: opacity 0.8s ease;
 }
 
 /* Editorial identity: the name spans the viewport along the bottom edge.
@@ -267,39 +261,68 @@ header[data-hidden="true"] {
     0 32px 90px -42px rgba(0, 0, 0, 0.98);
 }
 
-/* Compact control glass. Keeping this material quieter than content cards
-   makes the floating navigation feel like part of the viewport chrome. */
-.nav-glass {
-  background: linear-gradient(145deg, rgba(30, 30, 33, 0.72), rgba(15, 15, 17, 0.58));
-  border: 1px solid rgba(255, 255, 255, 0.12);
+/* Liquid glass (Apple style) for the navigation: live blur with boosted
+   saturation, a specular rim brightest along the top edge and fading down
+   the sides (a masked gradient border), an inner top highlight and a soft
+   floating shadow. */
+/* Positioning is left to the element (relative capsule, fixed sheet). */
+.liquid-glass {
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.11),
-    0 18px 55px -34px rgba(0, 0, 0, 0.95);
-  -webkit-backdrop-filter: blur(28px) saturate(1.4);
-  backdrop-filter: blur(28px) saturate(1.4);
+    inset 0 1px 1px rgba(255, 255, 255, 0.22),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.05),
+    inset 0 0 18px rgba(255, 255, 255, 0.035),
+    0 10px 36px -12px rgba(0, 0, 0, 0.7),
+    0 2px 6px rgba(0, 0, 0, 0.25);
+  -webkit-backdrop-filter: blur(24px) saturate(1.9) brightness(1.05);
+  backdrop-filter: blur(24px) saturate(1.9) brightness(1.05);
 }
-
-/* Apple-style frosted glass: live backdrop sampling with a bright top sheen,
-   so the pill reads as physical material floating over the sculpture. */
-.nav-shell {
-  background: linear-gradient(180deg, rgba(40, 40, 45, 0.58), rgba(17, 17, 20, 0.46));
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.17),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
-    0 18px 50px -30px rgba(0, 0, 0, 0.92);
-  -webkit-backdrop-filter: blur(22px) saturate(1.6);
-  backdrop-filter: blur(22px) saturate(1.6);
+.liquid-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.06) 70%,
+    rgba(255, 255, 255, 0.22)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+/* The open menu sheet: the same material, denser so large type stays crisp. */
+.liquid-glass-dense {
+  background: linear-gradient(180deg, rgba(34, 34, 38, 0.72), rgba(16, 16, 18, 0.66));
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  backdrop-filter: blur(40px) saturate(1.8);
+}
+/* Items inside the glass: a lighter glass lozenge on hover. */
+.glass-item {
+  border-radius: 999px;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+.glass-item:hover,
+.glass-item:focus-visible {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--bone);
 }
 
 /* Live backdrop sampling over an animated canvas is the main mobile repaint
    cost; touch devices trade every glass material for a denser painted
    gradient that reads the same without per-frame blur. */
 @media (hover: none) {
-  .nav-shell {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    background: linear-gradient(180deg, rgba(33, 33, 37, 0.94), rgba(15, 15, 17, 0.9));
+  /* The nav capsule is small, so it keeps live glass on touch at a lighter
+     blur radius. */
+  .liquid-glass {
+    -webkit-backdrop-filter: blur(16px) saturate(1.8);
+    backdrop-filter: blur(16px) saturate(1.8);
   }
   .glass,
   .glass-strong,
