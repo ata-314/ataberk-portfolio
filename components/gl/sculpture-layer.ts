@@ -305,7 +305,7 @@ void renderGrain(float id) {
     mat2 tilt=mat2(cp,-sp,sp,cp);
     q.yz=tilt*q.yz; qn.yz=tilt*qn.yz;
     q.y+=bustLift;
-    vec3 bv=vec3(q.x,q.y-.28,q.z-5.3);
+    vec3 bv=vec3(q.x,q.y-.2,q.z-4.85);
     float focal=1.0/tan(35.0*3.14159265/360.0);
     vec2 bndc=vec2(focal/bustAspect*bv.x,focal*bv.y)/(-bv.z);
     vec2 target=mix(bustRect.xy,bustRect.zw,bndc*.5+.5);

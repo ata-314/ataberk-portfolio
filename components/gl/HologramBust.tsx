@@ -77,7 +77,8 @@ void main() {
   // the projection has no lower body: dissolve below the chest line
   float cut = smoothstep(-1.25, -0.45, aPos.y);
   float cutEdge = exp(-pow((aPos.y + 0.72) * 2.6, 2.0));
-  vec4 view = vec4(p.x, p.y - 0.28, p.z - 5.3, 1.0);
+  // Camera distance is mirrored in sculpture-layer.ts (bird → bust morph).
+  vec4 view = vec4(p.x, p.y - 0.2, p.z - 4.85, 1.0);
   gl_Position = uProj * view;
   vec3 viewNormal = normalize(vec3(n.xy, n.z));
   vRim = pow(1.0 - abs(viewNormal.z), 1.6);
@@ -128,19 +129,20 @@ void main() {
   float flick = 0.97 + 0.03 * sin(uTime * 41.0) * sin(uTime * 11.7 + 2.0);
   // Hologram palette: deep teal in shadow, ice white where the key lands,
   // lime only on the rim, the dissolve edge, the sweep and the pointer.
-  float occlusion = 1.0 - clamp(vCav, 0.0, 1.0) * 0.88;
+  float occlusion = 1.0 - clamp(vCav * 1.15, 0.0, 1.0) * 0.94;
   float ridge = clamp(-vCav, 0.0, 1.0);
-  float light = clamp(vLit * occlusion + ridge * 0.18, 0.0, 1.2);
-  vec3 deep = vec3(0.06, 0.26, 0.36);
-  vec3 pale = vec3(0.82, 0.97, 1.0);
+  // a gentle contrast curve: lit planes pop, sockets and creases stay dark
+  float light = pow(clamp(vLit * occlusion + ridge * 0.22, 0.0, 1.2), 1.25);
+  vec3 deep = vec3(0.07, 0.3, 0.4);
+  vec3 pale = vec3(0.9, 1.0, 1.0);
   vec3 lime = vec3(0.784, 1.0, 0.243);
   vec3 color = mix(deep, pale, clamp(light, 0.0, 1.0));
-  color = mix(color, lime, clamp(vRim * 0.35, 0.0, 0.4));
+  color = mix(color, lime, clamp(vRim * 0.4, 0.0, 0.45));
   color += lime * vGlow * 1.1;
   color = mix(color, vec3(0.9, 1.0, 0.75), vSweep * 0.5);
   color = mix(color, lime, clamp(vTouch * 0.85, 0.0, 0.8));
   float alpha = disc * vAlpha * vFacing
-    * (0.08 + light * 0.55 + vRim * 0.16 + vGlow * 0.3 + vSweep * 0.25 + vTouch * 0.5)
+    * (0.1 + light * 0.85 + vRim * 0.24 + vGlow * 0.3 + vSweep * 0.25 + vTouch * 0.5)
     * scan * flick * vSlice * uGain;
   outColor = vec4(color, alpha);
 }`;
@@ -306,7 +308,7 @@ export function HologramBust() {
         // small viewports get bigger, brighter points: fewer pixels per point
         // would otherwise leave the bust too faint on phones
         const compact = Math.max(canvas.clientHeight / 640, 0.95);
-        gl.uniform1f(u("uSize"), (mobile ? 13 : 11) * pixelRatio * compact);
+        gl.uniform1f(u("uSize"), (mobile ? 14 : 12.5) * pixelRatio * compact);
         gl.uniform1f(u("uGain"), (mobile ? 1.35 : 1) * fade);
         gl.clear(gl.COLOR_BUFFER_BIT);
         // samples are area-weighted random, so a prefix is a uniform subset
