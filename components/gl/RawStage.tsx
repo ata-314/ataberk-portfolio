@@ -446,13 +446,15 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // positions in NDC, each with a strength set by stroke speed that decays
     // in the render loop. Works for mouse and touch drags alike.
     // Stamps are laid by a damped follower of the cursor inside the render
-    // loop (not by raw events), and each one swells in over ~0.15s before it
-    // decays — so grains flow around the cursor instead of snapping.
-    const wake = new Float32Array(8 * 4);
-    const wakePeak = new Float32Array(8);
-    const wakeAge = new Float32Array(8).fill(99);
-    let wakeSlot = 0;
+    // loop (not by raw events). Each swells in, then fades slowly, and a new
+    // stamp always replaces the weakest slot — a still-strong stamp is never
+    // yanked away, which was the source of the remaining micro-jumps.
+    const WAKE_SLOTS = 16;
+    const wake = new Float32Array(WAKE_SLOTS * 4);
+    const wakePeak = new Float32Array(WAKE_SLOTS);
+    const wakeAge = new Float32Array(WAKE_SLOTS).fill(99);
     let wakeLast: [number, number] | null = null;
+    let wakeClock = 0;
     const wakeTarget: [number, number] = [0, 0];
     const wakeFollow: [number, number] = [0, 0];
     let wakeArmed = false;
@@ -467,25 +469,34 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       }
     };
     const stepWake = (delta: number) => {
-      if (wakeArmed) {
-        wakeFollow[0] = damp(wakeFollow[0], wakeTarget[0], 9, delta);
-        wakeFollow[1] = damp(wakeFollow[1], wakeTarget[1], 9, delta);
-        const [nx, ny] = wakeFollow;
-        const moved = wakeLast ? Math.hypot(nx - wakeLast[0], ny - wakeLast[1]) : 0;
-        if (!wakeLast || moved >= 0.018) {
-          wakeLast = [nx, ny];
-          wakePeak[wakeSlot] = Math.min(0.62, 0.22 + moved * 6);
-          wakeAge[wakeSlot] = 0;
-          wake[wakeSlot * 4] = nx;
-          wake[wakeSlot * 4 + 1] = ny;
-          wakeSlot = (wakeSlot + 1) % 8;
-        }
-      }
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < WAKE_SLOTS; i++) {
         wakeAge[i] += delta;
         const a = wakeAge[i];
-        wake[i * 4 + 2] = wakePeak[i] * (1 - Math.exp(-a * 14)) * Math.exp(-a * 1.9);
+        wake[i * 4 + 2] = wakePeak[i] * (1 - Math.exp(-a * 10)) * Math.exp(-a * 1.3);
       }
+      if (!wakeArmed) return;
+      wakeFollow[0] = damp(wakeFollow[0], wakeTarget[0], 10, delta);
+      wakeFollow[1] = damp(wakeFollow[1], wakeTarget[1], 10, delta);
+      wakeClock += delta;
+      const [nx, ny] = wakeFollow;
+      if (!wakeLast) {
+        wakeLast = [nx, ny];
+        return;
+      }
+      const dx = nx - wakeLast[0];
+      const dy = ny - wakeLast[1];
+      const moved = Math.hypot(dx, dy);
+      if (moved < 0.012 || wakeClock < 1 / 45) return;
+      wakeClock = 0;
+      wakeLast = [nx, ny];
+      let slot = 0;
+      for (let i = 1; i < WAKE_SLOTS; i++) if (wake[i * 4 + 2] < wake[slot * 4 + 2]) slot = i;
+      wakePeak[slot] = Math.min(0.42, 0.14 + moved * 4);
+      wakeAge[slot] = 0;
+      wake[slot * 4] = nx;
+      wake[slot * 4 + 1] = ny;
+      // Heading in the shader's aspect-corrected space.
+      wake[slot * 4 + 3] = Math.atan2(dy, dx * (innerWidth / Math.max(innerHeight, 1)));
     };
     const scanPointer = [0, 0];
     const scanSmooth = [0, 0];

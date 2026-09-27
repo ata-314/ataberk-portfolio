@@ -67,9 +67,9 @@ uniform float birdReady;
 uniform float flap;
 uniform float finale;
 uniform vec4 edgeAges;
-// Pointer wake: recent cursor positions in NDC (xy) with a decaying
-// strength (z). burst: click origin (xy) and age in seconds (z, -1 idle).
-uniform vec4 trail[8];
+// Pointer wake: recent cursor positions in NDC (xy), a swelling-then-
+// decaying strength (z) and the cursor's heading in radians (w). burst: click origin (xy) and age in seconds (z, -1 idle).
+uniform vec4 trail[16];
 uniform vec3 burst;
 // 1 on the additive glow pass that haloes the formed bird.
 uniform float glowPass;
@@ -240,23 +240,27 @@ void renderGrain(float id) {
   vec2 travel=looseBird-source;
   vec2 curl=vec2(-travel.y,travel.x)*sin(gather*3.14159265)*.10;
   vec2 position=mix(mix(source,looseBird,gather)+curl,destination,settle);
-  // Pointer wake and click shockwave push the fluid grains aside with a
-  // slight swirl, and light up whatever they disturb.
+  // Pointer wake: grains are carried along the cursor's heading, drift
+  // apart on their own seeded directions and turn slightly — a soft,
+  // liquid dispersal. Click shockwaves push them aside. Both light up and
+  // recolour whatever they disturb.
   float fluidPart=1.0-assembly;
   float lift=0.0;
   vec2 asp=vec2(aspect,1.0);
-  for(int k=0;k<8;k++) {
+  float scatterAngle=seed*43.98;
+  vec2 scatter=vec2(cos(scatterAngle),sin(scatterAngle));
+  for(int k=0;k<16;k++) {
     vec4 tk=trail[k];
-    if(tk.z<.01) continue;
+    if(tk.z<.005) continue;
     vec2 d=(position-tk.xy)*asp;
-    float r2=dot(d,d);
-    float f=tk.z*exp(-r2/.045);
-    // Rotate the neighbourhood around the wake point and dilate it slightly:
-    // a true rotation keeps density (a plain offset emptied the core).
-    float turn=f*(.9+seed*.5)*fluidPart;
+    float f=tk.z*exp(-dot(d,d)/.035)*fluidPart;
+    if(f<.001) continue;
+    vec2 heading=vec2(cos(tk.w),sin(tk.w));
+    float turn=f*(.25+seed*.2);
     float c=cos(turn),s=sin(turn);
-    vec2 moved=mat2(c,s,-s,c)*d*(1.0+f*.12*fluidPart);
-    position=tk.xy+moved/asp;
+    d=mat2(c,s,-s,c)*d;
+    d+=(heading*.05+scatter*(.018+seed*.03))*f;
+    position=tk.xy+d/asp;
     lift+=f;
   }
   if(burst.z>=0.0) {
@@ -293,7 +297,12 @@ void renderGrain(float id) {
   gl_PointSize*=1.0+shoulder*.6*(1.0-assembly);
   alpha=mix(.8+light*.18,.95,assembly)*opacity*introAlpha;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
-  tint+=mix(citron,vec3(.75,1.0,.95),.35)*lift*.9;
+  // Disturbed matter shifts hue: a lingering aqua-to-citron wash that
+  // follows the cursor's path and fades back into the sea.
+  float wash=clamp(lift*1.4,0.0,1.0);
+  vec3 wakeHue=mix(vec3(.38,.95,1.0),vec3(.86,1.0,.34),.5+.5*sin(time*.6+position.x*2.4+seed*1.5));
+  tint=mix(tint,wakeHue*(.75+.35*light),wash*.8);
+  tint+=wakeHue*min(lift,1.2)*.25;
   if(glowPass>.5) {
     // Halo pass: only bird grains, drawn large and soft with additive blend.
     if(assembly<.05) {alpha=0.0;gl_Position=vec4(2.0,2.0,2.0,1.0);return;}

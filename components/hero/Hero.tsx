@@ -51,8 +51,11 @@ export function Hero({ t }: { t: HeroStrings }) {
             },
           },
         })
+        // The name is not tweened: CodeName breaks it into code glyphs as
+        // the bird forms, reading the same scroll progress.
         .to("[data-hero-top]", { autoAlpha: 0, y: -40, duration: 0.14 }, 0.08)
-        .to("[data-hero-name]", { autoAlpha: 0, y: 60, duration: 0.18 }, 0.12);
+        // Pin the timeline length to 1 so tween positions equal scroll progress.
+        .set({}, {}, 1);
     },
     { scope: wrapper },
   );

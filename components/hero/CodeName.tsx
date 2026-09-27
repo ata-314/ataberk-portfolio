@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { scrollState } from "../three/scroll-state";
 
 // Dense glyphs carry the letterforms; a few light ones keep it reading as code.
 const CHARSET = "01#$%&@0189<>{}[]/\\*+=?ABDEHKMNRSWX";
@@ -8,6 +9,8 @@ const BONE = "255, 255, 250";
 const LIME = "200, 255, 62";
 // Room around the name for glyphs the pointer scatters.
 const PAD = 160;
+// Extra headroom above the name for glyphs that disperse upward on scroll.
+const PAD_TOP = 440;
 // Entrance: each glyph surfaces from inside the page — rising a little from
 // below and swelling from a pinpoint — behind a front that opens at the
 // centre of the name. SURFACE is one glyph's rise time in seconds.
@@ -65,6 +68,13 @@ export function CodeName({
     let cell = 8;
     let dpr = 1;
     let doneSeen = -1;
+    // Scroll dispersal: as the bird forms, the name breaks into its code
+    // glyphs, which drift up and away and fade. Fully reversible.
+    let scatter = 0;
+    let nameCx = 0;
+    let nameCy = 0;
+    let rectLeft = 0;
+    let rectTop = 0;
     let atlasBone: HTMLCanvasElement | null = null;
     let atlasLime: HTMLCanvasElement | null = null;
     let frame = 0;
@@ -117,13 +127,15 @@ export function CodeName({
       const font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
       const box = heading.getBoundingClientRect();
       const w = Math.ceil(box.width + PAD * 2);
-      const h = Math.ceil(box.height + PAD * 2);
+      const h = Math.ceil(box.height + PAD_TOP + PAD);
+      nameCx = w / 2;
+      nameCy = PAD_TOP + box.height / 2;
       canvas.width = Math.ceil(w * dpr);
       canvas.height = Math.ceil(h * dpr);
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
       canvas.style.left = `${-PAD}px`;
-      canvas.style.top = `${-PAD}px`;
+      canvas.style.top = `${-PAD_TOP}px`;
 
       // Rasterize every character at 1/cell scale: anti-aliasing yields
       // per-cell coverage. x comes from DOM Ranges (exact tracking/kerning),
@@ -142,7 +154,7 @@ export function CodeName({
         const marker = document.createElement("span");
         marker.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
         el.appendChild(marker);
-        const baseline = marker.getBoundingClientRect().top - box.top + PAD;
+        const baseline = marker.getBoundingClientRect().top - box.top + PAD_TOP;
         marker.remove();
         const node = el.firstChild;
         const text = node?.textContent ?? "";
@@ -192,9 +204,8 @@ export function CodeName({
         pointer.vx *= Math.exp(-6 * dt);
         pointer.vy *= Math.exp(-6 * dt);
       }
-      const rect = canvas.getBoundingClientRect();
-      const mx = pointer.sx - rect.left;
-      const my = pointer.sy - rect.top;
+      const mx = pointer.sx - rectLeft;
+      const my = pointer.sy - rectTop;
       const radius = Math.max(90, cell * 20);
       const t = now / 1000;
       for (const g of glyphs) {
@@ -243,6 +254,10 @@ export function CodeName({
       }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (scatter > 0.999) {
+        ctx.globalAlpha = 1;
+        return;
+      }
       for (const g of glyphs) {
         // Surfacing: 0 → 1 per glyph, eased with smootherstep.
         const u = Math.min(1, Math.max(0, (assembly - g.delay) / SURFACE));
@@ -251,24 +266,40 @@ export function CodeName({
         const dx = g.x - g.hx;
         const dy = g.y - g.hy;
         const displaced = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (cell * 6));
-        const rate = 0.5 + g.seed * 2.5 + (1 - e) * 14 + displaced * 22;
+        // Dispersal: glyphs leave in a seeded order, rising up and away from
+        // the name's centre, mutating faster and fading as they go.
+        const k0 = Math.min(1, Math.max(0, scatter * 1.4 - g.seed * 0.4));
+        const k = k0 * k0 * (3 - 2 * k0);
+        const rate = 0.5 + g.seed * 2.5 + (1 - e) * 14 + displaced * 22 + k * 30;
         const glyph = Math.floor(g.seed * 997 + t * rate) % CHARSET.length;
         const bright = Math.min(1, 0.92 + displaced * 0.3);
         // Lime marks energy: a share of glyphs glint while surfacing, and
         // displaced glyphs heat up.
-        const hot = (u < 0.6 && g.seed > 0.55) || displaced * (0.4 + g.seed) > 0.62;
+        const hot = (u < 0.6 && g.seed > 0.55) || displaced * (0.4 + g.seed) > 0.62 || (k > 0.04 && g.seed > 0.45);
         const fade = Math.min(1, u / 0.35);
-        const alpha = bright * Math.min(1, g.cover * 1.65) * fade * (1 - displaced * 0.25);
+        const alpha = bright * Math.min(1, g.cover * 1.65) * fade * (1 - displaced * 0.25) * (1 - k);
         if (alpha < 0.01) continue;
         // Rises from slightly below its home and swells from a pinpoint.
         const scale = 0.3 + 0.7 * e;
         const drawn = size * scale;
         const inset = (cell - cell * scale) / 2;
-        const x = g.x + inset + Math.sin(g.seed * 19 + u * 5) * cell * 0.8 * (1 - e);
-        const y = g.y + inset + cell * 4.5 * (1 - e);
-        // A faint offset lime echo gives each glyph depth without a backing.
-        ctx.globalAlpha = alpha * 0.16;
-        ctx.drawImage(atlasLime!, glyph * size, 0, size, size, (x + 1.5) * dpr, (y + 2) * dpr, drawn, drawn);
+        let x = g.x + inset + Math.sin(g.seed * 19 + u * 5) * cell * 0.8 * (1 - e);
+        let y = g.y + inset + cell * 4.5 * (1 - e);
+        if (k > 0) {
+          const ox = g.hx - nameCx;
+          const oy = g.hy - nameCy;
+          const ol = Math.hypot(ox, oy) + 1;
+          const angle = g.seed * 43.98;
+          const reach = k * (90 + g.seed * 260);
+          x += (ox / ol * 0.55 + Math.cos(angle) * 0.45) * reach + Math.sin(t * 2 + g.seed * 30) * k * cell;
+          y += (oy / ol * 0.35 + Math.sin(angle) * 0.35 - 0.9) * reach;
+        }
+        // A faint offset lime echo gives moving glyphs depth; settled ones
+        // skip it, halving the draw calls at rest.
+        if (e < 1 || displaced > 0.05 || k > 0) {
+          ctx.globalAlpha = alpha * 0.16;
+          ctx.drawImage(atlasLime!, glyph * size, 0, size, size, (x + 1.5) * dpr, (y + 2) * dpr, drawn, drawn);
+        }
         ctx.globalAlpha = alpha;
         ctx.drawImage(hot ? atlasLime! : atlasBone!, glyph * size, 0, size, size, x * dpr, y * dpr, drawn, drawn);
       }
@@ -293,6 +324,12 @@ export function CodeName({
       ) {
         assembleStart = now;
       }
+      const rect = canvas.getBoundingClientRect();
+      rectLeft = rect.left;
+      rectTop = rect.top;
+      const scatterTarget = Math.min(1, Math.max(0, (scrollState.hero.current - 0.05) / 0.2));
+      scatter += (scatterTarget - scatter) * (1 - Math.exp(-8 * elapsed));
+      if (Math.abs(scatterTarget - scatter) < 0.0005) scatter = scatterTarget;
       const steps = Math.max(1, Math.ceil(elapsed * 60));
       for (let i = 0; i < steps; i++) step(now, elapsed / steps);
       draw(now);
