@@ -38,7 +38,7 @@ export default async function AboutPage({
     <main id="content" className="relative z-10 bg-ink">
       <header className="px-6 pt-32 md:px-10 md:pt-44">
         <div className="mx-auto max-w-7xl">
-          <p className="font-mono text-[11px] tracking-widest text-bone-dim uppercase">{t.heading}</p>
+          <p className="text-sm text-bone-dim">{t.heading}</p>
           <h1
             className="font-display mt-6 max-w-5xl leading-[1.05] font-semibold tracking-tight text-balance"
             style={{ fontSize: "var(--text-h1)" }}
@@ -57,14 +57,14 @@ export default async function AboutPage({
                   {p}
                 </p>
               ))}
-              <p className="border-l-2 border-lime pl-5 text-sm leading-relaxed text-bone-dim">
+              <p className="text-sm leading-relaxed text-bone-dim">
                 {t.thesis}
               </p>
             </div>
             <div className="col-span-12 md:col-span-4 md:col-start-9">
-              <dl className="divide-y divide-graphite border-y border-graphite">
+              <dl className="space-y-10">
                 {t.ventures.map((v) => (
-                  <div key={v.name} className="py-6">
+                  <div key={v.name}>
                     <dt className="font-display text-xl font-semibold">{v.name}</dt>
                     <dd className="mt-2 text-sm leading-relaxed text-bone-dim">{v.desc}</dd>
                   </div>
@@ -77,16 +77,9 @@ export default async function AboutPage({
             <h2 className="font-display text-2xl font-semibold tracking-tight">
               {t.collaboration.heading}
             </h2>
-            <ul className="mt-6 flex max-w-3xl flex-wrap gap-3">
-              {t.collaboration.areas.map((a) => (
-                <li
-                  key={a}
-                  className="rounded-full border border-graphite px-5 py-2.5 text-sm text-bone"
-                >
-                  {a}
-                </li>
-              ))}
-            </ul>
+            <p className="mt-5 max-w-3xl text-lg leading-relaxed text-bone-dim">
+              {t.collaboration.areas.join(", ")}.
+            </p>
           </section>
         </div>
       </div>

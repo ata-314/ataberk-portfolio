@@ -49,17 +49,16 @@ export default async function LabPage({
       </header>
       <div className="px-6 md:px-10" style={{ paddingBlock: "var(--space-section)" }}>
         <div className="mx-auto max-w-7xl">
-          <dl className="divide-y divide-graphite border-y border-graphite">
-            {t.entries.map((e, i) => (
+          <dl className="space-y-4">
+            {t.entries.map((e) => (
               <div key={e.name} className="grid grid-cols-12 gap-4 py-8">
                 <dt className="col-span-12 md:col-span-4">
-                  <span className="font-mono text-[11px] text-bone-dim">0{i + 1}</span>
-                  <span className="font-display ml-4 text-xl font-semibold">{e.name}</span>
+                  <span className="font-display text-2xl font-semibold tracking-[-0.03em]">{e.name}</span>
                 </dt>
                 <dd className="col-span-12 text-sm leading-relaxed text-bone-dim md:col-span-5">
                   {e.desc}
                 </dd>
-                <dd className="col-span-12 font-mono text-xs tracking-widest text-lime/80 uppercase md:col-span-3 md:text-right">
+                <dd className="col-span-12 text-sm text-bone md:col-span-3 md:text-right">
                   {e.status}
                 </dd>
               </div>

@@ -1,36 +1,29 @@
-// Apple-style centered section opening: small mono eyebrow, a large
-// statement heading, an optional supporting line. One pattern, sitewide.
+// Section opening: a large statement heading set on the left of the grid,
+// with the supporting line resting beside it. No eyebrow labels — the
+// heading carries the section on its own.
 export function SectionIntro({
-  eyebrow,
   title,
   lead,
 }: {
-  eyebrow: string;
   title: string;
   lead?: string;
 }) {
   const words = title.split(" ");
   return (
-    <div className="hero-copy mx-auto max-w-4xl text-center">
-      {/* Eyebrows are English brand labels; lang pins uppercase to ASCII so a
-          Turkish page doesn't render INTELLİGENCE with a dotted capital. */}
-      <p data-reveal lang="en" className="font-mono text-[10px] tracking-[0.34em] text-lime/85 uppercase">
-        {eyebrow}
-      </p>
+    <div className="hero-copy grid gap-6 md:grid-cols-12 md:items-end">
       <h2
         data-reveal-words
-        className="font-display mt-7 leading-[1.02] font-semibold tracking-[-0.04em] text-balance"
-        style={{ fontSize: "var(--text-h2)" }}
+        className="font-display leading-[0.95] font-semibold tracking-[-0.045em] text-balance md:col-span-8"
+        style={{ fontSize: "clamp(2.6rem, 6vw, 6rem)" }}
       >
         {words.map((word, index) => (
-          <span key={index} data-word className="inline-block">
+          <span key={index} data-word className="mr-[0.24em] inline-block last:mr-0">
             {word}
-            {index < words.length - 1 ? " " : ""}
           </span>
         ))}
       </h2>
       {lead && (
-        <p data-reveal className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-bone-dim text-balance md:text-lg">
+        <p data-reveal className="max-w-sm text-base leading-relaxed text-bone-dim md:col-span-4 md:justify-self-end md:pb-2">
           {lead}
         </p>
       )}

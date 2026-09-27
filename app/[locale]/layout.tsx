@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
 import { site } from "@/content/site";
 import { Nav } from "@/components/nav/Nav";
-import { Cursor } from "@/components/cursor/Cursor";
 import "../globals.css";
 
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin", "latin-ext"] });
@@ -106,14 +105,13 @@ export default async function LocaleLayout({
         className={`${archivo.variable} ${audiowide.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <noscript>
-          <style>{`header, [data-hero-identity], [data-hero-rail] { opacity: 1 !important; pointer-events: auto !important; }`}</style>
+          <style>{`header, [data-hero-identity] { opacity: 1 !important; pointer-events: auto !important; }`}</style>
         </noscript>
         <a href="#content" className="skip-link">
           {t.a11y.skip}
         </a>
         <Nav locale={locale} t={t.nav} />
         {children}
-        <Cursor />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}

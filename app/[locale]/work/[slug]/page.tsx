@@ -3,13 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isLocale, locales } from "@/lib/i18n";
 import { work, getWorkItem } from "@/content/work";
-import { SystemVisual } from "@/components/work/SystemVisual";
 import { Footer } from "@/components/sections/HomeSections";
 import { site } from "@/content/site";
 
 const labels = {
-  tr: { role: "Rol", year: "Yıl", category: "Kategori", next: "Sonraki proje", visual: "Deneysel sistem görselleştirmesi", back: "Tüm işler" },
-  en: { role: "Role", year: "Year", category: "Category", next: "Next project", visual: "Experimental system visualization", back: "All work" },
+  tr: { role: "Rol", year: "Yıl", category: "Kategori", next: "Sonraki proje", back: "Tüm işler" },
+  en: { role: "Role", year: "Year", category: "Category", next: "Next project", back: "All work" },
 };
 
 export function generateStaticParams() {
@@ -66,40 +65,35 @@ export default async function CasePage({
         <div className="mx-auto max-w-7xl">
           <Link
             href={`/${locale}#work`}
-            className="font-mono text-[11px] tracking-widest text-bone-dim uppercase transition-colors hover:text-bone"
+            className="link-draw text-sm text-bone-dim transition-colors hover:text-bone"
           >
             ← {l.back}
           </Link>
           <h1
-            className="font-display mt-6 leading-[0.95] font-semibold tracking-tight uppercase"
-            style={{ fontSize: "var(--text-display)" }}
+            className="font-display mt-10 leading-[0.9] font-semibold tracking-[-0.05em]"
+            style={{ fontSize: "clamp(3.4rem, 10vw, 10rem)" }}
           >
             {item.title}
           </h1>
           <div className="mt-8 grid grid-cols-12 gap-6">
             <p className="col-span-12 max-w-2xl text-lg text-bone-dim md:col-span-7">{item.idea}</p>
-            <dl className="col-span-12 grid grid-cols-3 gap-4 font-mono text-xs md:col-span-5">
+            <dl className="col-span-12 grid grid-cols-3 gap-4 text-sm md:col-span-5">
               <div>
-                <dt className="tracking-widest text-bone-dim/80 uppercase">{l.category}</dt>
+                <dt className="text-bone-dim">{l.category}</dt>
                 <dd className="mt-1 text-bone">{item.category}</dd>
               </div>
               <div>
-                <dt className="tracking-widest text-bone-dim/80 uppercase">{l.year}</dt>
+                <dt className="text-bone-dim">{l.year}</dt>
                 <dd className="mt-1 text-bone">{item.year}</dd>
               </div>
               <div>
-                <dt className="tracking-widest text-bone-dim/80 uppercase">{l.role}</dt>
+                <dt className="text-bone-dim">{l.role}</dt>
                 <dd className="mt-1 text-bone">{item.role}</dd>
               </div>
             </dl>
           </div>
         </div>
       </header>
-
-      {/* Hero media */}
-      <div className="px-6 pt-16 md:px-10">
-        <SystemVisual item={item} label={l.visual} className="mx-auto aspect-[16/8] max-w-7xl" />
-      </div>
 
       {/* Sections — editorial tempo: alternating column starts */}
       <div className="px-6 pb-24 md:px-10" style={{ paddingTop: "var(--space-section)" }}>
@@ -133,13 +127,13 @@ export default async function CasePage({
       <Link
         href={`/${locale}/work/${next.slug}`}
         data-cursor="view"
-        className="group block border-t border-graphite px-6 py-16 md:px-10"
+        className="group block px-6 py-20 md:px-10 md:py-28"
       >
         <div className="mx-auto flex max-w-7xl flex-wrap items-baseline justify-between gap-4">
-          <span className="font-mono text-[11px] tracking-widest text-bone-dim uppercase">
+          <span className="text-sm text-bone-dim">
             {l.next}
           </span>
-          <span className="font-display text-3xl font-semibold tracking-tight transition-colors group-hover:text-lime md:text-5xl">
+          <span className="font-display text-4xl font-semibold tracking-[-0.04em] transition-transform duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-x-2 md:text-7xl">
             {next.title} →
           </span>
         </div>

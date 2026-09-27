@@ -8,7 +8,6 @@ export type SiteContent = {
   title: string;
   tagline: string;
   nav: { work: string; capabilities: string; about: string; lab: string; contact: string; menu: string; close: string };
-  hero: { scrollHint: string; intro: string };
   manifesto: { line: string; sub: string };
   capabilities: {
     heading: string;
@@ -66,21 +65,17 @@ const capabilitiesShared = [
 ];
 
 const tr: SiteContent = {
-  name: "Ataberk Soylu",
+  name: "Ataberk",
   title: "Creative Technologist & Multi Designer",
   tagline: "Yapay zekâ, motion, 3D ve web arasında akıllı dijital deneyimler tasarlıyorum.",
   nav: { work: "İşler", capabilities: "Yetenekler", about: "Hakkında", lab: "Lab", contact: "İletişim", menu: "Menü", close: "Kapat" },
-  hero: {
-    scrollHint: "Kaydır",
-    intro: "Kod karakterlerinden oluşan yaşayan bir sistem — bu sitenin tamamı aynı dijital maddeden inşa edildi.",
-  },
   manifesto: {
     line: "Fikirleri akıllı görsel sistemlere dönüştürüyorum.",
     sub: "Tasarım, motion, yapay zekâ ve kod — ayrı beceriler değil, tek yaratıcı sistemin organları.",
   },
   capabilities: {
     heading: "Yetenek Sistemleri",
-    lead: "Dört sistem, tek ağ. Her disiplin diğerini besler — bir sisteme yaklaş, bağlantılarını gör.",
+    lead: "Dört disiplin, tek üretim süreci. Her biri diğerini besliyor.",
     systems: [
       { ...capabilitiesShared[0], name: "Design", bridge: "Yön ve kimlik: diğer üç sistemin dilini belirler." },
       { ...capabilitiesShared[1], name: "Motion & Storytelling", bridge: "Zamanlama ve duygu: tasarımı anlatıya, AI çıktısını sinemaya çevirir." },
@@ -142,21 +137,17 @@ const tr: SiteContent = {
 };
 
 const en: SiteContent = {
-  name: "Ataberk Soylu",
+  name: "Ataberk",
   title: "Creative Technologist & Multi Designer",
   tagline: "Designing intelligent digital experiences across AI, motion, 3D and the web.",
   nav: { work: "Work", capabilities: "Capabilities", about: "About", lab: "Lab", contact: "Contact", menu: "Menu", close: "Close" },
-  hero: {
-    scrollHint: "Scroll",
-    intro: "A living system of code characters — this entire site is built from the same digital matter.",
-  },
   manifesto: {
     line: "I turn ideas into intelligent visual systems.",
     sub: "Design, motion, AI and code — not separate skills, but organs of one creative system.",
   },
   capabilities: {
     heading: "Capability Systems",
-    lead: "Four systems, one network. Each discipline feeds the others — approach one and see its connections.",
+    lead: "Four disciplines, one production process. Each one feeds the others.",
     systems: [
       { ...capabilitiesShared[0], name: "Design", bridge: "Direction and identity: sets the language the other three systems speak." },
       { ...capabilitiesShared[1], name: "Motion & Storytelling", bridge: "Timing and emotion: turns design into narrative and AI output into cinema." },

@@ -5,8 +5,7 @@ export default function NotFound() {
   return (
     <html lang="tr">
       <body className="flex min-h-svh flex-col items-center justify-center bg-[#0a0a0b] px-6 text-center font-sans text-[#f3efe7]">
-        <p className="font-mono text-xs tracking-[0.4em] text-[#b9b5ac]">01&lt;&gt;{"{}"}/+*</p>
-        <h1 className="mt-6 text-7xl font-semibold tracking-tight">404</h1>
+        <h1 className="text-8xl font-semibold tracking-tighter">404</h1>
         <p className="mt-4 max-w-md text-[#b9b5ac]">
           Bu sayfa sistemde yok — belki henüz üretilmedi.
           <br />
@@ -14,7 +13,7 @@ export default function NotFound() {
         </p>
         <Link
           href="/tr"
-          className="mt-8 border border-[#c8ff3e] px-6 py-3 font-mono text-xs tracking-widest text-[#c8ff3e] uppercase"
+          className="mt-10 text-sm underline underline-offset-4"
         >
           Ana sayfa / Home
         </Link>

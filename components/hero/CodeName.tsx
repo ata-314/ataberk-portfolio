@@ -34,7 +34,18 @@ type Glyph = {
 // (lime, faster mutation) until they settle back. On entrance the glyphs
 // are written by code streams raining from above. The real text stays in the DOM
 // (transparent once drawn) for layout, a11y and no-JS.
-export function CodeName({ words, label, className }: { words: string[]; label?: string; className?: string }) {
+export function CodeName({
+  words,
+  label,
+  className,
+  fill = false,
+}: {
+  words: string[];
+  label?: string;
+  className?: string;
+  // Scale the name to span its container exactly, instead of only shrinking.
+  fill?: boolean;
+}) {
   const root = useRef<HTMLHeadingElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -87,9 +98,12 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
     // scale down only when the typeset line would overflow its block.
     const fit = () => {
       heading.style.fontSize = "";
-      const avail = (identity?.clientWidth ?? innerWidth) * 0.88;
-      const natural = heading.scrollWidth;
-      if (natural > avail) {
+      const container = heading.parentElement ?? identity;
+      const avail = fill
+        ? (container?.clientWidth ?? innerWidth)
+        : (identity?.clientWidth ?? innerWidth) * 0.88;
+      const natural = heading.querySelector<HTMLElement>("[data-code-text]")?.offsetWidth ?? heading.scrollWidth;
+      if (fill || natural > avail) {
         const size = parseFloat(getComputedStyle(heading).fontSize);
         heading.style.fontSize = `${Math.floor(size * (avail / natural) * 100) / 100}px`;
       }
@@ -364,7 +378,7 @@ export function CodeName({ words, label, className }: { words: string[]; label?:
       document.documentElement.removeEventListener("pointerleave", onLeave);
       delete heading.dataset.codeReady;
     };
-  }, []);
+  }, [fill]);
 
   return (
     <h1 ref={root} aria-label={label ?? words.join(" ")} className={`relative ${className ?? ""}`}>

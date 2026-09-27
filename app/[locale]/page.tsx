@@ -15,11 +15,6 @@ import {
   Footer,
 } from "@/components/sections/HomeSections";
 
-const visualLabel = {
-  tr: "Deneysel sistem görselleştirmesi",
-  en: "Experimental system visualization",
-};
-
 export default async function Home({
   params,
 }: {
@@ -39,15 +34,13 @@ export default async function Home({
             name: t.name,
             title: t.title,
             tagline: t.tagline,
-            intro: t.hero.intro,
-            ctaWork: locale === "tr" ? "Seçili İşler" : "View Selected Work",
+            ctaWork: locale === "tr" ? "Seçili işler" : "Selected work",
             ctaAbout: t.nav.about,
-            scrollHint: t.hero.scrollHint,
             locale,
           }}
         />
         <AboutPreview locale={locale} t={t.aboutPreview} about={t.about} />
-        <WorkSection locale={locale} visualLabel={visualLabel[locale]} />
+        <WorkSection locale={locale} />
         <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
         <Capabilities t={t.capabilities} />
         <AISystems t={t.aiSystems} />

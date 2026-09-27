@@ -96,7 +96,10 @@ html[data-stage-static="true"] .hero-static-field {
 /* A tight legibility shadow only — wide soft shadows read as a dark layer
    over the field. */
 .hero-copy {
-  text-shadow: 0 1px 14px rgba(10, 10, 11, 0.75);
+  text-shadow:
+    0 0 1px rgba(10, 10, 11, 0.9),
+    0 1px 3px rgba(10, 10, 11, 0.85),
+    0 2px 22px rgba(10, 10, 11, 0.7);
 }
 
 /* Keep entrance animations at their authored first frame while WebGL performs
@@ -104,7 +107,7 @@ html[data-stage-static="true"] .hero-static-field {
    field settles (data-stage-intro), so shader initialization can never
    present as a frozen entrance. */
 html:not([data-stage-intro="done"]):not([data-stage-static="true"])
-  :is([data-hero-identity] *, [data-hero-rail]) {
+  :is([data-hero-identity] *) {
   animation-play-state: paused !important;
 }
 
@@ -113,73 +116,39 @@ html:not([data-stage-intro="done"]):not([data-stage-static="true"])
    reports the intro done (or the static fallback engages). A <noscript>
    override in the layout restores everything for no-JS visitors. */
 html:not([data-stage-intro="done"]):not([data-stage-static="true"])
-  :is(header, [data-hero-identity], [data-hero-rail]) {
+  :is(header, [data-hero-identity]) {
   opacity: 0 !important;
   pointer-events: none !important;
 }
 
+/* The bar steps out of the way while reading down and returns on the way up. */
 header {
-  transition: opacity 0.8s ease;
+  transition:
+    opacity 0.8s ease,
+    transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+header[data-hidden="true"] {
+  transform: translateY(-110%);
 }
 
-/* Editorial identity: the name set large in the display grotesk, each line
-   rising out of its own mask. Delays come from the --d custom property. */
+/* Editorial identity: the name spans the viewport along the bottom edge.
+   CodeName fits the exact size to the width; this is the pre-JS size. */
 /* next/font defines its family variables on <body>, so they are referenced
    directly here (a :root token built from them would resolve as invalid). */
 .hero-name {
   font-family: var(--font-audiowide), var(--font-space), sans-serif;
-  font-size: clamp(3.2rem, 11.5vw, 11.5rem);
+  font-size: 15.5vw;
   font-weight: 400;
-  line-height: 0.95;
-  letter-spacing: 0.01em;
+  line-height: 0.82;
+  letter-spacing: -0.01em;
   /* The name always stays on one line; its size is set to fit the width. */
   white-space: nowrap;
   color: var(--bone);
 }
 
-@media (max-width: 767px) {
-  .hero-name {
-    font-size: 19vw;
-  }
-}
-
-/* Technical frame: crop marks at the corners of the name block. */
-.hero-frame {
-  position: relative;
-  isolation: isolate;
-}
-
-.hero-frame {
-  padding: clamp(1.25rem, 2.6vw, 2.6rem) clamp(1rem, 3.2vw, 3.4rem);
-}
-
-.hero-frame > i {
-  position: absolute;
-  width: clamp(0.8rem, 1.4vw, 1.3rem);
-  height: clamp(0.8rem, 1.4vw, 1.3rem);
-  border-color: rgba(243, 239, 231, 0.35);
-  border-style: solid;
-  border-width: 0;
-}
-
-.hero-frame > i:nth-of-type(1) { top: 0; left: 0; border-top-width: 1px; border-left-width: 1px; }
-.hero-frame > i:nth-of-type(2) { top: 0; right: 0; border-top-width: 1px; border-right-width: 1px; }
-.hero-frame > i:nth-of-type(3) { bottom: 0; left: 0; border-bottom-width: 1px; border-left-width: 1px; }
-.hero-frame > i:nth-of-type(4) { bottom: 0; right: 0; border-bottom-width: 1px; border-right-width: 1px; }
-
-.hero-meta {
-  position: absolute;
-  font-family: var(--font-jetbrains), ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(185, 181, 172, 0.6);
-  white-space: nowrap;
-}
-
 .hero-tagline {
   font-family: var(--font-space), sans-serif;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: -0.015em;
 }
 
@@ -199,38 +168,20 @@ header {
   pointer-events: none;
 }
 
+/* Text links: a hairline underline that draws in on hover, left to right. */
+.link-draw {
+  position: relative;
+  padding-bottom: 2px;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0% 1px no-repeat;
+  transition: background-size 0.5s cubic-bezier(0.19, 1, 0.22, 1), color 0.3s ease;
+}
+.link-draw:hover,
+.link-draw:focus-visible {
+  background-size: 100% 1px;
+}
+
 .hero-enter {
   animation: heroRise 0.9s cubic-bezier(0.19, 1, 0.22, 1) var(--d, 0s) both;
-}
-
-.hero-rail {
-  animation: heroFade 1s ease 0.7s both;
-}
-
-.hero-scroll-line {
-  position: relative;
-  width: 2.5rem;
-  height: 1px;
-  overflow: hidden;
-  background: rgba(243, 239, 231, 0.18);
-}
-
-.hero-scroll-line::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--lime);
-  animation: heroScrollLine 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
-
-@keyframes heroFade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes heroScrollLine {
-  0% { transform: translateX(-100%); }
-  55%, 100% { transform: translateX(100%); }
 }
 
 /* Motion grammar — shared entrance primitives (GSAP drives the rest) */
@@ -387,66 +338,6 @@ header {
   backdrop-filter: blur(18px) saturate(1.3);
 }
 
-/* A hairline top sheen with a whisper of lime at its center: panels read as
-   lit physical surfaces instead of flat tinted rectangles. */
-.glass-sheen {
-  position: relative;
-}
-.glass-sheen::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.26) 30%,
-    rgba(200, 255, 62, 0.34) 50%,
-    rgba(255, 255, 255, 0.26) 70%,
-    transparent
-  );
-  pointer-events: none;
-}
-
-.work-intro-shell {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: clamp(1.75rem, 3vw, 3rem);
-  background:
-    radial-gradient(circle at 88% 8%, rgba(200, 255, 62, 0.075), transparent 30%),
-    linear-gradient(145deg, rgba(25, 25, 28, 0.86), rgba(12, 12, 14, 0.9));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    0 42px 100px -64px rgba(0, 0, 0, 0.98);
-}
-
-/* Empty, production-ready media planes. They establish crop and rhythm now;
-   a future image or video can fill the figure without moving surrounding copy. */
-.media-stage {
-  position: relative;
-  display: block;
-  overflow: hidden;
-  isolation: isolate;
-  background:
-    radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.045), transparent 42%),
-    linear-gradient(145deg, #1a1a1d, #111113 64%, #161618);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: clamp(1.25rem, 2.2vw, 2.35rem);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 32px 90px -56px rgba(0, 0, 0, 0.95);
-  transition:
-    border-color 0.6s ease,
-    background-color 0.6s ease,
-    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.group:hover .media-stage {
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: scale(0.996);
-}
 .glass-hover {
   transition:
     transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
@@ -455,13 +346,7 @@ header {
 }
 .glass-hover:hover {
   transform: translateY(-4px);
-  border-color: rgba(200, 255, 62, 0.3);
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.13),
-    rgba(200, 255, 62, 0.045) 58%,
-    rgba(255, 255, 255, 0.055)
-  );
+  border-color: rgba(255, 255, 255, 0.24);
 }
 
 /* Custom cursor: hide the native one only on fine pointers when active */
@@ -483,5 +368,15 @@ header {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Work index: hovering one project quiets the rest of the list. */
+.work-row {
+  transition: opacity 0.5s ease;
+}
+@media (hover: hover) {
+  .work-index:has(.work-row:hover) .work-row:not(:hover) {
+    opacity: 0.32;
   }
 }
