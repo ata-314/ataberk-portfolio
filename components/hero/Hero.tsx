@@ -10,6 +10,9 @@ import { CodeName } from "./CodeName";
 import { ScrollHint } from "./ScrollHint";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
+// Phones fire resize when the URL bar collapses; don't recompute every
+// trigger mid-scroll for it.
+ScrollTrigger.config({ ignoreMobileResize: true });
 
 export type HeroStrings = {
   name: string;

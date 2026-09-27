@@ -252,6 +252,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.useProgram(program);
 
     const mobile = window.matchMedia("(pointer: coarse)").matches || innerWidth < 768;
+    // Stage size comes from the canvas (sized to the large viewport), not
+    // innerHeight: on phones the URL bar resizes the window on every scroll
+    // direction change, which used to rescale the field mid-scroll.
+    let stageW = innerWidth;
+    let stageH = innerHeight;
     const sculpture = createSculptureLayer(gl, mobile);
     gl.bindVertexArray(vao);
     gl.useProgram(program);
@@ -270,7 +275,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const seeds = new Float32Array(count);
     const glyphs = new Float32Array(count);
     const birds = new Float32Array(count);
-    const columns = Math.round(Math.sqrt(count * Math.max(innerWidth / Math.max(innerHeight, 1), 0.3)));
+    const columns = Math.round(Math.sqrt(count * Math.max(stageW / Math.max(stageH, 1), 0.3)));
     const rows = Math.ceil(count / columns);
     const permutation = Array.from({ length: count }, (_, index) => index);
     for (let i = count - 1; i > 0; i--) {
@@ -460,8 +465,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let wakeArmed = false;
     const burst = new Float32Array([0, 0, -1]);
     const pushWake = (clientX: number, clientY: number) => {
-      wakeTarget[0] = (clientX / innerWidth) * 2 - 1;
-      wakeTarget[1] = -((clientY / innerHeight) * 2 - 1);
+      wakeTarget[0] = (clientX / stageW) * 2 - 1;
+      wakeTarget[1] = -((clientY / stageH) * 2 - 1);
       if (!wakeArmed) {
         wakeArmed = true;
         wakeFollow[0] = wakeTarget[0];
@@ -496,21 +501,21 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       wake[slot * 4] = nx;
       wake[slot * 4 + 1] = ny;
       // Heading in the shader's aspect-corrected space.
-      wake[slot * 4 + 3] = Math.atan2(dy, dx * (innerWidth / Math.max(innerHeight, 1)));
+      wake[slot * 4 + 3] = Math.atan2(dy, dx * (stageW / Math.max(stageH, 1)));
     };
     const scanPointer = [0, 0];
     const scanSmooth = [0, 0];
     let scanVelocity = 0;
     const onPointerMove = (event: PointerEvent) => {
       pushWake(event.clientX, event.clientY);
-      const aspect = innerWidth / Math.max(innerHeight, 1);
-      pointer[0] = (event.clientX / innerWidth * 2 - 1) * (aspect < 1 ? 1.7 : 3.2);
-      pointer[1] = -(event.clientY / innerHeight * 2 - 1) * 2;
+      const aspect = stageW / Math.max(stageH, 1);
+      pointer[0] = (event.clientX / stageW * 2 - 1) * (aspect < 1 ? 1.7 : 3.2);
+      pointer[1] = -(event.clientY / stageH * 2 - 1) * 2;
       pointerActive = mobile ? 0 : 1;
       if (!mobile) {
         const halfY = 8.2 * Math.tan(Math.PI / 8);
-        const sx = (event.clientX / innerWidth * 2 - 1) * halfY * aspect;
-        const sy = -(event.clientY / innerHeight * 2 - 1) * halfY;
+        const sx = (event.clientX / stageW * 2 - 1) * halfY * aspect;
+        const sy = -(event.clientY / stageH * 2 - 1) * halfY;
         scanVelocity = Math.min(
           1.4,
           scanVelocity + Math.hypot(sx - scanPointer[0], sy - scanPointer[1]) * 0.55,
@@ -520,15 +525,15 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       }
       const margin = 28;
       if (event.clientX <= margin) fireEdgeWave(0, 1.4);
-      else if (event.clientX >= innerWidth - margin) fireEdgeWave(1, 1.4);
-      if (event.clientY >= innerHeight - margin) fireEdgeWave(2, 1.4);
+      else if (event.clientX >= stageW - margin) fireEdgeWave(1, 1.4);
+      if (event.clientY >= stageH - margin) fireEdgeWave(2, 1.4);
       else if (event.clientY <= margin) fireEdgeWave(3, 1.4);
     };
     const onPointerLeave = () => (pointerActive = 0);
     const onPointerDown = (event: PointerEvent) => {
       onPointerMove(event);
       waveAge = 0;
-      burst.set([(event.clientX / innerWidth) * 2 - 1, -((event.clientY / innerHeight) * 2 - 1), 0]);
+      burst.set([(event.clientX / stageW) * 2 - 1, -((event.clientY / stageH) * 2 - 1), 0]);
     };
     addEventListener("pointermove", onPointerMove, { passive: true });
     addEventListener("pointerdown", onPointerDown, { passive: true });
@@ -547,14 +552,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       pixelRatio = mobile
         ? Math.min(devicePixelRatio, 1.5)
         : Math.min(Math.max(devicePixelRatio, 1.5), 2);
-      const width = Math.round(innerWidth * pixelRatio);
-      const height = Math.round(innerHeight * pixelRatio);
+      stageW = canvas.clientWidth || innerWidth;
+      stageH = canvas.clientHeight || innerHeight;
+      const width = Math.round(stageW * pixelRatio);
+      const height = Math.round(stageH * pixelRatio);
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
         canvas.height = height;
         gl.viewport(0, 0, width, height);
       }
-      perspective(projection, Math.PI / 4, innerWidth / Math.max(innerHeight, 1), 0.1, 100);
+      perspective(projection, Math.PI / 4, stageW / Math.max(stageH, 1), 0.1, 100);
     };
     resize();
     addEventListener("resize", resize);
@@ -692,11 +699,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform3f(u("uGradB"), gradient[3], gradient[4], gradient[5]);
       gl.uniform3f(u("uGradC"), gradient[6], gradient[7], gradient[8]);
       gl.uniform3f(u("uGradD"), gradient[9], gradient[10], gradient[11]);
-      gl.uniform1f(u("uSize"), 40 * pixelRatio * (innerHeight / 900) * (mobile ? 0.85 : 1));
+      gl.uniform1f(u("uSize"), 40 * pixelRatio * (stageH / 900) * (mobile ? 0.85 : 1));
       gl.uniform1f(u("uMinPoint"), 4.5);
       // Visible half-extent at the resting camera distance, plus 12% bleed.
       const sheetHalfY = 8.2 * Math.tan(Math.PI / 8) * 1.12;
-      gl.uniform2f(u("uSheet"), sheetHalfY * (innerWidth / Math.max(innerHeight, 1)), sheetHalfY);
+      gl.uniform2f(u("uSheet"), sheetHalfY * (stageW / Math.max(stageH, 1)), sheetHalfY);
       gl.uniform3f(u("uBirdDir"), direction[0], direction[1], direction[2]);
       gl.uniform1f(u("uVideoOn"), videoMix);
       gl.uniform1f(u("uFlap"), flap);
@@ -708,7 +715,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
       sculpture.render(canvas.width, canvas.height, time, sculptureAlpha,
-        scanSmooth[0] / (8.2 * Math.tan(Math.PI / 8) * (innerWidth / innerHeight)),
+        scanSmooth[0] / (8.2 * Math.tan(Math.PI / 8) * (stageW / stageH)),
         scanSmooth[1] / (8.2 * Math.tan(Math.PI / 8)),
         Math.min(1.4, scanVelocity + pointerActive * .3), {
           hero, ready: readyMix, flap, finale,

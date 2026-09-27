@@ -350,8 +350,13 @@ export function CodeName({
     };
     void document.fonts.ready.then(start);
 
+    // Rebuild only when the width changes: height-only resizes are a phone's
+    // URL bar showing or hiding during scroll, and a rebuild there made the
+    // name jump mid-dispersal.
+    let lastWidth = innerWidth;
     const onResize = () => {
-      if (!glyphs.length) return;
+      if (!glyphs.length || innerWidth === lastWidth) return;
+      lastWidth = innerWidth;
       build();
       if (reduced) draw(5000);
     };
