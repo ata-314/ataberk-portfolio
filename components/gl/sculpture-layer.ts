@@ -73,6 +73,8 @@ uniform vec4 trail[8];
 uniform vec3 burst;
 // 1 on the additive glow pass that haloes the formed bird.
 uniform float glowPass;
+// Opening emergence clock, 0 → 1 over the intro.
+uniform float intro;
 out vec3 tint;
 out float alpha;
 ${field}
@@ -169,6 +171,28 @@ void renderGrain(float id) {
   }
   p.z+=wave*.055*(1.0-assembly);
   tint+=citron*abs(wave)*.06*(1.0-assembly);
+  // Opening emergence: the data surfaces from inside the page. A front opens
+  // just below centre and spreads outward with a noise-warped, ink-like
+  // edge. Behind it each grain rises from deep beneath its own place in the
+  // relief — perspective draws it in toward the source — and sways on a
+  // decaying current until it settles. Sparse grains glint on the crossing.
+  float introAlpha=1.0,introSize=1.0;
+  if(intro<1.0) {
+    vec2 rel=(material-vec2(0.0,-.18))*vec2(aspect,1.0);
+    float reach=length(vec2(aspect,1.18));
+    float edgeWarp=noise(vec3(material*vec2(aspect,1.0)*2.6,3.7))-.5;
+    float delay=clamp(length(rel)/reach*.5+edgeWarp*.2+seed*.07,0.0,.55);
+    float t=clamp((intro-delay)/.45,0.0,1.0);
+    float rise=t*t*t*(t*(t*6.0-15.0)+10.0);
+    float remain=1.0-rise;
+    p.z-=remain*(2.4+seed*2.2);
+    p.y-=remain*(.3+seed*.25);
+    p.xy+=vec2(sin(seed*23.0+t*5.5),cos(seed*17.0+t*4.6))*.16*remain;
+    float crossing=smoothstep(0.0,.2,t)*(1.0-smoothstep(.3,.65,t));
+    tint+=citron*crossing*(.12+step(.82,seed)*.9);
+    introAlpha=smoothstep(0.0,.35,t);
+    introSize=mix(.35,1.0,smoothstep(0.0,.75,t));
+  }
   vec3 view=p-ro;
   vec4 sourceClip=vec4(view.x/(aspect*2.5/7.0),view.y/(2.5/7.0),0.0,-view.z);
   vec2 source=sourceClip.xy/sourceClip.w;
@@ -245,7 +269,7 @@ void renderGrain(float id) {
   lift=min(lift,1.6)*fluidPart;
   gl_Position=vec4(position,0.0,1.0);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
-  gl_PointSize=max(1.0,mix(fluidSize,(1.8+seed*.65)*pixelScale,assembly));
+  gl_PointSize=max(1.0,mix(fluidSize*introSize,(1.8+seed*.65)*pixelScale,assembly));
   // Kept below 1 so the body keeps its hue and lighting; the veins and the
   // halo pass carry the brightness.
   vec3 birdBody=min(mix(lime*.7+citron*.3,vec3(.8,.96,1.0),.18)*birdLight*1.05,vec3(.95));
@@ -261,12 +285,13 @@ void renderGrain(float id) {
   float core=exp(-pow(scanDistance/.032,2.0));
   float shoulder=exp(-pow(scanDistance/.11,2.0));
   float trail=exp(-max(scanDistance,0.0)*5.5)*smoothstep(-.015,.035,scanDistance);
-  float scan=(core+shoulder*.6+trail*.38)*(1.0-assembly);
+  // The sweep waits until the sea has fully surfaced.
+  float scan=(core+shoulder*.6+trail*.38)*(1.0-assembly)*smoothstep(.85,1.0,intro);
   vec3 scanColor=mix(vec3(.18,1.0,.65),vec3(.62,.94,1.0),shoulder);
   tint+=scanColor*scan*1.55;
-  tint=mix(tint,vec3(.86,1.0,1.0)*2.0,core*.8*(1.0-assembly));
+  tint=mix(tint,vec3(.86,1.0,1.0)*2.0,core*.8*(1.0-assembly)*smoothstep(.85,1.0,intro));
   gl_PointSize*=1.0+shoulder*.6*(1.0-assembly);
-  alpha=mix(.8+light*.18,.95,assembly)*opacity;
+  alpha=mix(.8+light*.18,.95,assembly)*opacity*introAlpha;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
   tint+=mix(citron,vec3(.75,1.0,.95),.35)*lift*.9;
   if(glowPass>.5) {
@@ -344,6 +369,7 @@ export type SculptureFlight = {
   matrix: Float32Array; view: Float32Array; projection: Float32Array;
   positions: WebGLTexture | null; normals: WebGLTexture | null;
   trail: Float32Array; burst: Float32Array;
+  intro: number;
 };
 
 export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean) {
@@ -378,7 +404,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -486,6 +512,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       gl.uniform4fv(uniforms.trail,flight.trail);
       gl.uniform3fv(uniforms.burst,flight.burst);
       gl.uniform1f(uniforms.glowPass,0);
+      gl.uniform1f(uniforms.intro,flight.intro);
       // Constant draw count and frozen source mask throughout assembly.
       gl.drawArrays(gl.POINTS,0,columns*rows);
       gl.blendFunc(gl.SRC_ALPHA,gl.ONE);

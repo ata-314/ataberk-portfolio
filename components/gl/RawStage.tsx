@@ -7,7 +7,7 @@ import { scrollState } from "../three/scroll-state";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
 const BIRD_SAMPLES = 9000;
-const INTRO_SECONDS = 1.9;
+const INTRO_SECONDS = 3.2;
 const BIRD_FRAMES = 16;
 const TEX_W = 2048;
 const ROWS_PER_FRAME = 5;
@@ -555,7 +555,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // own staggered expo-out curve in the shader.
       intro = Math.min(1, intro + delta / INTRO_SECONDS);
       const introEase = 1 - Math.pow(1 - intro, 3);
-      if (!introMarked && intro >= 0.45) {
+      if (!introMarked && intro >= 0.5) {
         introMarked = true;
         clearTimeout(introSafety);
         // Hero entrance animations wait on this flag; the copy starts rising
@@ -655,7 +655,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      const sculptureAlpha = smoothstep(intro, 0, 0.65);
+      // The sea surfaces grain by grain in the sculpture shader; only a very
+      // short global fade guards the first frame.
+      const sculptureAlpha = smoothstep(intro, 0, 0.04);
       sculpture.render(canvas.width, canvas.height, time, sculptureAlpha,
         scanSmooth[0] / (8.2 * Math.tan(Math.PI / 8) * (innerWidth / innerHeight)),
         scanSmooth[1] / (8.2 * Math.tan(Math.PI / 8)),
@@ -663,7 +665,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           hero, ready: readyMix, flap, finale,
           matrix: birdMatrix, view, projection,
           positions: positionTexture, normals: normalTexture,
-          trail: wake, burst,
+          trail: wake, burst, intro,
         });
       if (firstFrame) {
         firstFrame = false;
