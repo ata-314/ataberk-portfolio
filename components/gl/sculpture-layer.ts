@@ -283,9 +283,11 @@ void renderGrain(float id) {
     lift+=ring*1.4;
   }
   lift=min(lift,1.6)*fluidPart;
-  // Bird → bust: each bird grain flies on a slight arc to one scan point,
-  // projected exactly as the hologram canvas projects it, and takes on the
-  // bust's lighting. Grains leave in a seeded order so the bird unravels.
+  // Bird → bust, in two readable beats. First the intact, flapping bird
+  // flies to the bust's head. Then its grains leave the bird on slight arcs
+  // for their scan points — projected exactly as the hologram canvas
+  // projects them — printing the bust from the top of the head down, and
+  // take on the bust's lighting.
   float bustMix=0.0;
   float bustAlpha=1.0;
   vec3 bustTint=vec3(0);
@@ -307,9 +309,16 @@ void renderGrain(float id) {
     float focal=1.0/tan(35.0*3.14159265/360.0);
     vec2 bndc=vec2(focal/bustAspect*bv.x,focal*bv.y)/(-bv.z);
     vec2 target=mix(bustRect.xy,bustRect.zw,bndc*.5+.5);
-    float m=smoothstep(seed*.35,seed*.35+.65,morph)*assembly;
+    vec2 bustHead=mix(bustRect.xy,bustRect.zw,vec2(.5,.66));
+    // Never fly the bird off-screen while the head is still below the fold.
+    bustHead.y=max(bustHead.y,-.55);
+    float flight=smoothstep(0.0,.38,morph)*assembly;
+    position+=(bustHead-center)*flight;
+    float topDown=clamp((1.7-bp.y)/3.4,0.0,1.0);
+    float order=mix(seed,topDown,.65);
+    float m=smoothstep(.34+order*.3,.34+order*.3+.24,morph)*assembly;
     vec2 travel=(target-position)*asp;
-    vec2 arc=vec2(-travel.y,travel.x)/asp*sin(m*3.14159265)*.22*(seed-.5);
+    vec2 arc=vec2(-travel.y,travel.x)/asp*sin(m*3.14159265)*.28*(seed-.5);
     position=mix(position,target,m)+arc;
     bustMix=m;
     vec3 key=normalize(vec3(-.4,.55,.8));
@@ -356,7 +365,7 @@ void renderGrain(float id) {
   if(bustMix>0.0) {
     tint=mix(tint,bustTint,bustMix);
     // Hand-off: once the grains have landed the hologram canvas takes over.
-    alpha*=bustAlpha*(1.0-smoothstep(.8,.97,morph));
+    alpha*=bustAlpha*(1.0-smoothstep(.88,.99,morph));
     gl_PointSize=mix(gl_PointSize,(1.5+seed*.8)*pixelScale,bustMix);
   }
   if(glowPass>.5) {

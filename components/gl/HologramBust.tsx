@@ -344,7 +344,7 @@ export function HologramBust() {
         if (bustState.driven) {
           // The bird's particles form the bust; this canvas takes over only
           // once they have landed, fully materialized (no scatter offset).
-          const t = Math.min(1, Math.max(0, (bustState.morph - 0.8) / 0.17));
+          const t = Math.min(1, Math.max(0, (bustState.morph - 0.88) / 0.11));
           drawFrame(time, 1, spin, t * t * (3 - 2 * t));
         } else {
           drawFrame(time, appear, spin);

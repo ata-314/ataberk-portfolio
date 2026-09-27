@@ -660,7 +660,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         if (bustElement) {
           const r = bustElement.getBoundingClientRect();
           const centre = (r.top + r.height / 2) / Math.max(innerHeight, 1);
-          morphTarget = smoothstep(centre, 1.15, 0.62) * smoothstep(centre, -0.2, 0.28);
+          morphTarget = smoothstep(centre, 1.12, 0.5) * smoothstep(centre, -0.2, 0.28);
           bust.rect[0] = (r.left / stageW) * 2 - 1;
           bust.rect[1] = 1 - (r.bottom / stageH) * 2;
           bust.rect[2] = (r.right / stageW) * 2 - 1;
