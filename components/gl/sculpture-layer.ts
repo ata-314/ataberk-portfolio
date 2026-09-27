@@ -75,6 +75,18 @@ uniform vec3 burst;
 uniform float glowPass;
 // Opening emergence clock, 0 → 1 over the intro.
 uniform float intro;
+// Bird → bust morph: baked scan points (positions rows, then normals rows
+// with cavity in w), the bust canvas rect in this canvas's NDC (x0,y0,x1,y1),
+// its aspect and live pose, and the morph amount.
+uniform sampler2D bustData;
+uniform float bustRows;
+uniform float bustCount;
+uniform vec4 bustRect;
+uniform float bustAspect;
+uniform float bustYaw;
+uniform float bustPitch;
+uniform float bustLift;
+uniform float morph;
 out vec3 tint;
 out float alpha;
 ${field}
@@ -271,6 +283,44 @@ void renderGrain(float id) {
     lift+=ring*1.4;
   }
   lift=min(lift,1.6)*fluidPart;
+  // Bird → bust: each bird grain flies on a slight arc to one scan point,
+  // projected exactly as the hologram canvas projects it, and takes on the
+  // bust's lighting. Grains leave in a seeded order so the bird unravels.
+  float bustMix=0.0;
+  float bustAlpha=1.0;
+  vec3 bustTint=vec3(0);
+  if(morph>.001 && assembly>0.0) {
+    float bi=mod(id,bustCount);
+    ivec2 bt=ivec2(int(mod(bi,2048.0)),int(floor(bi/2048.0)));
+    vec4 bp=texelFetch(bustData,bt,0);
+    vec4 bn=texelFetch(bustData,bt+ivec2(0,int(bustRows)),0);
+    vec3 q=bp.xyz;
+    vec3 qn=bn.xyz;
+    float cy=cos(bustYaw),sy=sin(bustYaw);
+    mat2 spin=mat2(cy,-sy,sy,cy);
+    q.xz=spin*q.xz; qn.xz=spin*qn.xz;
+    float cp=cos(bustPitch),sp=sin(bustPitch);
+    mat2 tilt=mat2(cp,-sp,sp,cp);
+    q.yz=tilt*q.yz; qn.yz=tilt*qn.yz;
+    q.y+=bustLift;
+    vec3 bv=vec3(q.x,q.y-.28,q.z-5.3);
+    float focal=1.0/tan(35.0*3.14159265/360.0);
+    vec2 bndc=vec2(focal/bustAspect*bv.x,focal*bv.y)/(-bv.z);
+    vec2 target=mix(bustRect.xy,bustRect.zw,bndc*.5+.5);
+    float m=smoothstep(seed*.35,seed*.35+.65,morph)*assembly;
+    vec2 travel=(target-position)*asp;
+    vec2 arc=vec2(-travel.y,travel.x)/asp*sin(m*3.14159265)*.22*(seed-.5);
+    position=mix(position,target,m)+arc;
+    bustMix=m;
+    vec3 key=normalize(vec3(-.4,.55,.8));
+    vec3 fillLight=normalize(vec3(.6,-.1,.8));
+    float lit=.14+.9*max(dot(qn,key),0.0)+.22*max(dot(qn,fillLight),0.0);
+    float shade=clamp(lit*(1.0-clamp(bn.w,0.0,1.0)*.88)+clamp(-bn.w,0.0,1.0)*.18,0.0,1.0);
+    bustTint=mix(vec3(.06,.26,.36),vec3(.82,.97,1.0),shade);
+    // Only the visible shell, cut below the chest like the hologram.
+    float shell=smoothstep(-.2,.3,qn.z)*smoothstep(-1.25,-.45,bp.y);
+    bustAlpha=mix(1.0,shell*(.3+shade*.8),m);
+  }
   gl_Position=vec4(position,0.0,1.0);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
   gl_PointSize=max(1.0,mix(fluidSize*introSize,(1.8+seed*.65)*pixelScale,assembly));
@@ -303,13 +353,19 @@ void renderGrain(float id) {
   vec3 wakeHue=mix(vec3(.38,.95,1.0),vec3(.86,1.0,.34),.5+.5*sin(time*.6+position.x*2.4+seed*1.5));
   tint=mix(tint,wakeHue*(.75+.35*light),wash*.8);
   tint+=wakeHue*min(lift,1.2)*.25;
+  if(bustMix>0.0) {
+    tint=mix(tint,bustTint,bustMix);
+    // Hand-off: once the grains have landed the hologram canvas takes over.
+    alpha*=bustAlpha*(1.0-smoothstep(.8,.97,morph));
+    gl_PointSize=mix(gl_PointSize,(1.5+seed*.8)*pixelScale,bustMix);
+  }
   if(glowPass>.5) {
     // Halo pass: only bird grains, drawn large and soft with additive blend.
     if(assembly<.05) {alpha=0.0;gl_Position=vec4(2.0,2.0,2.0,1.0);return;}
     // Halo mostly around live veins and sparks; the body keeps only a faint
     // lime aura (no red/blue, which washed the green body out to grey).
     tint=mix(vec3(.3,.85,.05),electricColor*1.4,clamp(electric,0.0,1.0));
-    alpha=(.006+electric*.18)*assembly*opacity;
+    alpha=(.006+electric*.18)*assembly*opacity*(1.0-morph);
     gl_PointSize*=3.2;
   }
 }
@@ -379,6 +435,10 @@ export type SculptureFlight = {
   positions: WebGLTexture | null; normals: WebGLTexture | null;
   trail: Float32Array; burst: Float32Array;
   intro: number;
+  bust: {
+    texture: WebGLTexture | null; ready: boolean; rows: number; count: number;
+    rect: Float32Array; aspect: number; yaw: number; pitch: number; lift: number; morph: number;
+  };
 };
 
 export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean) {
@@ -413,7 +473,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -522,12 +582,23 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       gl.uniform3fv(uniforms.burst,flight.burst);
       gl.uniform1f(uniforms.glowPass,0);
       gl.uniform1f(uniforms.intro,flight.intro);
+      const bust=flight.bust;
+      const morph=bust.ready?bust.morph:0;
+      gl.uniform1f(uniforms.morph,morph);
+      if(morph>0) {
+        gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,bust.texture);
+        gl.uniform1i(uniforms.bustData,5);
+        gl.uniform1f(uniforms.bustRows,bust.rows);gl.uniform1f(uniforms.bustCount,bust.count);
+        gl.uniform4fv(uniforms.bustRect,bust.rect);gl.uniform1f(uniforms.bustAspect,bust.aspect);
+        gl.uniform1f(uniforms.bustYaw,bust.yaw);gl.uniform1f(uniforms.bustPitch,bust.pitch);
+        gl.uniform1f(uniforms.bustLift,bust.lift);
+      }
       // Constant draw count and frozen source mask throughout assembly.
       gl.drawArrays(gl.POINTS,0,columns*rows);
       gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
       // Additive halo over the forming bird. A subset of IDs still covers
       // every anatomy sample (index = id*37 mod 9000).
-      if(flight.hero>.06 && flight.ready>.5 && flight.finale<.98) {
+      if(flight.hero>.06 && flight.ready>.5 && flight.finale<.98 && morph<.98) {
         gl.uniform1f(uniforms.glowPass,1);
         // Add light only: leave destination alpha untouched, or the halo's
         // accumulated alpha greys the transparent, premultiplied canvas.

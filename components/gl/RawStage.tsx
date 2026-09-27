@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
-import { scrollState } from "../three/scroll-state";
+import { bustState, scrollState } from "../three/scroll-state";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
 const BIRD_SAMPLES = 9000;
@@ -411,6 +411,38 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       console.error("bird texture failed:", error);
     }
 
+    // Bust scan for the bird → bust morph. Fetched after the intro so it never
+    // competes with startup; the morph simply stays off until it lands.
+    const BUST_W = 2048;
+    const BUST_ROWS = 59;
+    const BUST_COUNT = 120000;
+    const bustTexture = gl.createTexture();
+    const bust = {
+      texture: bustTexture, ready: false, rows: BUST_ROWS, count: BUST_COUNT,
+      rect: new Float32Array(4), aspect: 1, yaw: 0, pitch: 0, lift: 0, morph: 0,
+    };
+    let bustElement: HTMLElement | null = null;
+    const bustLoad = setTimeout(() => {
+      void (async () => {
+        try {
+          const response = await fetch("/models/ataberk-bake.bin");
+          if (!response.ok) throw new Error(`bust bake: ${response.status}`);
+          const buffer = await response.arrayBuffer();
+          if (disposed) return;
+          if (buffer.byteLength !== BUST_W * BUST_ROWS * 2 * 4 * 2) throw new Error("bust bake: unexpected size");
+          gl.activeTexture(gl.TEXTURE5);
+          gl.bindTexture(gl.TEXTURE_2D, bustTexture);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, BUST_W, BUST_ROWS * 2, 0, gl.RGBA, gl.HALF_FLOAT, new Uint16Array(buffer));
+          bust.ready = true;
+          bustState.driven = true;
+        } catch (error) {
+          console.error("bust morph unavailable:", error);
+        }
+      })();
+    }, 3500);
+
     // The data sea is procedural (see lean-field-shaders), so it is ready as
     // soon as the program is.
     const videoReady = 1;
@@ -619,6 +651,28 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         document.documentElement.dataset.stageSettled = "true";
       }
       hero = damp(hero, scrollState.hero.current, 24, delta);
+      // Morph follows the hologram's place in the viewport: the bird unravels
+      // into the bust as it rises into view, holds while it is centred and
+      // re-forms as the section leaves.
+      if (bust.ready) {
+        bustElement ??= document.querySelector<HTMLElement>("[data-bust-canvas]");
+        let morphTarget = 0;
+        if (bustElement) {
+          const r = bustElement.getBoundingClientRect();
+          const centre = (r.top + r.height / 2) / Math.max(innerHeight, 1);
+          morphTarget = smoothstep(centre, 1.15, 0.62) * smoothstep(centre, -0.2, 0.28);
+          bust.rect[0] = (r.left / stageW) * 2 - 1;
+          bust.rect[1] = 1 - (r.bottom / stageH) * 2;
+          bust.rect[2] = (r.right / stageW) * 2 - 1;
+          bust.rect[3] = 1 - (r.top / stageH) * 2;
+          bust.aspect = r.width / Math.max(r.height, 1);
+        }
+        bust.morph = damp(bust.morph, morphTarget, 6, delta);
+        bust.yaw = bustState.yaw;
+        bust.pitch = bustState.pitch;
+        bust.lift = bustState.lift;
+        bustState.morph = bust.morph;
+      }
       readyMix = damp(readyMix, birdReady, 5, delta);
       dissolve = damp(dissolve, smoothstep(scrollState.page.current, 0.9, 0.97), 5, delta);
       finale = damp(finale, smoothstep(scrollState.page.current, 0.86, 0.97), 5, delta);
@@ -721,7 +775,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           hero, ready: readyMix, flap, finale,
           matrix: birdMatrix, view, projection,
           positions: positionTexture, normals: normalTexture,
-          trail: wake, burst, intro,
+          trail: wake, burst, intro, bust,
         });
       if (firstFrame) {
         firstFrame = false;
@@ -743,6 +797,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
       gl.deleteTexture(normalTexture);
+      gl.deleteTexture(bustTexture);
+      clearTimeout(bustLoad);
+      bustState.driven = false;
+      bustState.morph = 0;
       gl.deleteTexture(atlasTexture);
       gl.deleteVertexArray(vao);
       gl.deleteProgram(program);

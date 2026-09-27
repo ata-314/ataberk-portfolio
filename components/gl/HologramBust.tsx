@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { bustState } from "../three/scroll-state";
 
 // Holographic bust of the Ataberk Soylu scan for the About section. A small,
 // self-contained WebGL2 point cloud (120k face-weighted samples with a baked
@@ -291,7 +292,7 @@ export function HologramBust() {
       gl.clearColor(0, 0, 0, 0);
 
       const drawCount = mobile ? 60000 : SAMPLES;
-      const drawFrame = (time: number, appear: number, spin: number) => {
+      const drawFrame = (time: number, appear: number, spin: number, fade = 1) => {
         gl.useProgram(program);
         gl.bindVertexArray(vao);
         gl.uniformMatrix4fv(u("uProj"), false, projection);
@@ -306,7 +307,7 @@ export function HologramBust() {
         // would otherwise leave the bust too faint on phones
         const compact = Math.max(canvas.clientHeight / 640, 0.95);
         gl.uniform1f(u("uSize"), (mobile ? 13 : 11) * pixelRatio * compact);
-        gl.uniform1f(u("uGain"), mobile ? 1.35 : 1);
+        gl.uniform1f(u("uGain"), (mobile ? 1.35 : 1) * fade);
         gl.clear(gl.COLOR_BUFFER_BIT);
         // samples are area-weighted random, so a prefix is a uniform subset
         gl.drawArrays(gl.POINTS, 0, drawCount);
@@ -334,7 +335,20 @@ export function HologramBust() {
         touchVel *= Math.exp(-2.6 * delta);
         // near-frontal with a gentle scroll-coupled sway: the face is the
         // subject, so it never turns far from the camera
-        drawFrame(time, appear, FACE_YAW - 0.22 + progress * 0.44 + Math.sin(time * 0.24) * 0.05);
+        const spin = FACE_YAW - 0.22 + progress * 0.44 + Math.sin(time * 0.24) * 0.05;
+        // Publish the live pose (mirrors the vertex shader) so the stage's
+        // bird particles land on exactly these points.
+        bustState.yaw = spin + pointerSmooth[0] * 0.45;
+        bustState.pitch = -pointerSmooth[1] * 0.14;
+        bustState.lift = Math.sin(time * 0.7) * 0.03;
+        if (bustState.driven) {
+          // The bird's particles form the bust; this canvas takes over only
+          // once they have landed, fully materialized (no scatter offset).
+          const t = Math.min(1, Math.max(0, (bustState.morph - 0.8) / 0.17));
+          drawFrame(time, 1, spin, t * t * (3 - 2 * t));
+        } else {
+          drawFrame(time, appear, spin);
+        }
       };
 
       if (reduced) {
@@ -362,5 +376,5 @@ export function HologramBust() {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="h-full w-full" />;
+  return <canvas ref={canvasRef} data-bust-canvas className="h-full w-full" />;
 }
