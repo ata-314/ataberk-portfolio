@@ -380,3 +380,62 @@ header[data-hidden="true"] {
     opacity: 0.32;
   }
 }
+
+/* Scroll cue. The mouse shows on fine pointers, the chevron on touch. */
+.scroll-hint-mouse {
+  position: relative;
+  display: none;
+  width: 24px;
+  height: 38px;
+  border: 1.5px solid rgba(243, 239, 231, 0.8);
+  border-radius: 12px;
+}
+.scroll-hint-mouse > span {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 2px;
+  height: 7px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--bone);
+  animation: hintWheel 1.9s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+/* Glyph-tight shadow keeps the cue legible over bright matter. */
+.scroll-hint-mouse,
+.scroll-hint-chevron {
+  filter: drop-shadow(0 1px 3px rgba(10, 10, 11, 0.85));
+}
+.scroll-hint-chevron {
+  width: 16px;
+  height: 10px;
+  color: var(--bone);
+  animation: hintBob 1.9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@media (hover: hover) and (pointer: fine) {
+  .scroll-hint-mouse { display: block; }
+  .scroll-hint-chevron { display: none; }
+}
+@keyframes hintWheel {
+  0% { transform: translateY(0); opacity: 0; }
+  20% { opacity: 1; }
+  70% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(10px); opacity: 0; }
+}
+@keyframes hintBob {
+  0%, 100% { transform: translateY(0); opacity: 0.45; }
+  50% { transform: translateY(5px); opacity: 1; }
+}
+
+/* The intro cue waits for the name to surface before it fades in. */
+.scroll-hint-intro {
+  opacity: 0;
+}
+html[data-stage-settled="true"] .scroll-hint-intro,
+html[data-stage-static="true"] .scroll-hint-intro {
+  animation: heroFade 1s ease 1.6s both;
+}
+@keyframes heroFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

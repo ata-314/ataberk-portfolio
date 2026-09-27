@@ -7,6 +7,7 @@ import { useGSAP } from "@gsap/react";
 import { scrollState } from "../three/scroll-state";
 import { StaticField } from "../gl/StaticField";
 import { CodeName } from "./CodeName";
+import { ScrollHint } from "./ScrollHint";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -26,6 +27,7 @@ export type HeroStrings = {
 export function Hero({ t }: { t: HeroStrings }) {
   const wrapper = useRef<HTMLDivElement>(null);
   const [roleA, roleB] = t.title.split(" & ");
+  const hint = t.locale === "tr" ? "Kaydır" : "Scroll";
 
   useGSAP(
     () => {
@@ -54,6 +56,16 @@ export function Hero({ t }: { t: HeroStrings }) {
         // The name is not tweened: CodeName breaks it into code glyphs as
         // the bird forms, reading the same scroll progress.
         .to("[data-hero-top]", { autoAlpha: 0, y: -40, duration: 0.14 }, 0.08)
+        // Scroll cues: the intro cue leaves on the first scroll; a second
+        // one holds while only the bird is on screen.
+        .to("[data-hint-intro]", { autoAlpha: 0, y: 12, duration: 0.04 }, 0.02)
+        .fromTo(
+          "[data-hint-bird]",
+          { autoAlpha: 0, y: 14 },
+          { autoAlpha: 1, y: 0, duration: 0.08, ease: "power2.out" },
+          0.38,
+        )
+        .to("[data-hint-bird]", { autoAlpha: 0, y: -10, duration: 0.06 }, 0.9)
         // Pin the timeline length to 1 so tween positions equal scroll progress.
         .set({}, {}, 1);
     },
@@ -108,9 +120,23 @@ export function Hero({ t }: { t: HeroStrings }) {
             </div>
           </div>
 
-          <div data-hero-name className="hero-enter" style={{ ["--d" as string]: "0.05s" }}>
-            <CodeName words={["ATABERK"]} label={t.name} fill className="hero-name" />
+          <div>
+            <div data-hint-intro className="pointer-events-none mb-[3svh] flex justify-center md:mb-[4svh]">
+              <span className="scroll-hint-intro">
+                <ScrollHint label={hint} />
+              </span>
+            </div>
+            <div data-hero-name className="hero-enter" style={{ ["--d" as string]: "0.05s" }}>
+              <CodeName words={["ATABERK"]} label={t.name} fill className="hero-name" />
+            </div>
           </div>
+        </div>
+
+        <div
+          data-hint-bird
+          className="hero-copy pointer-events-none invisible absolute inset-x-0 bottom-[6svh] z-10 flex justify-center opacity-0 motion-reduce:hidden"
+        >
+          <ScrollHint label={hint} />
         </div>
       </section>
     </div>
