@@ -84,7 +84,7 @@ export function Hero({ t }: { t: HeroStrings }) {
         <StaticField />
         <div
           data-hero-identity
-          className="hero-copy pointer-events-none relative z-10 flex h-full flex-col justify-between px-5 pt-28 pb-[4svh] md:px-10 md:pt-36 md:pb-[3svh]"
+          className="hero-copy pointer-events-none relative z-10 flex h-full flex-col justify-between px-5 pt-28 pb-[6svh] md:px-10 md:pt-36 md:pb-[3svh]"
         >
           <div
             data-hero-top
@@ -120,13 +120,16 @@ export function Hero({ t }: { t: HeroStrings }) {
             </div>
           </div>
 
-          <div>
-            <div data-hint-intro className="pointer-events-none mb-[3svh] flex justify-center md:mb-[4svh]">
+          {/* Mobile: the name sits higher and runs edge to edge (the negative
+              margin cancels the gutter), with the scroll cue beneath it.
+              Desktop: the cue rests above the name along the bottom edge. */}
+          <div className="flex flex-col">
+            <div data-hint-intro className="pointer-events-none order-2 mt-[8svh] flex justify-center md:order-1 md:mt-0 md:mb-[4svh]">
               <span className="scroll-hint-intro">
                 <ScrollHint label={hint} />
               </span>
             </div>
-            <div data-hero-name className="hero-enter" style={{ ["--d" as string]: "0.05s" }}>
+            <div data-hero-name className="hero-enter order-1 -mx-5 md:order-2 md:mx-0" style={{ ["--d" as string]: "0.05s" }}>
               <CodeName words={["ATABERK"]} label={t.name} fill className="hero-name" />
             </div>
           </div>
