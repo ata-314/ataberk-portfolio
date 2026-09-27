@@ -230,8 +230,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // loop dies before marking the intro done.
     const skipIntro = window.scrollY > 40;
     document.documentElement.dataset.stageIntro = skipIntro ? "done" : "flying";
+    // "settled" follows once the sea has nearly finished surfacing; the hero
+    // name waits for it so it arrives after the field, not with it.
+    if (skipIntro) document.documentElement.dataset.stageSettled = "true";
     const introSafety = setTimeout(() => {
       document.documentElement.dataset.stageIntro = "done";
+      document.documentElement.dataset.stageSettled = "true";
     }, 5000);
     // The bird bake is the largest startup payload; request it alongside
     // shader compilation instead of after it.
@@ -441,18 +445,47 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // Pointer wake for the sculpture grains: a ring of recent cursor
     // positions in NDC, each with a strength set by stroke speed that decays
     // in the render loop. Works for mouse and touch drags alike.
+    // Stamps are laid by a damped follower of the cursor inside the render
+    // loop (not by raw events), and each one swells in over ~0.15s before it
+    // decays — so grains flow around the cursor instead of snapping.
     const wake = new Float32Array(8 * 4);
+    const wakePeak = new Float32Array(8);
+    const wakeAge = new Float32Array(8).fill(99);
     let wakeSlot = 0;
     let wakeLast: [number, number] | null = null;
+    const wakeTarget: [number, number] = [0, 0];
+    const wakeFollow: [number, number] = [0, 0];
+    let wakeArmed = false;
     const burst = new Float32Array([0, 0, -1]);
     const pushWake = (clientX: number, clientY: number) => {
-      const nx = (clientX / innerWidth) * 2 - 1;
-      const ny = -((clientY / innerHeight) * 2 - 1);
-      const moved = wakeLast ? Math.hypot(nx - wakeLast[0], ny - wakeLast[1]) : 0;
-      if (wakeLast && moved < 0.025) return;
-      wakeLast = [nx, ny];
-      wake.set([nx, ny, Math.min(1, 0.35 + moved * 9), 0], wakeSlot * 4);
-      wakeSlot = (wakeSlot + 1) % 8;
+      wakeTarget[0] = (clientX / innerWidth) * 2 - 1;
+      wakeTarget[1] = -((clientY / innerHeight) * 2 - 1);
+      if (!wakeArmed) {
+        wakeArmed = true;
+        wakeFollow[0] = wakeTarget[0];
+        wakeFollow[1] = wakeTarget[1];
+      }
+    };
+    const stepWake = (delta: number) => {
+      if (wakeArmed) {
+        wakeFollow[0] = damp(wakeFollow[0], wakeTarget[0], 9, delta);
+        wakeFollow[1] = damp(wakeFollow[1], wakeTarget[1], 9, delta);
+        const [nx, ny] = wakeFollow;
+        const moved = wakeLast ? Math.hypot(nx - wakeLast[0], ny - wakeLast[1]) : 0;
+        if (!wakeLast || moved >= 0.018) {
+          wakeLast = [nx, ny];
+          wakePeak[wakeSlot] = Math.min(0.62, 0.22 + moved * 6);
+          wakeAge[wakeSlot] = 0;
+          wake[wakeSlot * 4] = nx;
+          wake[wakeSlot * 4 + 1] = ny;
+          wakeSlot = (wakeSlot + 1) % 8;
+        }
+      }
+      for (let i = 0; i < 8; i++) {
+        wakeAge[i] += delta;
+        const a = wakeAge[i];
+        wake[i * 4 + 2] = wakePeak[i] * (1 - Math.exp(-a * 14)) * Math.exp(-a * 1.9);
+      }
     };
     const scanPointer = [0, 0];
     const scanSmooth = [0, 0];
@@ -534,6 +567,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // scroll position, so mid-page reloads never replay the intro.
     let intro = skipIntro ? 1 : 0;
     let introMarked = false;
+    let introSettled = skipIntro;
     let hero = 0;
     let readyMix = 0;
     let videoMix = 0;
@@ -562,6 +596,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         // while the last particles are still settling into place.
         document.documentElement.dataset.stageIntro = "done";
       }
+      if (!introSettled && intro >= 0.85) {
+        introSettled = true;
+        document.documentElement.dataset.stageSettled = "true";
+      }
       hero = damp(hero, scrollState.hero.current, 24, delta);
       readyMix = damp(readyMix, birdReady, 5, delta);
       dissolve = damp(dissolve, smoothstep(scrollState.page.current, 0.9, 0.97), 5, delta);
@@ -569,7 +607,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       pointerSmooth[0] = damp(pointerSmooth[0], pointer[0], 7, delta);
       pointerSmooth[1] = damp(pointerSmooth[1], pointer[1], 7, delta);
       if (waveAge >= 0) waveAge = waveAge > 3.5 ? -1 : waveAge + delta;
-      for (let i = 0; i < 8; i++) wake[i * 4 + 2] *= Math.exp(-2.2 * delta);
+      stepWake(delta);
       if (burst[2] >= 0) burst[2] = burst[2] > 2.5 ? -1 : burst[2] + delta;
 
       // Two superposed slow sines per axis make the tide irregular: the fluid
@@ -678,6 +716,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       cancelAnimationFrame(frameId);
       clearTimeout(introSafety);
       delete document.documentElement.dataset.stageIntro;
+      delete document.documentElement.dataset.stageSettled;
       removeEventListener("resize", resize);
       removeEventListener("pointermove", onPointerMove);
       removeEventListener("pointerdown", onPointerDown);

@@ -8,10 +8,10 @@ const BONE = "255, 255, 250";
 const LIME = "200, 255, 62";
 // Room around the name for glyphs the pointer scatters.
 const PAD = 160;
-// Entrance: code streams fall from the top of the viewport through each
-// column of the name; a glyph locks in as its column's stream passes it.
-const RAIN_TRAIL = 26;
-const RAIN_END = 3.4;
+// Entrance: each glyph surfaces from inside the page — rising a little from
+// below and swelling from a pinpoint — behind a front that opens at the
+// centre of the name. SURFACE is one glyph's rise time in seconds.
+const SURFACE = 0.95;
 
 // Cheap stable hash → [0, 1).
 const hash = (a: number, b = 0) => {
@@ -25,6 +25,7 @@ type Glyph = {
   vx: number; vy: number;
   col: number; row: number;
   cover: number; seed: number;
+  delay: number; // entrance start, seconds after assembly begins
 };
 
 // The display name as a field of code particles. Every covered cell of the
@@ -32,7 +33,7 @@ type Glyph = {
 // Springs hold the name together; the pointer pushes glyphs away and drags
 // them along its motion, a click bursts them, and displaced glyphs heat up
 // (lime, faster mutation) until they settle back. On entrance the glyphs
-// are written by code streams raining from above. The real text stays in the DOM
+// surface out of the page after the field has landed. The real text stays in the DOM
 // (transparent once drawn) for layout, a11y and no-JS.
 export function CodeName({
   words,
@@ -63,20 +64,16 @@ export function CodeName({
     let glyphs: Glyph[] = [];
     let cell = 8;
     let dpr = 1;
-    let rows = 1;
-    let padTop = PAD;
-    let rainH = 1;
-    // Per-column stream timing (seconds) and the columns that carry rain.
-    let colDelay = new Float32Array(0);
-    let colSpeed = new Float32Array(0);
-    let rainCols: number[] = [];
+    let doneSeen = -1;
     let atlasBone: HTMLCanvasElement | null = null;
     let atlasLime: HTMLCanvasElement | null = null;
     let frame = 0;
     let last = 0;
     let visible = true;
     let assembleStart = -1;
-    const pointer = { x: -1e4, y: -1e4, vx: 0, vy: 0, active: false };
+    // Raw cursor (x, y) and a damped follower (sx, sy) with its velocity:
+    // the glyphs only ever feel the follower, so motion stays liquid.
+    const pointer = { x: -1e4, y: -1e4, sx: -1e4, sy: -1e4, vx: 0, vy: 0, active: false, armed: false };
 
     // The glyphs use the site's code mono (next/font exposes its family on body).
     const codeFont = `${getComputedStyle(document.body).getPropertyValue("--font-jetbrains").trim() || "ui-monospace"}, ui-monospace, monospace`;
@@ -119,23 +116,20 @@ export function CodeName({
       atlasLime = makeAtlas(LIME);
       const font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
       const box = heading.getBoundingClientRect();
-      // Extend the canvas up to the top of the viewport so the rain enters
-      // from the screen edge rather than out of nowhere above the name.
-      padTop = Math.min(1200, Math.max(PAD, Math.ceil(box.top) + 24));
       const w = Math.ceil(box.width + PAD * 2);
-      const h = Math.ceil(box.height + padTop + PAD);
+      const h = Math.ceil(box.height + PAD * 2);
       canvas.width = Math.ceil(w * dpr);
       canvas.height = Math.ceil(h * dpr);
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
       canvas.style.left = `${-PAD}px`;
-      canvas.style.top = `${-padTop}px`;
+      canvas.style.top = `${-PAD}px`;
 
       // Rasterize every character at 1/cell scale: anti-aliasing yields
       // per-cell coverage. x comes from DOM Ranges (exact tracking/kerning),
       // the baseline from a zero-size inline-block marker per word.
       const cols = Math.ceil(w / cell);
-      rows = Math.ceil(h / cell);
+      const rows = Math.ceil(h / cell);
       const mask = document.createElement("canvas");
       mask.width = cols;
       mask.height = rows;
@@ -148,7 +142,7 @@ export function CodeName({
         const marker = document.createElement("span");
         marker.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
         el.appendChild(marker);
-        const baseline = marker.getBoundingClientRect().top - box.top + padTop;
+        const baseline = marker.getBoundingClientRect().top - box.top + PAD;
         marker.remove();
         const node = el.firstChild;
         const text = node?.textContent ?? "";
@@ -160,14 +154,6 @@ export function CodeName({
         }
       }
       const data = m.getImageData(0, 0, cols, rows).data;
-      rainH = h;
-      colDelay = new Float32Array(cols);
-      colSpeed = new Float32Array(cols);
-      const inName = new Uint8Array(cols);
-      for (let col = 0; col < cols; col++) {
-        colDelay[col] = hash(col, 3.1) * 0.95;
-        colSpeed[col] = (h + RAIN_TRAIL * cell * 2) / (1.05 + hash(col, 5.7) * 0.7);
-      }
       const next: Glyph[] = [];
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
@@ -176,29 +162,45 @@ export function CodeName({
           const hx = col * cell;
           const hy = row * cell;
           const seed = hash(col, row);
-          inName[col] = 1;
-          next.push({ hx, hy, x: hx, y: hy, vx: 0, vy: 0, col, row, cover, seed });
+          // The front opens at the name's centre and warps with a slow
+          // wave, so letters surface in an organic order, not left to right.
+          const fromCentre = Math.abs(hx - w / 2) / (w / 2);
+          const warp = 0.14 * Math.sin(col * 0.19 + 1.3) + 0.08 * Math.sin(row * 0.41 + col * 0.07);
+          const delay = Math.max(0, fromCentre * 0.75 + warp + seed * 0.22);
+          next.push({ hx, hy, x: hx, y: hy, vx: 0, vy: 0, col, row, cover, seed, delay });
         }
       }
       glyphs = next;
-      // Every letter column streams; a sparse share of the columns around the
-      // name rain too, so the name reads as written out of a code shower.
-      rainCols = [];
-      for (let col = 0; col < cols; col++) {
-        if (inName[col] ? hash(col, 9.2) < 0.7 : hash(col, 9.2) < 0.12) rainCols.push(col);
-      }
     };
 
     const step = (now: number, dt: number) => {
+      if (pointer.active) {
+        if (!pointer.armed) {
+          pointer.armed = true;
+          pointer.sx = pointer.x;
+          pointer.sy = pointer.y;
+        }
+        const follow = 1 - Math.exp(-12 * dt);
+        const nx = pointer.sx + (pointer.x - pointer.sx) * follow;
+        const ny = pointer.sy + (pointer.y - pointer.sy) * follow;
+        const blend = 1 - Math.exp(-10 * dt);
+        pointer.vx += ((nx - pointer.sx) / dt - pointer.vx) * blend;
+        pointer.vy += ((ny - pointer.sy) / dt - pointer.vy) * blend;
+        pointer.sx = nx;
+        pointer.sy = ny;
+      } else {
+        pointer.vx *= Math.exp(-6 * dt);
+        pointer.vy *= Math.exp(-6 * dt);
+      }
       const rect = canvas.getBoundingClientRect();
-      const mx = pointer.x - rect.left;
-      const my = pointer.y - rect.top;
-      const radius = Math.max(70, cell * 16);
-      const pvx = pointer.vx;
-      const pvy = pointer.vy;
+      const mx = pointer.sx - rect.left;
+      const my = pointer.sy - rect.top;
+      const radius = Math.max(90, cell * 20);
       const t = now / 1000;
       for (const g of glyphs) {
-        const k = 60;
+        // Soft spring and light damping: displaced glyphs drift home like
+        // matter in water rather than snapping back.
+        const k = 30;
         g.vx += (g.hx - g.x) * k * dt;
         g.vy += (g.hy - g.y) * k * dt;
         if (pointer.active) {
@@ -207,93 +209,70 @@ export function CodeName({
           const d2 = dx * dx + dy * dy;
           if (d2 < radius * radius) {
             const d = Math.sqrt(d2) + 0.001;
-            const falloff = 1 - d / radius;
+            // Smoothstep falloff: no hard edge where the force switches on.
+            const q = 1 - d / radius;
+            const falloff = q * q * (3 - 2 * q);
             // Seeded strength and a sideways swirl break the clean ring, so
-            // the code scatters like disturbed particles.
-            const push = falloff * falloff * 5200 * (0.55 + g.seed * 0.9);
-            const swirl = (g.seed - 0.5) * 1.4;
-            g.vx += ((dx - dy * swirl) / d) * push * dt + pvx * falloff * 0.9 * dt * 60;
-            g.vy += ((dy + dx * swirl) / d) * push * dt + pvy * falloff * 0.9 * dt * 60;
+            // the code parts like disturbed particles; the cursor's own
+            // motion carries glyphs along in its wake.
+            const push = falloff * 2600 * (0.55 + g.seed * 0.9);
+            const swirl = (g.seed - 0.5) * 1.2;
+            g.vx += ((dx - dy * swirl) / d) * push * dt + pointer.vx * falloff * 1.1 * dt;
+            g.vy += ((dy + dx * swirl) / d) * push * dt + pointer.vy * falloff * 1.1 * dt;
           }
         }
         // A faint idle drift keeps the settled name breathing.
         g.vx += Math.sin(t * 1.3 + g.seed * 40) * 6 * dt;
         g.vy += Math.cos(t * 1.1 + g.seed * 31) * 6 * dt;
-        const damping = Math.exp(-7.5 * dt);
+        const damping = Math.exp(-4.8 * dt);
         g.vx *= damping;
         g.vy *= damping;
         g.x += g.vx * dt;
         g.y += g.vy * dt;
       }
-      pointer.vx *= Math.exp(-10 * dt);
-      pointer.vy *= Math.exp(-10 * dt);
     };
 
     const draw = (now: number) => {
       const t = now / 1000;
       const size = Math.ceil(cell * dpr);
       const assembly = assembleStart < 0 ? -1 : (now - assembleStart) / 1000;
+      if (assembly < 0) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (const g of glyphs) {
+        // Surfacing: 0 → 1 per glyph, eased with smootherstep.
+        const u = Math.min(1, Math.max(0, (assembly - g.delay) / SURFACE));
+        if (u <= 0) continue;
+        const e = u * u * u * (u * (u * 6 - 15) + 10);
         const dx = g.x - g.hx;
         const dy = g.y - g.hy;
         const displaced = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (cell * 6));
-        const colSeed = hash(g.col, 7.3);
-        const speed = 5 + colSeed * 11;
-        const span = rows + 14 + colSeed * 18;
-        const head = (t * speed + colSeed * span * 3) % span;
-        const behind = head - g.row;
-        const trail = behind >= 0 ? Math.exp(-behind * 0.25) : 0;
-        const rate = 0.5 + g.seed * 2.5 + trail * 8 + displaced * 22;
+        const rate = 0.5 + g.seed * 2.5 + (1 - e) * 14 + displaced * 22;
         const glyph = Math.floor(g.seed * 997 + t * rate) % CHARSET.length;
-        const bright = Math.min(1, 0.9 + trail * 0.2 + displaced * 0.3);
-        // A glyph appears when its column's stream head reaches its home row,
-        // flashing lime for a moment as it locks in.
-        const since = assembly < 0 ? -1 : assembly - revealAt(g.col, g.hy);
-        const fadeIn = Math.min(1, Math.max(0, since * 7));
-        const locking = since >= 0 && since < 0.35;
-        // Lime marks energy: stream heads, freshly written glyphs and a share of displaced glyphs.
-        const hot = (behind >= 0 && behind < 1.1) || displaced * (0.4 + g.seed) > 0.62 || locking;
-        const alpha = bright * Math.min(1, g.cover * 1.65) * fadeIn * (1 - displaced * 0.25);
+        const bright = Math.min(1, 0.92 + displaced * 0.3);
+        // Lime marks energy: a share of glyphs glint while surfacing, and
+        // displaced glyphs heat up.
+        const hot = (u < 0.6 && g.seed > 0.55) || displaced * (0.4 + g.seed) > 0.62;
+        const fade = Math.min(1, u / 0.35);
+        const alpha = bright * Math.min(1, g.cover * 1.65) * fade * (1 - displaced * 0.25);
         if (alpha < 0.01) continue;
+        // Rises from slightly below its home and swells from a pinpoint.
+        const scale = 0.3 + 0.7 * e;
+        const drawn = size * scale;
+        const inset = (cell - cell * scale) / 2;
+        const x = g.x + inset + Math.sin(g.seed * 19 + u * 5) * cell * 0.8 * (1 - e);
+        const y = g.y + inset + cell * 4.5 * (1 - e);
         // A faint offset lime echo gives each glyph depth without a backing.
         ctx.globalAlpha = alpha * 0.16;
-        ctx.drawImage(atlasLime!, glyph * size, 0, size, size, (g.x + 1.5) * dpr, (g.y + 2) * dpr, size, size);
+        ctx.drawImage(atlasLime!, glyph * size, 0, size, size, (x + 1.5) * dpr, (y + 2) * dpr, drawn, drawn);
         ctx.globalAlpha = alpha;
-        ctx.drawImage(hot ? atlasLime! : atlasBone!, glyph * size, 0, size, size, g.x * dpr, g.y * dpr, size, size);
+        ctx.drawImage(hot ? atlasLime! : atlasBone!, glyph * size, 0, size, size, x * dpr, y * dpr, drawn, drawn);
       }
-      if (assembly >= 0 && assembly < RAIN_END) drawRain(assembly, t, size);
       ctx.globalAlpha = 1;
-    };
-
-    // Stream head y (canvas CSS px) of a column at a given intro time.
-    const headY = (col: number, a: number) => -RAIN_TRAIL * cell + colSpeed[col] * (a - colDelay[col]);
-    const revealAt = (col: number, y: number) => colDelay[col] + (y + RAIN_TRAIL * cell) / colSpeed[col];
-
-    // Matrix-style streams: a lime head snapped to the glyph grid with a
-    // decaying bone trail above it, fading in from the screen edge and out
-    // below the name.
-    const drawRain = (a: number, t: number, size: number) => {
-      const edge = cell * 14;
-      for (const col of rainCols) {
-        const head = headY(col, a);
-        if (head < 0 || head - RAIN_TRAIL * cell > rainH) continue;
-        const headRow = Math.floor(head / cell);
-        const length = Math.round(RAIN_TRAIL * (0.55 + hash(col, 1.9) * 0.45));
-        const x = col * cell * dpr;
-        for (let k = 0; k < length; k++) {
-          const row = headRow - k;
-          const y = row * cell;
-          if (y < 0 || y > rainH) continue;
-          const ramp = Math.min(1, y / edge, (rainH - y) / edge);
-          const alpha = Math.exp(-k * 0.14) * ramp * (k === 0 ? 1 : 0.55);
-          if (alpha < 0.02) continue;
-          const glyph = Math.floor(hash(col, row) * 997 + t * (k === 0 ? 30 : 9)) % CHARSET.length;
-          ctx.globalAlpha = alpha;
-          ctx.drawImage(k === 0 ? atlasLime! : atlasBone!, glyph * size, 0, size, size, x, y * dpr, size, size);
-        }
-      }
     };
 
     const loop = (now: number) => {
@@ -303,7 +282,15 @@ export function CodeName({
       const elapsed = Math.min(Math.max((now - last) / 1000, 0), 0.1);
       last = now;
       if (!visible || (identity && identity.style.visibility === "hidden")) return;
-      if (assembleStart < 0 && (html.dataset.stageIntro === "done" || html.dataset.stageStatic === "true")) {
+      // The name waits for the field to settle. If the stage never reports
+      // it, it follows 1.6s after the copy is released.
+      if (doneSeen < 0 && html.dataset.stageIntro === "done") doneSeen = now;
+      if (
+        assembleStart < 0 &&
+        (html.dataset.stageSettled === "true" ||
+          html.dataset.stageStatic === "true" ||
+          (doneSeen >= 0 && now - doneSeen > 1600))
+      ) {
         assembleStart = now;
       }
       const steps = Math.max(1, Math.ceil(elapsed * 60));
@@ -332,16 +319,13 @@ export function CodeName({
       if (reduced) draw(5000);
     };
     const onMove = (e: PointerEvent) => {
-      if (pointer.active) {
-        pointer.vx = pointer.vx * 0.5 + (e.clientX - pointer.x) * 0.5;
-        pointer.vy = pointer.vy * 0.5 + (e.clientY - pointer.y) * 0.5;
-      }
       pointer.x = e.clientX;
       pointer.y = e.clientY;
       pointer.active = true;
     };
     const onLeave = () => {
       pointer.active = false;
+      pointer.armed = false;
     };
     // Click / tap: a radial burst from the contact point.
     const onDown = (e: PointerEvent) => {
