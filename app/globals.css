@@ -508,64 +508,91 @@ html[data-stage-static="true"] .scroll-hint-intro {
   }
 }
 
-/* Services: frosted surfaces over the existing, dispersing particle sea. */
-.services-section { padding-block: clamp(5rem, 10vw, 9rem); scroll-margin-top: 6rem; }
-.services-heading { display: flex; justify-content: space-between; align-items: end; gap: 2rem; margin-bottom: 3.5rem; }
-.services-label { color: var(--bone-dim); font-size: .9rem; margin-bottom: 1.2rem; }
-.services-heading h2 { font-family: var(--font-archivo), sans-serif; font-size: clamp(2.6rem, 5.6vw, 5.5rem); font-weight: 550; letter-spacing: -.055em; line-height: 1.05; max-width: 12ch; }
-.services-lead { max-width: 22rem; color: var(--bone-dim); line-height: 1.7; font-size: 1rem; }
-.services-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1rem; }
-.service-card { --mx: 50%; --my: 50%; --rx: 0deg; --ry: 0deg; position: relative; isolation: isolate; grid-column: span 2; display: flex; flex-direction: column; overflow: hidden; border-radius: 26px; border: 1px solid rgba(243,239,231,.14); background: linear-gradient(135deg,rgba(100,108,104,.15),rgba(22,26,25,.7)); backdrop-filter: blur(24px) saturate(.65); -webkit-backdrop-filter: blur(24px) saturate(.65); box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 16px 48px rgba(0,0,0,.12); transform: perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry)); transition: transform .4s ease, border-color .4s ease, box-shadow .4s ease; }
-.service-card-0, .service-card-1 { grid-column: span 3; }
-.service-card-5 { grid-column: span 6; display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
-.service-card::before { content: ""; pointer-events: none; position: absolute; inset: 0; z-index: -1; background: radial-gradient(400px circle at var(--mx) var(--my),rgba(220,239,223,.09),transparent 65%); opacity: 0; transition: opacity .4s; }
-.service-visual { height: 205px; display: grid; place-items: center; overflow: hidden; mask-image: linear-gradient(#000 85%,transparent); }
-.service-card-0 .service-visual, .service-card-1 .service-visual { height: 245px; }
-.service-card-5 .service-visual { height: 255px; order: 2; }
-.service-art { height: 100%; width: 100%; max-width: 480px; color: #d6ded5; transition: transform .6s ease; }
-.service-copy { padding: 1.2rem 1.8rem 2rem; }
-.service-card-5 .service-copy { padding: 2.5rem; }
-.service-copy h3 { font-family: var(--font-archivo),sans-serif; font-size: clamp(1.2rem,1.7vw,1.65rem); line-height: 1.2; font-weight: 550; letter-spacing: -.035em; max-width: 25ch; }
-.service-copy p { color: var(--bone-dim); font-size: .93rem; line-height: 1.7; margin-top: .8rem; max-width: 46ch; }
-.art-panel { fill: #181e1de6; stroke: #d5e2d536; stroke-width: 1; }
+/* Services: a single-screen glass bento over the dispersing particle sea.
+   Light beams, halos and faded UI previews echo product bento grids. */
+.services-section { padding-block: clamp(5rem, 10vw, 9rem); scroll-margin-top: 0; }
+.services-heading { display: flex; justify-content: space-between; align-items: end; gap: 2rem; margin-bottom: 2.5rem; }
+.services-label { color: var(--bone-dim); font-size: .85rem; margin-bottom: .8rem; }
+.services-heading h2 { font-family: var(--font-archivo), sans-serif; font-size: clamp(2.4rem, 4.4vw, 4.4rem); font-weight: 550; letter-spacing: -.055em; line-height: 1.02; }
+.services-lead { max-width: 24rem; color: var(--bone-dim); line-height: 1.6; font-size: .95rem; }
+.services-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: .85rem; }
+.service-card { --mx: 50%; --my: 50%; --rx: 0deg; --ry: 0deg; --glow: 200 255 62; --beam-x: 30%; --beam-r: 18deg; position: relative; isolation: isolate; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 22px; border: 1px solid rgba(243,239,231,.09);
+  background: linear-gradient(165deg, rgba(255,255,255,.075), rgba(255,255,255,.018) 42%, rgba(8,10,10,.32)), radial-gradient(120% 80% at 50% -10%, rgb(var(--glow) / .07), transparent 60%);
+  backdrop-filter: blur(22px) saturate(1.35); -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 -30px 60px rgba(0,0,0,.22), 0 24px 60px rgba(0,0,0,.28);
+  transform: perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry)); transition: transform .4s ease, border-color .4s ease, box-shadow .4s ease; }
+.service-card-0 { grid-column: span 5; --beam-x: 42%; --beam-r: -14deg; }
+.service-card-1 { grid-column: span 4; --glow: 150 236 205; --beam-x: 22%; --beam-r: 20deg; }
+.service-card-2 { grid-column: span 3; --beam-x: 60%; --beam-r: -24deg; }
+.service-card-3 { grid-column: span 3; --glow: 150 236 205; --beam-x: 35%; --beam-r: 0deg; }
+.service-card-4 { grid-column: span 5; --beam-x: 16%; --beam-r: 26deg; }
+.service-card-5 { grid-column: span 4; --glow: 150 236 205; --beam-x: 55%; --beam-r: -18deg; }
+/* Glass edge: a bright top rim fading down the sides. */
+.service-card::after { content: ""; pointer-events: none; position: absolute; inset: 0; z-index: 3; border-radius: inherit; padding: 1px; background: linear-gradient(180deg, rgba(255,255,255,.3), rgba(255,255,255,.04) 35%, rgba(255,255,255,.02) 70%, rgba(255,255,255,.08)); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.service-card::before { content: ""; pointer-events: none; position: absolute; inset: 0; z-index: -1; background: radial-gradient(380px circle at var(--mx) var(--my), rgb(var(--glow) / .1), transparent 65%); opacity: 0; transition: opacity .4s; }
+.service-beam { pointer-events: none; position: absolute; top: -35%; left: var(--beam-x); z-index: 0; width: 56%; height: 100%; filter: blur(14px); transform: rotate(var(--beam-r)); transform-origin: 50% 0; mix-blend-mode: screen; }
+.service-beam::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(var(--glow) / .42), rgb(var(--glow) / .1) 50%, transparent 82%); clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%); }
+/* Bright glint where the beam enters the glass, like light catching an edge. */
+.service-beam::after { content: ""; position: absolute; left: 50%; top: 35%; width: 70%; height: 2px; translate: -50% 0; border-radius: 2px; background: linear-gradient(90deg, transparent, rgb(var(--glow) / .9), transparent); filter: blur(1px); }
+.service-visual { position: relative; z-index: 1; flex: 1 1 auto; min-height: 150px; display: grid; place-items: center; padding: 1.2rem 1rem 0; overflow: hidden; mask-image: linear-gradient(#000 62%, transparent 98%); -webkit-mask-image: linear-gradient(#000 62%, transparent 98%); }
+.service-visual::before { content: ""; position: absolute; inset: 0; background: radial-gradient(rgba(230,240,225,.13) 1px, transparent 1.2px) 0 0 / 16px 16px; mask-image: radial-gradient(70% 70% at 50% 45%, #000, transparent); -webkit-mask-image: radial-gradient(70% 70% at 50% 45%, #000, transparent); }
+.service-halo { position: absolute; left: 50%; top: 48%; width: 46%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; background: radial-gradient(circle, rgb(var(--glow) / .3), rgb(var(--glow) / .08) 45%, transparent 70%); filter: blur(12px); animation: service-halo 6s ease-in-out infinite alternate; }
+.service-art { position: relative; height: 100%; width: 100%; max-width: 480px; max-height: 260px; color: #d6ded5; filter: drop-shadow(0 12px 28px rgba(0,0,0,.45)); transition: transform .6s ease; }
+.service-copy { position: relative; z-index: 2; margin-top: -1.4rem; padding: 0 1.6rem 1.5rem; }
+.service-copy h3 { font-family: var(--font-archivo),sans-serif; font-size: clamp(1.05rem,1.3vw,1.35rem); line-height: 1.2; font-weight: 550; letter-spacing: -.03em; }
+.service-copy p { color: var(--bone-dim); font-size: .88rem; line-height: 1.55; margin-top: .45rem; max-width: 44ch; }
+.art-panel { fill: #181e1dd9; stroke: #d5e2d540; stroke-width: 1; }
 .art-line { stroke: #cfdec959; stroke-width: 1.2; }
 .art-muted { fill: #b6c7b71c; }
-.art-accent { fill: #c8ff3e; opacity: .72; }
-.art-signal { stroke: #c8ff3e; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.art-accent { fill: #c8ff3e; opacity: .8; filter: drop-shadow(0 0 6px #c8ff3e99); }
+.art-signal { stroke: #c8ff3e; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px #c8ff3e88); }
 .art-flow { stroke: #c8ff3e; stroke-width: 2; stroke-dasharray: 12 220; animation: service-flow 5s linear infinite; }
 .art-float { animation: service-float 7s ease-in-out infinite alternate; }
 .art-orbit { animation: service-orbit 35s linear infinite; }
 .art-pulse { animation: service-pulse 3s ease-in-out infinite alternate; }
 .art-playhead { animation: service-playhead 7s ease-in-out infinite alternate; }
 .art-landscape { transform-origin: center; animation: service-pan 9s ease-in-out infinite alternate; }
-.services-section:not([data-active="true"]) .service-art * { animation-play-state: paused; }
+.services-section:not([data-active="true"]) :is(.service-art *, .service-halo) { animation-play-state: paused; }
 @keyframes service-flow { to { stroke-dashoffset: -464; } }
 @keyframes service-float { to { transform: translateY(-8px); } }
 @keyframes service-orbit { to { transform: rotate(360deg); } }
 @keyframes service-pulse { to { opacity: .4; } }
 @keyframes service-playhead { to { transform: translateX(280px); } }
 @keyframes service-pan { to { transform: translateX(-5px) scale(1.03); } }
+@keyframes service-halo { to { opacity: .55; scale: 1.12; } }
 @media (hover: hover) and (pointer: fine) {
-  .service-card:hover { border-color: rgba(227,240,225,.3); box-shadow: inset 0 1px 0 #ffffff20,0 22px 55px #0003; }
+  .service-card:hover { border-color: rgba(227,240,225,.2); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -30px 60px rgba(0,0,0,.2), 0 28px 70px rgba(0,0,0,.35); }
   .service-card:hover::before { opacity: 1; }
-  .service-card:hover .service-art { transform: translateY(-4px) scale(1.025); }
+  .service-card:hover .service-art { transform: translateY(-4px) scale(1.03); }
+}
+/* Desktop: the whole bento fits one screen, two rows sharing the height. */
+@media (min-width: 1024px) and (min-height: 640px) {
+  .services-section { height: 100svh; max-height: 1080px; padding-block: clamp(5.25rem, 11vh, 7rem) clamp(1.25rem, 3vh, 2.25rem); }
+  .services-inner { height: 100%; display: flex; flex-direction: column; }
+  .services-heading { margin-bottom: clamp(1.1rem, 3vh, 2rem); }
+  .services-grid { flex: 1 1 auto; min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .service-visual { min-height: 0; }
+}
+@media (min-width: 1024px) and (max-height: 800px) {
+  .services-heading h2 { font-size: clamp(2rem, 3.4vw, 3.2rem); }
+  .services-label { display: none; }
+  .service-copy p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 }
 @media (max-width: 1023px) {
-  .service-card, .service-card-5 { grid-column: span 3; display: flex; }
-  .service-card-5 .service-visual { order: 0; }
-  .service-card .service-visual { height: 210px; }
-  .service-card-5 .service-copy { padding: 1.2rem 1.8rem 2rem; }
+  .services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .service-card[class*="service-card-"] { grid-column: span 1; }
+  .service-visual { flex: none; height: 190px; }
 }
 @media (max-width: 639px) {
-  .services-heading { align-items: start; flex-direction: column; gap: 1.5rem; margin-bottom: 2rem; }
-  .services-grid { grid-template-columns: minmax(0, 1fr); gap: .85rem; }
-  .service-card, .service-card-5 { grid-column: auto; border-radius: 22px; }
-  .service-card .service-visual { height: 190px; }
-  .service-copy, .service-card-5 .service-copy { padding: 1rem 1.5rem 1.7rem; }
-  .service-copy h3 { font-size: 1.4rem; }
+  .services-heading { align-items: start; flex-direction: column; gap: 1.2rem; margin-bottom: 1.8rem; }
+  .services-grid { grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+  .service-card { border-radius: 20px; }
+  .service-visual { height: 175px; }
+  .service-copy { padding: 0 1.35rem 1.4rem; }
+  .service-copy h3 { font-size: 1.25rem; }
 }
 @supports not (backdrop-filter: blur(1px)) { .service-card { background: #171d1b; } }
 @media (prefers-reduced-motion: reduce) {
-  .service-art *, .service-card, .service-art { animation: none !important; transition: none !important; }
+  .service-art *, .service-card, .service-art, .service-halo { animation: none !important; transition: none !important; }
   .service-card, .service-card:hover .service-art { transform: none; }
 }

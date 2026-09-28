@@ -96,7 +96,7 @@ export function Services({ locale }: { locale: Locale }) {
 
   return (
     <section ref={root} id="services" aria-labelledby="services-heading" className="services-section relative z-20 px-5 md:px-10">
-      <div className="mx-auto max-w-[88rem]">
+      <div className="services-inner mx-auto max-w-[88rem]">
         <div className="services-heading">
           <div><p className="services-label">{locale === "tr" ? "Hizmetler" : "Services"}</p><h2 id="services-heading">{t.heading}</h2></div>
           <p className="services-lead">{t.lead}</p>
@@ -107,7 +107,8 @@ export function Services({ locale }: { locale: Locale }) {
               event.currentTarget.style.setProperty("--rx", "0deg");
               event.currentTarget.style.setProperty("--ry", "0deg");
             }}>
-              <div className="service-visual"><ServiceGraphic kind={index} /></div>
+              <span className="service-beam" aria-hidden="true" />
+              <div className="service-visual"><span className="service-halo" aria-hidden="true" /><ServiceGraphic kind={index} /></div>
               <div className="service-copy"><h3>{title}</h3><p>{description}</p></div>
             </article>
           ))}
