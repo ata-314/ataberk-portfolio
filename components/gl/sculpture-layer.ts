@@ -106,12 +106,12 @@ vec3 birdAnatomy(float id,float frame,float t,out vec3 normal,out float shellDep
   return anatomy;
 }
 `;
-// Trail grains: 7% of grains take turns staying put in space while the bird
-// flies on, so a glowing wake of particles is left behind it. Each has its
-// own cycle: -1 for ordinary grains, else 0..1 (left behind until .7, then
+// Trail grains: 3% of grains take turns staying put in space while the bird
+// flies on, so a light wake of particles is left behind it. Each has its
+// own cycle: -1 for ordinary grains, else 0..1 (left behind until .55, then
 // quietly back home).
 const trailCore = /* glsl */ `float trailLife(float id,float t) {
-  if(grainRandom(uint(id)+3907u)<.93) return -1.0;
+  if(grainRandom(uint(id)+3907u)<.97) return -1.0;
   return fract(t*(.28+grainRandom(uint(id)+4099u)*.3)+grainRandom(uint(id)+4271u));
 }
 `;
@@ -326,7 +326,7 @@ void renderGrain(float id) {
       float life=trailLife(id,time);
       if(life>=0.0) {
         // Left behind: glows while it hangs in the wake, fades, then home.
-        trailFade=life<.7?1.0-smoothstep(.2,.7,life):0.0;
+        trailFade=life<.55?1.0-smoothstep(.12,.55,life):0.0;
         birdDisturb=max(birdDisturb,smoothstep(.15,.9,length(state.xyz))*trailFade);
       }
     }
@@ -686,7 +686,7 @@ void main() {
   vec3 before=(prevMatrix*vec4(local,1.0)).xyz;
   float loose=pow(grainRandom(uint(id)+2113u),3.5);
   float life=trailLife(id,time);
-  if(life>=.7) {
+  if(life>=.55) {
     // Trail grain done: back home unseen, ready for its next turn.
     outDisp=vec4(0);outVel=vec4(0);return;
   }

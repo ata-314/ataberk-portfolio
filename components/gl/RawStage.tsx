@@ -10,8 +10,6 @@ import { bustState, scrollState } from "../three/scroll-state";
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
 const BIRD_SAMPLES = 9000;
 const INTRO_SECONDS = 3.2;
-// Which bank direction pitches the nose down for the current yaw.
-const GLIDE_PITCH_SIGN = 1;
 const BIRD_FRAMES = 16;
 const TEX_W = 2048;
 const ROWS_PER_FRAME = 5;
@@ -112,15 +110,22 @@ function lookAt(out: Float32Array, eye: Vec3, center: Vec3) {
   ]);
 }
 
-function compose(out: Float32Array, position: Vec3, scale: number, yaw: number, bank: number) {
-  const cy = Math.cos(yaw);
-  const sy = Math.sin(yaw);
-  const cz = Math.cos(bank);
-  const sz = Math.sin(bank);
+// Model matrix with rotation Ry(yaw)·Rx(pitch)·Rz(roll): roll about the
+// body axis, then nose up/down about the wing axis, then heading.
+// Model matrix with rotation Ry(yaw)·Rx(pitch)·Rz(roll): roll about the
+// body axis, then nose up/down about the wing axis, then heading.
+function compose(out: Float32Array, position: Vec3, scale: number, yaw: number, roll: number, pitch = 0) {
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const cx = Math.cos(pitch), sx = Math.sin(pitch);
+  const cz = Math.cos(roll), sz = Math.sin(roll);
+  // Columns of Ry·Rx·Rz.
+  const c0: Vec3 = [cy * cz + sy * sx * sz, cx * sz, -sy * cz + cy * sx * sz];
+  const c1: Vec3 = [-cy * sz + sy * sx * cz, cx * cz, sy * sz + cy * sx * cz];
+  const c2: Vec3 = [sy * cx, -sx, cy * cx];
   out.set([
-    cy * cz * scale, sz * scale, -sy * cz * scale, 0,
-    -cy * sz * scale, cz * scale, sy * sz * scale, 0,
-    sy * scale, 0, cy * scale, 0,
+    c0[0] * scale, c0[1] * scale, c0[2] * scale, 0,
+    c1[0] * scale, c1[1] * scale, c1[2] * scale, 0,
+    c2[0] * scale, c2[1] * scale, c2[2] * scale, 0,
     position[0], position[1], position[2], 1,
   ]);
 }
@@ -658,7 +663,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let flapPhase = 0;
     const behaviour = createBirdBehaviour();
     // Eased behaviour outputs (see bird-behaviour.ts).
-    const eased = { x: 0, y: 0, z: 0, bank: 0, pitch: 0, beat: 1, hold: 0, holdFrame: 0 };
+    const eased = { x: 0, y: 0, z: 0, bank: 0, pitch: 0, beat: 1, hold: 0, holdFrame: 0, yawMix: 0 };
     // Grain simulation inputs: last frame's body and the cursor as a 3D ray.
     const prevBird = new Float32Array(16);
     const cursorVel = new Float32Array(3);
@@ -788,6 +793,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       eased.z = damp(eased.z, motion.z * freeFlight, ease, delta);
       eased.bank = damp(eased.bank, motion.bank * freeFlight, 7, delta);
       eased.pitch = damp(eased.pitch, motion.pitch * freeFlight, 5, delta);
+      eased.yawMix = damp(eased.yawMix, motion.yawMix * freeFlight, 3, delta);
       eased.beat = damp(eased.beat, motion.beat, 5, delta);
       eased.hold = damp(eased.hold, motion.hold * freeFlight, 5, delta);
       eased.holdFrame = motion.hold > 0.01 ? motion.holdFrame : eased.holdFrame;
@@ -810,11 +816,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const directionLength = Math.hypot(...flight.direction) || 1;
       const direction: Vec3 = [flight.direction[0] / directionLength, flight.direction[1] / directionLength, flight.direction[2] / directionLength];
       const turning = motion.turn && freeFlight > 0.5;
-      const yawTarget = (direction[0] >= 0 ? 1 : -1) * 1.07 * (turning ? -1 : 1);
-      yaw = damp(yaw, yawTarget, motion.snappy ? 7 : 2.5, delta);
+      const facing = (direction[0] >= 0 ? 1 : -1) * (turning ? -1 : 1);
+      // Behaviour headings (toward the camera, away into the depth, round a
+      // banked circle) are measured from the facing side and blended in.
+      const yawTarget = mix(facing * 1.07, facing * motion.yaw, eased.yawMix);
+      yaw = damp(yaw, yawTarget, motion.snappy ? 7 : eased.yawMix > 0.05 ? 4.5 : 2.5, delta);
       // Nose dips while gliding down.
-      const glidePitch = eased.pitch * (yaw >= 0 ? -1 : 1) * GLIDE_PITCH_SIGN;
-      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + glidePitch + eased.bank);
+      // Positive pitch dips the nose; loops and barrel rolls add whole turns.
+      const pitch = eased.pitch + motion.spinPitch * freeFlight;
+      const roll = Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + eased.bank + motion.spinRoll * freeFlight;
+      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, roll, pitch);
       // The wing beat runs at the behaviour's rate and eases onto a held
       // frame (wings level to glide, folded to stoop) with a slight sway.
       flapPhase = (flapPhase + delta * eased.beat * (1 - eased.hold * 0.97)) % 1;

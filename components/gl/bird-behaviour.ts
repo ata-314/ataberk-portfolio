@@ -1,13 +1,16 @@
 // Bird behaviour: a small state machine that keeps the flight from ever
 // repeating. Actions (glide, dart, stoop, snap turn, climb, flutter, arc,
-// receding deep into space and sweeping up close to the screen)
+// receding deep into space, sweeping up close to the screen, banked turns
+// through the depth, loops and barrel rolls)
 // alternate with stretches of plain cruising; each next action is drawn by
 // weight, never one of the last two, with its own random duration,
 // amplitude and side. Layered value noise adds a continuous, non-periodic
 // wander on top. Outputs are offsets and wing/attitude targets that the
 // stage eases toward, so every change reads as a reflex, not a keyframe.
 
-type Kind = "cruise" | "glide" | "dart" | "stoop" | "turn" | "climb" | "flutter" | "arc" | "recede" | "approach";
+type Kind =
+  | "cruise" | "glide" | "dart" | "stoop" | "turn" | "climb" | "flutter" | "arc"
+  | "recede" | "approach" | "bankTurn" | "loop" | "barrel";
 
 type Action = { kind: Kind; start: number; length: number; side: number; amount: number; phase: number };
 
@@ -15,9 +18,15 @@ type Action = { kind: Kind; start: number; length: number; side: number; amount:
 export const LEVEL_FRAME = 14.2 / 16;
 export const FOLD_FRAME = 9.5 / 16;
 
+// Attitude: bank/pitch are eased targets; yaw is a heading measured from the
+// bird's current facing side (0 = toward the camera, π = away) blended in by
+// yawMix; spinPitch/spinRoll are whole turns applied directly (they start and
+// end on a full revolution, so they must not be eased).
 export type BirdMotion = {
   x: number; y: number; z: number;
   bank: number; pitch: number;
+  yaw: number; yawMix: number;
+  spinPitch: number; spinRoll: number;
   beat: number; hold: number; holdFrame: number;
   turn: boolean; snappy: boolean;
 };
@@ -32,6 +41,9 @@ const ACTIONS: { kind: Kind; weight: number; length: [number, number] }[] = [
   { kind: "arc", weight: 1.3, length: [2.8, 4.2] },
   { kind: "recede", weight: 1.8, length: [4.5, 7] },
   { kind: "approach", weight: 1.6, length: [3.2, 5] },
+  { kind: "bankTurn", weight: 2, length: [3.2, 4.8] },
+  { kind: "loop", weight: 1.3, length: [2.2, 3.2] },
+  { kind: "barrel", weight: 1.2, length: [1.4, 2] },
 ];
 
 function hash(n: number) {
@@ -87,7 +99,8 @@ export function createBirdBehaviour(random: () => number = Math.random) {
       const release = 1 - smooth(m, 0.35, 1);
       const pulse = Math.sin(Math.min(1, m) * Math.PI);
       const motion: BirdMotion = {
-        x: 0, y: 0, z: 0, bank: 0, pitch: 0, beat: 1, hold: 0, holdFrame: LEVEL_FRAME, turn: false, snappy: false,
+        x: 0, y: 0, z: 0, bank: 0, pitch: 0, yaw: 0, yawMix: 0, spinPitch: 0, spinRoll: 0,
+        beat: 1, hold: 0, holdFrame: LEVEL_FRAME, turn: false, snappy: false,
       };
       switch (action.kind) {
         case "glide": {
@@ -147,6 +160,8 @@ export function createBirdBehaviour(random: () => number = Math.random) {
           motion.z = -(4 + amount * 2.8) * out;
           motion.y = 0.7 * out;
           motion.x = side * 0.8 * out;
+          motion.yaw = 2.5;
+          motion.yawMix = out;
           motion.beat = 1.15;
           break;
         }
@@ -157,7 +172,42 @@ export function createBirdBehaviour(random: () => number = Math.random) {
           motion.y = -0.25 * near;
           motion.x = side * 0.45 * near;
           motion.bank = side * 0.15 * near;
+          motion.yaw = 0.35;
+          motion.yawMix = near;
           motion.beat = 1.3;
+          break;
+        }
+        case "bankTurn": {
+          // A level circle through the depth: out, behind, round and back,
+          // heading along the path and rolled into the turn.
+          const on = smooth(m, 0, 0.15) * (1 - smooth(m, 0.85, 1));
+          const a = smooth(m, 0, 1) * Math.PI * 2;
+          const r = (0.8 + amount * 0.5) * on;
+          motion.x = Math.sin(a) * r * 1.2 * side;
+          motion.z = (Math.cos(a) - 1) * r * 1.6;
+          motion.yaw = Math.PI / 2 + a;
+          motion.yawMix = on * 0.85;
+          motion.bank = side * 0.6 * on;
+          motion.beat = 1.2;
+          break;
+        }
+        case "loop": {
+          // A vertical loop in the bird's own plane, nose over the top.
+          const a = smooth(m, 0, 1) * Math.PI * 2;
+          const r = 0.75 * amount;
+          motion.y = Math.sin(a) * r;
+          motion.z = (1 - Math.cos(a)) * r * 0.8;
+          motion.spinPitch = -a;
+          motion.beat = 1.6;
+          break;
+        }
+        case "barrel": {
+          // A full roll about the body while it carries on forward.
+          motion.spinRoll = side * smooth(m, 0.1, 0.9) * Math.PI * 2;
+          motion.x = travel * 1.1 * pulse;
+          motion.y = 0.25 * pulse;
+          motion.beat = 1.5;
+          motion.snappy = true;
           break;
         }
         default:
