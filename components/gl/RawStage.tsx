@@ -362,6 +362,32 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // the services section to the contact finale.
     const journeyState: JourneyState = { reveal: 0, rise: 0, space: 0, travel: 0, galaxies: 0, parallax: [0, 0] };
     let journeyStart: HTMLElement | null = null;
+    // Hero title card, drawn in the stage so the bird flies in front of it.
+    // Words come from the DOM ([data-hero-title], one line per "|").
+    let titleArrive = 0;
+    let titleAlpha = 0;
+    const titleSource = document.querySelector<HTMLElement>("[data-hero-title]")?.dataset.heroTitle;
+    if (titleSource) {
+      void document.fonts.ready.then(() => {
+        if (disposed) return;
+        const lines = titleSource.split("|");
+        const art = document.createElement("canvas");
+        art.width = 2048;
+        art.height = 1024;
+        const ctx = art.getContext("2d");
+        if (!ctx) return;
+        const family = getComputedStyle(document.body).getPropertyValue("--font-hud").trim() || "sans-serif";
+        let size = 300;
+        ctx.font = `500 ${size}px ${family}`;
+        const widest = Math.max(...lines.map((l) => ctx.measureText(l).width));
+        size = Math.min(size * (art.width * 0.98) / widest, (art.height / lines.length) * 0.86);
+        ctx.font = `500 ${size}px ${family}`;
+        ctx.fillStyle = "#fff";
+        ctx.textBaseline = "top";
+        lines.forEach((line, i) => ctx.fillText(line, 0, i * size * 1.02 + (art.height - lines.length * size * 1.02) / 2));
+        journey.setTitle(art);
+      });
+    }
     let journeyEnd: HTMLElement | null = null;
     const setupTexture = (
       unit: number,
@@ -955,6 +981,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         js.parallax[0] = damp(js.parallax[0], hover[2] > 0.5 ? hover[0] : 0, 2, delta);
         js.parallax[1] = damp(js.parallax[1], hover[2] > 0.5 ? hover[1] : 0, 2, delta);
         journey.render(canvas.width, canvas.height, time, js);
+        // Title card: arrives once the bird has formed, holds, and leaves as
+        // the services scene takes the screen.
+        const titleTarget = smoothstep(hero, 0.6, 0.7) * (1 - services);
+        titleAlpha = damp(titleAlpha, titleTarget, 5, delta);
+        titleArrive = titleTarget > 0.5 ? Math.min(1, titleArrive + delta / 0.7) : Math.max(0, titleArrive - delta / 0.4);
+        const tw = mobile ? 0.9 : 0.5;
+        const th = tw * (stageW / Math.max(stageH, 1)) * 0.5;
+        const tx = mobile ? 0.05 : 0.1;
+        const ty = mobile ? 0.52 : 0.5 - th / 2;
+        journey.drawTitle(canvas.width, canvas.height, time, [tx, ty, tx + tw, ty + th], titleAlpha, titleArrive);
       }
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.

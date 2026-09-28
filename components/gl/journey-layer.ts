@@ -242,6 +242,35 @@ void main() {
   color=vec4(vColor*a,0.0);
 }`;
 
+// Title card: a text texture drawn into the stage behind the bird, so the
+// bird can fly in front of the words. It arrives with an RGB split and a
+// scan flicker, then holds.
+const titleFragment = `#version 300 es
+precision highp float;
+uniform sampler2D title;
+uniform vec4 rect;
+uniform vec2 resolution;
+uniform float alpha;
+uniform float arrive;
+uniform float time;
+out vec4 color;
+float hash(float n) {return fract(sin(n)*43758.5453);}
+void main() {
+  vec2 frag=gl_FragCoord.xy/resolution;
+  vec2 uv=(frag-rect.xy)/(rect.zw-rect.xy);
+  if(any(lessThan(uv,vec2(0)))||any(greaterThan(uv,vec2(1)))) discard;
+  uv.y=1.0-uv.y;
+  float band=floor(uv.y*38.0);
+  float jitter=(hash(band+floor(time*24.0))-.5)*.03*(1.0-arrive);
+  float split=.006*(1.0-arrive)+.0015;
+  float r=texture(title,uv+vec2(jitter+split,0.0)).a;
+  float g=texture(title,uv+vec2(jitter,0.0)).a;
+  float b=texture(title,uv+vec2(jitter-split,0.0)).a;
+  float scan=.9+.1*sin(frag.y*resolution.y*1.4);
+  vec3 c=vec3(r,g,b)*scan*mix(1.0,step(.35,hash(band*3.1+floor(time*30.0))),(1.0-arrive)*.6);
+  color=vec4(c*.92*alpha,0.0);
+}`;
+
 function perspective(out: Float32Array, fov: number, aspect: number, near: number, far: number) {
   const f = 1 / Math.tan(fov / 2);
   out.fill(0);
@@ -288,6 +317,10 @@ export function createJourneyLayer(gl: WebGL2RenderingContext, atlas: WebGLTextu
     return program;
   };
   const backdrop = compile(backdropVertex, backdropFragment);
+  const titleProgram = compile(backdropVertex, titleFragment);
+  const tu = Object.fromEntries(["title", "rect", "resolution", "alpha", "arrive", "time"].map((n) => [n, gl.getUniformLocation(titleProgram, n)]));
+  const titleTexture = gl.createTexture();
+  let titleReady = false;
   const particles = compile(particleVertex, particleFragment);
   const bu = Object.fromEntries(["resolution", "time", "reveal", "rise", "space", "travel", "parallax"].map((n) => [n, gl.getUniformLocation(backdrop, n)]));
   const pu = Object.fromEntries(["projection", "view", "eye", "time", "kind", "pixelScale", "presence", "perGalaxy", "atlas"].map((n) => [n, gl.getUniformLocation(particles, n)]));
@@ -351,7 +384,39 @@ export function createJourneyLayer(gl: WebGL2RenderingContext, atlas: WebGLTextu
       draw(3, 1, BOKEH);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     },
+    // Uploads the title artwork (a 2D canvas with the words in white).
+    setTitle(source: HTMLCanvasElement) {
+      gl.activeTexture(gl.TEXTURE12);
+      gl.bindTexture(gl.TEXTURE_2D, titleTexture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      titleReady = true;
+    },
+    // rect: x0,y0,x1,y1 in 0..1 of the canvas (y up).
+    drawTitle(w: number, h: number, time: number, rect: [number, number, number, number], alpha: number, arrive: number) {
+      if (!titleReady || alpha < 0.005) return;
+      gl.bindVertexArray(vao);
+      gl.useProgram(titleProgram);
+      gl.enable(gl.BLEND);
+      gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE);
+      gl.activeTexture(gl.TEXTURE12);
+      gl.bindTexture(gl.TEXTURE_2D, titleTexture);
+      gl.uniform1i(tu.title, 12);
+      gl.uniform4f(tu.rect, rect[0], rect[1], rect[2], rect[3]);
+      gl.uniform2f(tu.resolution, w, h);
+      gl.uniform1f(tu.alpha, alpha);
+      gl.uniform1f(tu.arrive, arrive);
+      gl.uniform1f(tu.time, time);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    },
     dispose() {
+      gl.deleteProgram(titleProgram);
+      gl.deleteTexture(titleTexture);
       gl.deleteProgram(backdrop);
       gl.deleteProgram(particles);
       gl.deleteVertexArray(vao);

@@ -69,6 +69,10 @@ export function Hero({ t }: { t: HeroStrings }) {
           0.38,
         )
         .to("[data-hint-bird]", { autoAlpha: 0, y: -10, duration: 0.06 }, 0.9)
+        // Title stage: the stage draws the big title behind the bird; the
+        // HUD blurb beside it types in with it.
+        .fromTo("[data-hero-blurb]", { autoAlpha: 0, x: 24 }, { autoAlpha: 1, x: 0, duration: 0.08, ease: "power2.out" }, 0.62)
+        .to("[data-hero-blurb]", { autoAlpha: 0, duration: 0.05 }, 0.95)
         // Pin the timeline length to 1 so tween positions equal scroll progress.
         .set({}, {}, 1);
     },
@@ -138,6 +142,23 @@ export function Hero({ t }: { t: HeroStrings }) {
           </div>
         </div>
 
+        {/* The stage renders these words as its title card (see RawStage). */}
+        <span data-hero-title="CREATIVE|TECHNOLOGIST|& DESIGNER" className="sr-only">
+          Creative Technologist &amp; Designer
+        </span>
+        <div
+          data-hero-blurb
+          className="hero-copy pointer-events-none invisible absolute right-5 bottom-[14svh] z-10 max-w-[19rem] opacity-0 md:right-[7vw] md:bottom-auto md:top-[46%]"
+        >
+          {(t.locale === "tr"
+            ? ["Creative technologist & multi designer", "Tasarım, motion, yapay zekâ ve kodu tek üretim hattında birleştiriyorum.", "Oneavex kurucusu · MODD-AI"]
+            : ["Creative technologist & multi designer", "I bring design, motion, AI and code together in one production line.", "Founder of Oneavex · MODD-AI"]
+          ).map((line) => (
+            <p key={line} className="mb-5 font-mono text-[12px] leading-[1.7] tracking-[0.08em] text-bone/90 uppercase">
+              {line}
+            </p>
+          ))}
+        </div>
         <div
           data-hint-bird
           className="hero-copy pointer-events-none invisible absolute inset-x-0 bottom-[6svh] z-10 flex justify-center opacity-0 motion-reduce:hidden"
