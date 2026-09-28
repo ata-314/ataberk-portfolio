@@ -1,0 +1,82 @@
+/* Services: a single-screen, Apple-style frosted-glass bento.
+   Slow colour orbs sit behind the cards so the backdrop blur has something to
+   frost; beams, flares and halos add the light. Note: always write
+   -webkit-backdrop-filter BEFORE backdrop-filter — lightningcss keeps only the
+   last of the pair, and Chrome ignores the prefixed one. */
+
+.services-section { --violet: 167 139 250; --blue: 96 165 250; --magenta: 232 121 249; --indigo: 129 140 248; position: relative; padding-block: clamp(5rem, 10vw, 9rem); }
+.services-aura { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.services-aura i { position: absolute; border-radius: 50%; filter: blur(50px); opacity: .6; animation: services-drift 20s ease-in-out infinite alternate; }
+.services-aura i:nth-child(1) { left: 2%; top: 22%; width: 34vw; height: 34vw; background: radial-gradient(circle, rgb(139 92 246 / .95), transparent 65%); --dx: 7vw; --dy: -5vh; }
+.services-aura i:nth-child(2) { left: 52%; top: 10%; width: 30vw; height: 30vw; background: radial-gradient(circle, rgb(59 130 246 / .85), transparent 65%); --dx: -6vw; --dy: 8vh; animation-delay: -7s; }
+.services-aura i:nth-child(3) { left: 28%; top: 52%; width: 36vw; height: 30vw; background: radial-gradient(circle, rgb(217 70 239 / .7), transparent 65%); --dx: 8vw; --dy: -6vh; animation-delay: -12s; }
+.services-aura i:nth-child(4) { left: 74%; top: 55%; width: 26vw; height: 26vw; background: radial-gradient(circle, rgb(99 102 241 / .9), transparent 65%); --dx: -7vw; --dy: -7vh; animation-delay: -4s; }
+@keyframes services-drift { to { transform: translate(var(--dx), var(--dy)) scale(1.15); } }
+.services-inner { position: relative; z-index: 1; }
+
+.services-heading { display: flex; justify-content: space-between; align-items: end; gap: 2rem; margin-bottom: 2.5rem; }
+.services-label { color: rgb(var(--violet)); font-size: .85rem; margin-bottom: .8rem; letter-spacing: .02em; }
+.services-heading h2 { font-family: var(--font-archivo), sans-serif; font-size: clamp(2.4rem, 4.4vw, 4.4rem); font-weight: 550; letter-spacing: -.055em; line-height: 1.02; background: linear-gradient(180deg, #fff 30%, #c9c2e8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.services-lead { max-width: 24rem; color: #b9b5c8; line-height: 1.6; font-size: .95rem; }
+.services-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: .85rem; }
+
+.service-card { --mx: 50%; --my: 50%; --rx: 0deg; --ry: 0deg; --glow: var(--violet); --beam-x: 30%; --beam-r: 18deg; position: relative; isolation: isolate; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 24px; border: 1px solid rgba(255,255,255,.13);
+  background: linear-gradient(160deg, rgba(255,255,255,.11), rgba(255,255,255,.04) 38%, rgba(255,255,255,.02) 68%, rgba(10,6,28,.3));
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 0 0 .5px rgba(255,255,255,.05), inset 0 -50px 70px rgba(8,4,24,.3), 0 30px 70px rgba(4,2,16,.45);
+  transform: perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry)); transition: transform .4s ease, border-color .4s ease, box-shadow .4s ease; }
+.service-card-0 { grid-column: span 5; --beam-x: 38%; --beam-r: -14deg; }
+.service-card-1 { grid-column: span 4; --glow: var(--blue); --beam-x: 20%; --beam-r: 20deg; }
+.service-card-2 { grid-column: span 3; --glow: var(--magenta); --beam-x: 52%; --beam-r: -22deg; }
+.service-card-3 { grid-column: span 3; --glow: var(--indigo); --beam-x: 22%; --beam-r: 0deg; }
+.service-card-4 { grid-column: span 5; --glow: var(--magenta); --beam-x: 14%; --beam-r: 24deg; }
+.service-card-5 { grid-column: span 4; --glow: var(--blue); --beam-x: 48%; --beam-r: -18deg; }
+/* Specular rim: bright on top, fading down the sides, like iOS glass. */
+.service-card::after { content: ""; pointer-events: none; position: absolute; inset: 0; z-index: 4; border-radius: inherit; padding: 1px; background: linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,.06) 30%, rgba(255,255,255,.02) 70%, rgba(255,255,255,.12)); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.service-card::before { content: ""; pointer-events: none; position: absolute; inset: 0; z-index: -1; background: radial-gradient(380px circle at var(--mx) var(--my), rgb(var(--glow) / .16), transparent 65%); opacity: 0; transition: opacity .4s; }
+.service-beam { pointer-events: none; position: absolute; top: -30%; left: var(--beam-x); z-index: 0; width: 56%; height: 100%; filter: blur(14px); transform: rotate(var(--beam-r)); transform-origin: 50% 0; mix-blend-mode: screen; }
+.service-beam::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(var(--glow) / .6), rgb(var(--glow) / .16) 50%, transparent 82%); clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%); }
+.service-flare { pointer-events: none; position: absolute; top: -1px; left: calc(var(--beam-x) + 28%); z-index: 5; width: 38%; height: 1.5px; translate: -50% 0; background: linear-gradient(90deg, transparent, #fff, transparent); box-shadow: 0 0 14px 2px rgb(var(--glow) / .9); }
+.service-flare::after { content: ""; position: absolute; left: 50%; top: 0; width: 140%; height: 70px; translate: -50% -50%; background: radial-gradient(ellipse, rgb(var(--glow) / .5), transparent 70%); filter: blur(6px); }
+.service-visual { position: relative; z-index: 1; flex: 1 1 auto; min-height: 150px; container-type: size; display: grid; place-items: center; overflow: hidden; mask-image: linear-gradient(#000 60%, transparent 97%); -webkit-mask-image: linear-gradient(#000 60%, transparent 97%); }
+.service-visual::before { content: ""; position: absolute; inset: 0; background: radial-gradient(rgba(220,214,255,.16) 1px, transparent 1.2px) 0 0 / 16px 16px; mask-image: radial-gradient(70% 70% at 50% 45%, #000, transparent); -webkit-mask-image: radial-gradient(70% 70% at 50% 45%, #000, transparent); }
+.service-halo { position: absolute; left: 50%; top: 45%; width: 70cqh; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; background: radial-gradient(circle, rgb(var(--glow) / .45), rgb(var(--glow) / .12) 45%, transparent 70%); filter: blur(14px); animation: services-halo 6s ease-in-out infinite alternate; }
+@keyframes services-halo { to { opacity: .6; scale: 1.15; } }
+.service-copy { position: relative; z-index: 2; margin-top: -1.4rem; padding: 0 1.6rem 1.5rem; }
+.service-copy h3 { font-family: var(--font-archivo),sans-serif; font-size: clamp(1.05rem,1.3vw,1.35rem); line-height: 1.2; font-weight: 550; letter-spacing: -.03em; color: #fff; }
+.service-copy p { color: #bdb8cf; font-size: .88rem; line-height: 1.55; margin-top: .45rem; max-width: 44ch; }
+@media (hover: hover) and (pointer: fine) {
+  .service-card:hover { border-color: rgba(255,255,255,.22); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -50px 70px rgba(8,4,24,.25), 0 34px 80px rgba(4,2,16,.5); }
+  .service-card:hover::before { opacity: 1; }
+  .service-card:hover .sa { transform: translateY(-.25em) scale(1.02); }
+}
+
+/* Layout: whole bento on one desktop screen; two rows share the height. */
+@media (min-width: 1024px) and (min-height: 640px) {
+  .services-section { height: 100svh; max-height: 1080px; padding-block: clamp(5.25rem, 11vh, 7rem) clamp(1.25rem, 3vh, 2.25rem); }
+  .services-inner { height: 100%; display: flex; flex-direction: column; }
+  .services-heading { margin-bottom: clamp(1.1rem, 3vh, 2rem); }
+  .services-grid { flex: 1 1 auto; min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .service-visual { min-height: 0; }
+}
+@media (min-width: 1024px) and (max-height: 800px) {
+  .services-heading h2 { font-size: clamp(2rem, 3.4vw, 3.2rem); }
+  .services-label { display: none; }
+  .service-copy p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+}
+@media (max-width: 1023px) {
+  .services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .service-card[class*="service-card-"] { grid-column: span 1; }
+  .service-visual { flex: none; height: 210px; }
+  .services-aura i { width: 60vw; height: 60vw; }
+}
+@media (max-width: 639px) {
+  .services-heading { align-items: start; flex-direction: column; gap: 1.2rem; margin-bottom: 1.8rem; }
+  .services-grid { grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+  .service-card { border-radius: 22px; }
+  .service-visual { height: 200px; }
+  .service-copy { padding: 0 1.35rem 1.4rem; }
+  .service-copy h3 { font-size: 1.25rem; }
+}
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) { .service-card { background: #1a1530; } }
