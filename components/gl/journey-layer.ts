@@ -60,16 +60,17 @@ void main() {
   // the horizon sinks out of the bottom of the frame.
   float horizon=.08-rise*1.1;
   float above=uv.y-horizon;
-  vec3 skyTop=vec3(.012,.03,.075);
-  vec3 skyMid=vec3(.03,.11,.19);
-  vec3 skyLow=vec3(.08,.27,.34);
+  // Kept dark and moody: a deep teal night-sky, never a daylight blue.
+  vec3 skyTop=vec3(.004,.012,.02);
+  vec3 skyMid=vec3(.008,.04,.052);
+  vec3 skyLow=vec3(.02,.1,.105);
   vec3 sky=mix(skyLow,skyMid,smoothstep(0.0,.35,above));
   sky=mix(sky,skyTop,smoothstep(.35,1.1,above));
-  sky+=vec3(.55,.95,.7)*exp(-abs(above)*22.0)*.35;
-  sky+=vec3(.2,.5,.6)*exp(-max(above,0.0)*3.0)*.25;
+  sky+=vec3(.45,.9,.7)*exp(-abs(above)*26.0)*.28;
+  sky+=vec3(.1,.35,.38)*exp(-max(above,0.0)*3.5)*.16;
   // High haze drifting across the sky.
   float haze=fbm(p*vec2(1.2,3.0)+vec2(time*.012,rise*2.0));
-  sky+=vec3(.08,.16,.2)*smoothstep(.45,.9,haze)*(1.0-space);
+  sky+=vec3(.05,.12,.13)*smoothstep(.45,.9,haze)*(1.0-space);
   // Leaving the atmosphere: the planet's curved limb glows beneath,
   // thinning and sinking as space takes over.
   float limbY=-.62-space*.5;
@@ -175,6 +176,22 @@ void main() {
     vSoft=kindPick<.12?1.0:0.0;
     vAlpha=presence*(.55+.45*h(k+16.0));
     size=kindPick<.12?9.0:5.5+h(k+17.0)*3.5;
+  } else if(kind>2.5) {
+    // Bokeh: large out-of-focus motes floating just in front of the lens,
+    // set in camera space so they stay with the viewer through every
+    // chapter; they drift slowly and part toward the edges.
+    float z=2.2+h(id+1.0)*9.0;
+    vec3 vp=vec3((h(id+2.0)-.5)*2.6*z,0.0,-z);
+    vp.x+=sin(time*.05+id)*.25*z;
+    // Rising slowly, wrapping from bottom to top of the view.
+    vp.y=mod(h(id+5.0)*1.6*z+time*(.015+h(id+4.0)*.03)*z,1.6*z)-.8*z;
+    gl_Position=projection*vec4(vp,1.0);
+    float pick=h(id+6.0);
+    vColor=pick<.45?vec3(1.0,.78,.32):pick<.8?vec3(.35,.95,.85):vec3(.6,.5,1.0);
+    vAlpha=presence*(.05+h(id+7.0)*.12)*(1.0-smoothstep(9.0,11.2,z));
+    vSoft=2.0;
+    gl_PointSize=clamp((18.0+h(id+8.0)*60.0)*pixelScale*(5.0/z),4.0,160.0);
+    return;
   } else {
     // Space dust: a tube of motes around the flight path that wraps with
     // the camera, so the flight never runs out of passing matter.
@@ -208,7 +225,11 @@ out vec4 color;
 void main() {
   vec2 pc=gl_PointCoord;
   float a;
-  if(vSoft>.5) {
+  if(vSoft>1.5) {
+    // Bokeh disc: flat body, slightly brighter rim, soft edge.
+    float r=length(pc*2.0-1.0);
+    a=(smoothstep(1.0,.9,r)*.7+smoothstep(.97,.86,r)*smoothstep(.7,.9,r)*.5);
+  } else if(vSoft>.5) {
     vec2 d=pc*2.0-1.0;
     a=exp(-dot(d,d)*3.0);
   } else {
@@ -278,6 +299,7 @@ export function createJourneyLayer(gl: WebGL2RenderingContext, atlas: WebGLTextu
   const GALAXIES = 8;
   const PER_GALAXY = Math.round(11000 * scale);
   const DUST = Math.round(5000 * scale);
+  const BOKEH = mobile ? 28 : 64;
 
   return {
     render(w: number, h: number, time: number, state: JourneyState) {
@@ -294,6 +316,7 @@ export function createJourneyLayer(gl: WebGL2RenderingContext, atlas: WebGLTextu
       gl.uniform2f(bu.parallax, state.parallax[0], state.parallax[1]);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       if (state.reveal < 0.01) return;
+      // (particles below fade in with reveal as well)
 
       // Camera: climbs through the cloud banks, then flies forward through
       // the galaxy field, weaving gently and leaning with the pointer.
@@ -325,6 +348,7 @@ export function createJourneyLayer(gl: WebGL2RenderingContext, atlas: WebGLTextu
       draw(0, 1 - state.space, CLOUDS);
       draw(1, state.galaxies, GALAXIES * PER_GALAXY);
       draw(2, state.space, DUST);
+      draw(3, 1, BOKEH);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     },
     dispose() {

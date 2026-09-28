@@ -972,8 +972,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           sim: simInput,
         }, sceneTarget);
       post?.finish(time, {
-        bloom: 0.9,
-        threshold: 0.55,
+        bloom: 0.7,
+        threshold: 0.72,
         aberration: 0.015,
         grain: 0.035,
         grade: [0.0, 0.32, 0.38],
