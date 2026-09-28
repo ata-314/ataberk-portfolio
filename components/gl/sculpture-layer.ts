@@ -106,6 +106,15 @@ vec3 birdAnatomy(float id,float frame,float t,out vec3 normal,out float shellDep
   return anatomy;
 }
 `;
+// Trail grains: 7% of grains take turns staying put in space while the bird
+// flies on, so a glowing wake of particles is left behind it. Each has its
+// own cycle: -1 for ordinary grains, else 0..1 (left behind until .7, then
+// quietly back home).
+const trailCore = /* glsl */ `float trailLife(float id,float t) {
+  if(grainRandom(uint(id)+3907u)<.93) return -1.0;
+  return fract(t*(.28+grainRandom(uint(id)+4099u)*.3)+grainRandom(uint(id)+4271u));
+}
+`;
 const SIM_W = 1024;
 
 // One persistent population: fluid grains, boundary waves and bird anatomy.
@@ -170,6 +179,10 @@ out float solid;
 ${field}
 ${birdSampling}
 ${grainCore}
+${trailCore}
+vec3 hueRgb(float h) {
+  return clamp(abs(mod(h*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0,0.0,1.0);
+}
 
 // Surface point for a screen position, read from the raymarched depth map with
 // texelFetch (the depth is packed in two bytes, so filtering would corrupt it).
@@ -288,6 +301,13 @@ void renderGrain(float id) {
   float birdZ=.999;
   float birdDisturb=0.0;
   float birdGlint=0.0;
+  float birdAlong=.5;
+  float trailFade=1.0;
+  // The body's colour: a gradient from head to tail between two hues that
+  // drift around the wheel at their own pace, so the bird is always one
+  // continuous blend and never the same blend twice.
+  float hueHead=fract(time*.019);
+  float hueTail=fract(hueHead+.3+.12*sin(time*.071));
   float electric=0.0;
   vec3 electricColor=vec3(.6,.97,1.0);
   if(assembly>0.0) {
@@ -303,7 +323,14 @@ void renderGrain(float id) {
       // Grains light up as they leave the body on the cursor's current;
       // resting grains, and grains only lagging a sudden move, stay dark.
       birdDisturb=smoothstep(.25,1.1,length(state.xyz))*smoothstep(0.0,.3,state.w);
+      float life=trailLife(id,time);
+      if(life>=0.0) {
+        // Left behind: glows while it hangs in the wake, fades, then home.
+        trailFade=life<.7?1.0-smoothstep(.2,.7,life):0.0;
+        birdDisturb=max(birdDisturb,smoothstep(.15,.9,length(state.xyz))*trailFade);
+      }
     }
+    birdAlong=clamp(anatomy.z/3.4+.5,0.0,1.0);
     vec4 target=birdProjection*birdView*vec4(world,1.0);
     destination=target.xy/target.w;
     birdZ=clamp(target.z/target.w,-1.0,.99);
@@ -318,17 +345,18 @@ void renderGrain(float id) {
     float sheen=smoothstep(.6,.84,noise(anatomy*2.6+vec3(time*.35,-time*.22,time*.18)));
     float twinkle=step(.988,grainRandom(uint(id)+uint(floor(time*5.0+seed*5.0))*977u));
     birdGlint=sheen*.55+twinkle;
-    // A restrained charge: sparse thin veins crawl over the anatomy, a slow
-    // faint pulse runs along the wingspan and a rare grain sparks.
-    float vein=noise(anatomy*5.5+vec3(0.0,time*1.3,time*.85));
-    float veinLine=1.0-smoothstep(0.0,.012,abs(vein-.5));
-    veinLine*=smoothstep(.62,.78,noise(anatomy*2.0-vec3(time*.5)));
+    // Charge inside the body: lightning filaments crawl through the volume
+    // and flicker, discharge waves race along the span and single grains
+    // spark. The light takes the body's own hue, burnt to a white core.
+    float vein=noise(anatomy*4.2+vec3(0.0,time*2.2,time*1.4));
+    float veinLine=1.0-smoothstep(0.0,.03,abs(vein-.5));
+    veinLine*=smoothstep(.48,.68,noise(anatomy*1.6-vec3(time*.8)));
+    veinLine*=.55+.45*step(.35,fract(sin(floor(time*14.0)+floor(anatomy.x*3.0))*43758.5));
     float span=anatomy.x*1.6+anatomy.z*.9;
-    float arc=pow(.5+.5*sin(span*7.0-time*4.0+noise(anatomy*3.0+time*.5)*4.0),90.0);
-    float spark=step(.996,grainRandom(uint(id)+uint(floor(time*10.0))*131u));
-    // Kept faint so the packed surface reads as one even material.
-    electric=clamp(veinLine*.22+arc*.12+spark*.15,0.0,.3);
-    electricColor=mix(vec3(.55,.95,1.0),vec3(.84,1.0,.3),.5+.5*sin(time*1.2+seed*6.28));
+    float arc=pow(.5+.5*sin(span*6.0-time*5.0+noise(anatomy*3.0+time*.7)*4.0),40.0);
+    float spark=step(.992,grainRandom(uint(id)+uint(floor(time*12.0))*131u));
+    electric=clamp(veinLine*.85+arc*.45+spark*.7,0.0,1.0);
+    electricColor=mix(hueRgb(mix(hueHead,hueTail,birdAlong)+.08),vec3(1.0),.3);
     // Sparks leap slightly off the surface.
     destination+=(vec2(grainRandom(uint(id)+uint(time*18.0)),grainRandom(uint(id)+977u+uint(time*18.0)))-.5)*.006*spark;
   }
@@ -458,17 +486,15 @@ void renderGrain(float id) {
   solid=assembly*(1.0-bustMix)*(1.0-helixMix);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
   gl_PointSize=max(1.0,mix(fluidSize*introSize,(2.9+seed*.3)*pixelScale*mix(1.0,.85,shellDepth)*mix(1.0,1.1,birdDisturb)*(1.0+birdGlint*.3),assembly));
-  // Kept below 1 so the body keeps its hue and lighting; the veins and the
-  // halo pass carry the brightness.
-  // Frosted silver with a faint lime cast; the brand colour lives in the
-  // veins and the halo.
-  vec3 birdBody=min(mix(vec3(.56,.61,.68),lime,.06)*birdLight*birdAO,vec3(.97));
+  // Bright frosted body washed with the head-to-tail hue gradient.
+  vec3 gradient=mix(hueRgb(hueHead),hueRgb(hueTail),smoothstep(0.0,1.0,birdAlong));
+  vec3 birdBody=min(mix(vec3(.8,.86,.92),gradient,.5)*birdLight*birdAO*1.08,vec3(1.0));
   tint=mix(tint,birdBody,assembly*.92);
   tint+=vec3(.7,.93,1.0)*birdGlint*.4*assembly;
   // Veins burn white-hot at the core and fringe into the electric hue.
-  vec3 hot=mix(electricColor,vec3(1.0),.25)*1.25;
+  vec3 hot=mix(electricColor,vec3(1.0),.4)*1.7;
   tint=mix(tint,hot,clamp(electric,0.0,1.0)*assembly);
-  gl_PointSize*=1.0+electric*.4*assembly;
+  gl_PointSize*=1.0+electric*.55*assembly;
   // A bright scan sweeps down the relief every six seconds. Depth bends
   // the band around the folds; only actual grains carry the light.
   float sweep=1.55-mod(time*.52,3.1);
@@ -490,7 +516,10 @@ void renderGrain(float id) {
   float airborne=birdDisturb*assembly;
   float sparkle=.7+grainRandom(uint(id)+4513u)*.55;
   vec3 icy=mix(vec3(.8,.9,.97),vec3(.9,.98,1.0),grainRandom(uint(id)+6121u))*sparkle*mix(.75,1.15,birdLight*.6)*1.35;
+  // Blown and trailing grains glow in the body's colour, lifted to white.
+  icy=mix(icy,mix(hueRgb(mix(hueHead,hueTail,birdAlong)),vec3(1.0),.45)*sparkle*1.3,.5);
   tint=mix(tint,icy,airborne*.9);
+  alpha*=mix(1.0,trailFade,assembly);
   // Services: grain by grain (staggered by seed, like the intro) the sea
   // takes on the section's violet / blue / magenta light, so the glass
   // cards read as lit by the same matter behind them.
@@ -528,7 +557,7 @@ void renderGrain(float id) {
     // Halo mostly around live veins and sparks; the body keeps only a faint
     // lime aura (no red/blue, which washed the green body out to grey).
     tint=mix(vec3(.3,.85,.05),electricColor*1.4,clamp(electric,0.0,1.0));
-    alpha=(.006+electric*.18+birdDisturb*.07)*assembly*opacity*(1.0-morph)*(1.0-orbitMix);
+    alpha=(.006+electric*.3+birdDisturb*.07)*assembly*opacity*(1.0-morph)*(1.0-orbitMix)*trailFade;
     tint=mix(tint,vec3(.85,.95,1.0),birdDisturb);
     gl_PointSize*=3.2;
   }
@@ -589,7 +618,7 @@ void main() {
   vec2 d=(uv-splatPos)*vec2(aspect,1.0);
   // Only a moving cursor stamps; a resting one leaves the current alone.
   float g=exp(-dot(d,d)/.008)*splatAmt*smoothstep(.1,.8,length(splatVel));
-  carried=mix(carried,splatVel*.9,clamp(g*dt*14.0,0.0,1.0));
+  carried=mix(carried,splatVel*.4,clamp(g*dt*14.0,0.0,1.0));
   outFlow=vec4(carried,0.0,1.0);
 }`;
 
@@ -627,6 +656,7 @@ layout(location=1) out vec4 outVel;
 ${field}
 ${birdSampling}
 ${grainCore}
+${trailCore}
 // Divergence-free curl noise: the curl of three offset noise potentials.
 // Grains following it roll into eddies, lobes and clumps instead of moving
 // as one sheet.
@@ -655,6 +685,20 @@ void main() {
   // transform): wing beats stay crisp, sudden moves leave grains behind.
   vec3 before=(prevMatrix*vec4(local,1.0)).xyz;
   float loose=pow(grainRandom(uint(id)+2113u),3.5);
+  float life=trailLife(id,time);
+  if(life>=.7) {
+    // Trail grain done: back home unseen, ready for its next turn.
+    outDisp=vec4(0);outVel=vec4(0);return;
+  }
+  if(life>=0.0) {
+    // Trail grain: stays where it is in space as the body flies on,
+    // drifting on the air a little, until its turn ends.
+    d-=home-before;
+    vec3 q0=(home+d)*1.15+vec3(0.0,time*.23,time*.15);
+    v=v*exp(-1.2*dt)+(vec3(noise(q0),noise(q0+19.1),noise(q0+37.3))-.5)*.9*dt;
+    d+=v*dt;
+    outDisp=vec4(d,.4);outVel=vec4(v,0.0);return;
+  }
   d-=(home-before)*mix(.12,.35,loose);
   vec3 p=home+d;
   vec3 q=p*1.15+vec3(0.0,time*.23,time*.15);
@@ -662,7 +706,7 @@ void main() {
   vec4 clip=birdProjection*birdView*vec4(p,1.0);
   vec2 flow=texture(flowTex,clip.xy/clip.w*.5+.5).xy;
   float strength=length(flow);
-  float caught=smoothstep(.25,1.8,strength);
+  float caught=smoothstep(.35,2.2,strength);
   if(caught>0.0) {
     // Each grain takes the current at its own strength and a slightly
     // different heading, so the blown mass fans out instead of sliding.
@@ -678,12 +722,12 @@ void main() {
   }
   // Home pull: firm at rest, very loose while stirred, so a blown cloud
   // hangs and drifts before it pours back into the form.
-  v-=d*mix(30.0,10.0,loose)*mix(1.0,.05,stir)*dt;
+  v-=d*mix(30.0,10.0,loose)*mix(1.0,.12,stir)*dt;
   v+=air*(.6+loose*3.6)*dt;
   v*=exp(-mix(4.6,1.8,stir)*dt);
   d+=v*dt;
   float reach=length(d);
-  if(reach>4.0) d*=4.0/reach;
+  if(reach>3.0) d*=3.0/reach;
   // w: the grain's own stir, which the render turns into light only as far
   // as the grain has actually left the body.
   outDisp=vec4(d,stir);

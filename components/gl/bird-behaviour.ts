@@ -1,12 +1,13 @@
 // Bird behaviour: a small state machine that keeps the flight from ever
-// repeating. Actions (glide, dart, stoop, snap turn, climb, flutter, arc)
+// repeating. Actions (glide, dart, stoop, snap turn, climb, flutter, arc,
+// receding deep into space and sweeping up close to the screen)
 // alternate with stretches of plain cruising; each next action is drawn by
 // weight, never one of the last two, with its own random duration,
 // amplitude and side. Layered value noise adds a continuous, non-periodic
 // wander on top. Outputs are offsets and wing/attitude targets that the
 // stage eases toward, so every change reads as a reflex, not a keyframe.
 
-type Kind = "cruise" | "glide" | "dart" | "stoop" | "turn" | "climb" | "flutter" | "arc";
+type Kind = "cruise" | "glide" | "dart" | "stoop" | "turn" | "climb" | "flutter" | "arc" | "recede" | "approach";
 
 type Action = { kind: Kind; start: number; length: number; side: number; amount: number; phase: number };
 
@@ -29,6 +30,8 @@ const ACTIONS: { kind: Kind; weight: number; length: [number, number] }[] = [
   { kind: "climb", weight: 1.5, length: [1.2, 1.9] },
   { kind: "flutter", weight: 1.2, length: [1.4, 2.4] },
   { kind: "arc", weight: 1.3, length: [2.8, 4.2] },
+  { kind: "recede", weight: 1.8, length: [4.5, 7] },
+  { kind: "approach", weight: 1.6, length: [3.2, 5] },
 ];
 
 function hash(n: number) {
@@ -138,6 +141,25 @@ export function createBirdBehaviour(random: () => number = Math.random) {
           motion.beat = 1.25;
           break;
         }
+        case "recede": {
+          // Out into the depth of space until it is a distant speck, then back.
+          const out = smooth(m, 0, 0.4) * (1 - smooth(m, 0.68, 1));
+          motion.z = -(4 + amount * 2.8) * out;
+          motion.y = 0.7 * out;
+          motion.x = side * 0.8 * out;
+          motion.beat = 1.15;
+          break;
+        }
+        case "approach": {
+          // Sweeps up to the glass, fills the view for a moment, pulls away.
+          const near = smooth(m, 0, 0.45) * (1 - smooth(m, 0.6, 1));
+          motion.z = (2.1 + amount * 0.8) * near;
+          motion.y = -0.25 * near;
+          motion.x = side * 0.45 * near;
+          motion.bank = side * 0.15 * near;
+          motion.beat = 1.3;
+          break;
+        }
         default:
           break;
       }
@@ -145,7 +167,8 @@ export function createBirdBehaviour(random: () => number = Math.random) {
       const w = (o: number) => noise1(time * 0.21 + seed + o) * 0.7 + noise1(time * 0.53 + seed + o * 1.7) * 0.3;
       motion.x += w(0) * 0.32;
       motion.y += w(40) * 0.24;
-      motion.z += w(80) * 0.18;
+      // Depth drifts slowly too, so the bird is never at one distance.
+      motion.z += w(80) * 0.2 + noise1(time * 0.07 + seed + 300) * 0.7;
       motion.bank += w(120) * 0.08;
       motion.beat *= 1 + w(160) * 0.12;
       return motion;
