@@ -701,3 +701,28 @@ main#content .work-card-idea {
   line-height: 1.6;
 }
 main#content .ascent-caption { font-family: var(--font-space), sans-serif; }
+
+/* Journey: the pinned helix scene. The cards live in the stage; the page
+   only carries the heading and the HUD panel naming the card in front. */
+.journey-section { pointer-events: none; }
+.journey-section a { pointer-events: auto; }
+.journey-heading { position: absolute; left: clamp(1.25rem, 2.5vw, 2.5rem); top: clamp(5.5rem, 12vh, 7rem); }
+.journey-panel {
+  position: absolute;
+  left: clamp(1.25rem, 2.5vw, 2.5rem);
+  bottom: clamp(1.5rem, 6vh, 3.5rem);
+  width: min(24rem, calc(100vw - 2.5rem));
+  padding: 1.25rem 1.4rem;
+  border-left: 1px solid rgb(190 235 235 / 0.35);
+  background: linear-gradient(90deg, rgb(4 10 12 / 0.55), transparent);
+  animation: journeyPanel 0.5s cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+@keyframes journeyPanel { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.journey-dive {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgb(230 255 250 / 0.95), rgb(120 220 210 / 0.6) 35%, #05080a 75%);
+}
+html[data-card-hover="true"] body { cursor: pointer; }

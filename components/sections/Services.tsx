@@ -10,7 +10,7 @@ import "./services.css";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
-const content = {
+export const servicesContent = {
   tr: {
     heading: "Fikirden deneyime.",
     lead: "Tasarım, yazılım ve yapay zekâyı bir araya getirerek markanız için çalışan dijital deneyimler üretiyorum.",
@@ -39,7 +39,7 @@ const content = {
 
 export function Services({ locale }: { locale: Locale }) {
   const root = useRef<HTMLElement>(null);
-  const t = content[locale];
+  const t = servicesContent[locale];
   useEffect(() => {
     const section = root.current;
     if (!section) return;

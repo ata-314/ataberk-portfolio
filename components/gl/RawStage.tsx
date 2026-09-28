@@ -7,7 +7,9 @@ import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour } from "./bird-behaviour";
 import { createJourneyLayer, type JourneyState } from "./journey-layer";
 import { createPost } from "./post";
-import { bustState, scrollState } from "../three/scroll-state";
+import { createCardsLayer, type JourneyCard } from "./cards-layer";
+import { HELIX, HELIX_SHARE, helixOffset, pickCard } from "./helix";
+import { bustState, journeyState as journeyScroll, scrollState } from "../three/scroll-state";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
 const BIRD_SAMPLES = 9000;
@@ -361,7 +363,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // Journey chapters, eased: the climb and the flight follow the page from
     // the services section to the contact finale.
     const journeyState: JourneyState = { reveal: 0, rise: 0, space: 0, travel: 0, galaxies: 0, parallax: [0, 0] };
-    let journeyStart: HTMLElement | null = null;
     // Hero title card, drawn in the stage so the bird flies in front of it.
     // Words come from the DOM ([data-hero-title], one line per "|").
     let titleArrive = 0;
@@ -389,6 +390,24 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       });
     }
     let journeyEnd: HTMLElement | null = null;
+    // Curved glass cards wrapped round the bird in the journey scene; their
+    // copy comes from the page ([data-journey-cards]).
+    const cards = createCardsLayer(gl);
+    let cardCount = 0;
+    let journeyHold = 0;
+    let helixProgress = 0;
+    const cardSource = document.querySelector<HTMLScriptElement>("[data-journey-cards]")?.textContent;
+    if (cardSource) {
+      void document.fonts.ready.then(() => {
+        if (disposed) return;
+        const style = getComputedStyle(document.body);
+        const font = style.getPropertyValue("--font-hud").trim() || "sans-serif";
+        const mono = style.getPropertyValue("--font-jetbrains").trim() || "monospace";
+        const list = JSON.parse(cardSource) as JourneyCard[];
+        cards.setCards(list, font, mono);
+        cardCount = list.length;
+      });
+    }
     let ascentElement: HTMLElement | null = null;
     const setupTexture = (
       unit: number,
@@ -644,6 +663,13 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
     addEventListener("pointermove", onPointerMove, { passive: true });
     addEventListener("pointerdown", onPointerDown, { passive: true });
+    // A click on the card under the pointer opens it (JourneySection acts).
+    const onClick = (event: MouseEvent) => {
+      if (journeyScroll.hovered < 0 || !journeyScroll.active) return;
+      if ((event.target as HTMLElement | null)?.closest("a, button")) return;
+      dispatchEvent(new CustomEvent("journey-card", { detail: journeyScroll.hovered }));
+    };
+    addEventListener("click", onClick);
     addEventListener("pointerup", onPointerUp, { passive: true });
     document.documentElement.addEventListener("pointerleave", onPointerLeave);
 
@@ -829,6 +855,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         : videoReady * (1 - smoothstep(hero, 0.14, 0.38));
       videoMix = damp(videoMix, targetVideo, 12, delta);
       const flight = flightAt(hero, scrollState.page.current, pointerSmooth, pointerActive);
+      // Journey: while its scene approaches and holds the screen the bird is
+      // the axis the cards wrap round.
+      {
+        const section = document.querySelector<HTMLElement>("#journey");
+        const box = (section?.parentElement?.classList.contains("pin-spacer") ? section.parentElement : section)?.getBoundingClientRect();
+        const target = box ? smoothstep(box.top / stageH, 0.9, 0.05) * smoothstep(box.bottom / stageH, 0.05, 0.9) : 0;
+        journeyHold = damp(journeyHold, target, 4, delta);
+        helixProgress = Math.min(1, journeyScroll.progress / HELIX_SHARE);
+      }
+      const galaxyPhase = smoothstep(journeyScroll.progress, HELIX_SHARE, 1);
       // Behaviour: a non-repeating sequence of glides, darts, stoops, turns,
       // climbs, flutters and loops over a noise wander, eased per action —
       // fast for reflexes, slow for glides — and only once the bird has
@@ -837,7 +873,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const ascentBox = ascentElement?.getBoundingClientRect();
       const ascentHold = ascentBox ? smoothstep(ascentBox.top / stageH, 1, 0.1)
         * smoothstep(ascentBox.bottom / stageH, 0.1, 0.8) : 0;
-      const freeFlight = (1 - ascentHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale) * (1 - services) * (1 - workHold);
+      const freeFlight = (1 - journeyHold) * (1 - ascentHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale) * (1 - services) * (1 - workHold);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
       const ease = motion.snappy ? 7 : 2.2;
@@ -860,6 +896,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         mix(flight.position[2], 0.4, centreHold),
       ];
       flight.scale = mix(flight.scale, 0.44 + ascentHold * (mobile ? -0.08 : 0.12), centreHold);
+      // The journey axis: the bird at the centre of the helix, a little
+      // larger; through the galaxies it dives, nose down.
+      flight.position = [
+        mix(flight.position[0], 0, journeyHold),
+        mix(flight.position[1], HELIX.centreY - 0.05, journeyHold),
+        mix(flight.position[2], 0, journeyHold),
+      ];
+      flight.scale = mix(flight.scale, mobile ? 0.9 : 0.62, journeyHold);
       // Manifesto: the bird comes apart and its grains wind a helix ring
       // around the copy (see the sculpture shader). The stage only measures
       // the copy block and eases the envelope in and out.
@@ -885,7 +929,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       yaw = damp(yaw, yawTarget, motion.snappy ? 7 : eased.yawMix > 0.05 ? 4.5 : 2.5, delta);
       // Nose dips while gliding down.
       // Positive pitch dips the nose; loops and barrel rolls add whole turns.
-      const pitch = eased.pitch + motion.spinPitch * freeFlight;
+      const pitch = eased.pitch + motion.spinPitch * freeFlight + galaxyPhase * journeyHold * 0.55;
       const roll = Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + eased.bank + motion.spinRoll * freeFlight;
       compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, roll, pitch);
       // The wing beat runs at the behaviour's rate and eases onto a held
@@ -928,6 +972,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         }
         cursorPoint.set([px, py, pz]);
         cursorPrimed = hover[2] > 0.5;
+        const offset = helixOffset(helixProgress, Math.max(cardCount, 1));
+        const picked = journeyHold > 0.6 && galaxyPhase < 0.05 && hover[2] > 0.5 && cardCount
+          ? pickCard([camera[0], camera[1], camera[2]], [dx, dy, dz], offset, cardCount)
+          : -1;
+        if (picked !== journeyScroll.hovered) {
+          journeyScroll.hovered = picked;
+          document.documentElement.dataset.cardHover = String(picked >= 0);
+        }
         worldSpan[1] = 2 * Math.max(depth, 0.5) * tanHalf;
         worldSpan[0] = worldSpan[1] * aspect;
       }
@@ -976,39 +1028,22 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       {
-        // Measured from the services pin spacer when pinned, so the climb
-        // keeps moving while the section holds the screen.
-        const servicesSection = document.querySelector<HTMLElement>("#services");
-        const spacer = servicesSection?.parentElement;
-        journeyStart = spacer?.classList.contains("pin-spacer") ? spacer : servicesSection;
         journeyEnd ??= document.querySelector<HTMLElement>("#contact");
-        let j = 0;
-        if (journeyStart && journeyEnd) {
-          const start = journeyStart.getBoundingClientRect().top - stageH;
-          const end = journeyEnd.getBoundingClientRect().top;
-          j = Math.max(0, Math.min(1, -start / Math.max(end - start, 1)));
-        }
+        const j = journeyScroll.progress;
         const js = journeyState;
         js.reveal = damp(js.reveal, smoothstep(hero, 0.4, 0.95), 4, delta);
-        ascentElement ??= document.querySelector<HTMLElement>("#ascent");
-        const ascentRect = ascentElement?.getBoundingClientRect();
-        const climb = ascentRect ? Math.max(0, Math.min(1,
-          (stageH - ascentRect.top) / (ascentRect.height + stageH * 0.4))) : j;
-        const workSection = workElement?.closest<HTMLElement>("[data-scene]");
-        const workTop = workSection?.getBoundingClientRect().top ?? 0;
-        const contactTop = journeyEnd?.getBoundingClientRect().top ?? stageH;
-        const voyage = Math.max(0, Math.min(1,
-          (stageH - workTop) / Math.max(stageH, contactTop - workTop)));
-        js.rise = damp(js.rise, smoothstep(climb, 0, 0.75), 4, delta);
-        js.space = damp(js.space, smoothstep(climb, 0.28, 0.95), 4, delta);
-        js.galaxies = damp(js.galaxies, smoothstep(climb, 0.68, 1), 4, delta);
-        js.travel = damp(js.travel, voyage, 4, delta);
+        // One descent: the horizon sinks away as the helix begins, space
+        // closes in, and past the last card the galaxies rise to meet us.
+        js.rise = damp(js.rise, smoothstep(j, 0, 0.1), 4, delta);
+        js.space = damp(js.space, smoothstep(j, 0, 0.16), 4, delta);
+        js.galaxies = damp(js.galaxies, smoothstep(j, HELIX_SHARE - 0.1, HELIX_SHARE), 4, delta);
+        js.travel = damp(js.travel, j, 6, delta);
         js.parallax[0] = damp(js.parallax[0], hover[2] > 0.5 ? hover[0] : 0, 2, delta);
         js.parallax[1] = damp(js.parallax[1], hover[2] > 0.5 ? hover[1] : 0, 2, delta);
         journey.render(canvas.width, canvas.height, time, js);
         // Title card: arrives once the bird has formed, holds, and leaves as
         // the services scene takes the screen.
-        const titleTarget = smoothstep(hero, 0.6, 0.7) * (1 - services) * (1 - smoothstep(j, 0, 0.03));
+        const titleTarget = smoothstep(hero, 0.6, 0.7) * (1 - services) * (1 - journeyHold);
         titleAlpha = damp(titleAlpha, titleTarget, 5, delta);
         titleArrive = titleTarget > 0.5 ? Math.min(1, titleArrive + delta / 0.7) : Math.max(0, titleArrive - delta / 0.4);
         const tw = mobile ? 0.9 : 0.5;
@@ -1032,6 +1067,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           links: linksReady ? linkTexture : null,
           sim: simInput,
         }, sceneTarget);
+      // The cards share the bird's camera and depth, so the bird hides the
+      // cards behind it and the cards in front cover it.
+      if (sceneTarget) gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      cards.render(view, projection, [camera[0], camera[1], camera[2]], helixOffset(helixProgress, Math.max(cardCount, 1)),
+        journeyHold * (1 - smoothstep(journeyScroll.progress, HELIX_SHARE - 0.05, HELIX_SHARE + 0.01)), journeyScroll.hovered, time, delta);
       post?.finish(time, {
         // The data sea is dense and bright: bloom eases off while it fills
         // the frame (opening and finale) so it never flares to white.
@@ -1058,6 +1099,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       removeEventListener("resize", resize);
       removeEventListener("pointermove", onPointerMove);
       removeEventListener("pointerdown", onPointerDown);
+      removeEventListener("click", onClick);
+      cards.dispose();
+      delete document.documentElement.dataset.cardHover;
       removeEventListener("pointerup", onPointerUp);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();

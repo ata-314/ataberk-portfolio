@@ -126,12 +126,14 @@ void main() {
     // Cloud banks: flattened clusters of soft data dust stacked through
     // the sky; the camera climbs through them.
     float c=floor(id/220.0);
-    vec3 centre=vec3((h(c)-.5)*300.0,10.0+h(c+5.0)*230.0,-14.0-h(c+9.0)*150.0);
-    vec3 o=vec3(gauss(id)*26.0*(.6+h(c+2.0)),gauss(id+9.0)*4.5,gauss(id+17.0)*18.0);
+    // Data coral: soft clusters hung along the descent around the helix.
+    vec3 centre=vec3((h(c)-.5)*140.0,20.0-h(c+5.0)*860.0,-25.0-h(c+9.0)*90.0);
+    vec3 o=vec3(gauss(id)*14.0*(.6+h(c+2.0)),gauss(id+9.0)*10.0,gauss(id+17.0)*12.0);
     o.x+=sin(time*.05+c)*2.0;
     pos=centre+o;
     float bright=.55+.45*h(id+3.0);
-    vColor=mix(vec3(.62,.86,.95),vec3(.85,1.0,.82),h(c+11.0)*.5)*bright;
+    float tone=h(c+11.0);
+    vColor=(tone<.4?vec3(.95,.45,.8):tone<.75?vec3(.55,.45,1.0):vec3(.35,.9,.85))*bright;
     vAlpha=.026*presence;
     size=65.0+h(id+5.0)*95.0;
   } else if(kind<1.5) {
@@ -139,14 +141,16 @@ void main() {
     // with dotted data rings, each tilted, coloured and turning on its own.
     float g=floor(id/perGalaxy);
     float k=id-g*perGalaxy;
-    vec3 centre=vec3(sin(g*2.4+.8)*36.0,236.0+cos(g*1.7)*18.0,-100.0-g*100.0);
-    float radius=25.0+h(g+4.0)*15.0;
+    // Stacked down the descent, near the flight path, so the camera falls
+    // through their discs.
+    vec3 centre=vec3(sin(g*2.4+.8)*20.0,-900.0-g*75.0,-10.0+cos(g*1.3)*14.0);
+    float radius=30.0+h(g+4.0)*16.0;
     float arms=2.0+floor(h(g+5.0)*3.0);
     float twist=2.2+h(g+6.0)*1.6;
     float spin=time*(.035+h(g+7.0)*.04)*(h(g+8.0)<.5?-1.0:1.0);
     float kindPick=h(k*1.37+g*91.0);
     vec3 local;
-    float hueBase=.38+h(g+10.0)*.12;
+    float hueBase=h(g+10.0);
     float t;
     if(kindPick<.12) {
       // Core bulge.
@@ -171,8 +175,8 @@ void main() {
       vColor=mix(hue(hueBase),hue(hueBase-.18),t)*(.75+.5*h(k+12.0));
       vColor=mix(vColor,vec3(1),.25*(1.0-t));
     }
-    pos=centre+tilt(.85+h(g+13.0)*.35,.18*sin(g*2.1))*local;
-    vColor=mix(vColor,vec3(.72,.86,.85),.55);
+    pos=centre+tilt(.12+h(g+13.0)*.45,h(g+14.0)*6.2832)*local;
+    vColor=mix(vColor,vec3(.85,.93,.95),.3);
     vGlyph=floor(h(k+15.0)*16.0);
     vSoft=kindPick<.12?1.0:0.0;
     vAlpha=presence*(.55+.45*h(k+16.0));
@@ -198,8 +202,9 @@ void main() {
     // the camera, so the flight never runs out of passing matter.
     float a=h(id)*6.2832;
     float r=4.0+h(id+1.0)*38.0;
-    float z=eye.z-mod(h(id+2.0)*260.0-eye.z*1.0,260.0);
-    pos=vec3(eye.x+cos(a)*r,eye.y+sin(a)*r*.7,z);
+    // Wraps along the descent, so matter keeps streaming up past the lens.
+    float yv=eye.y+130.0-mod(h(id+2.0)*260.0-eye.y,260.0);
+    pos=vec3(eye.x+cos(a)*r,yv,eye.z+sin(a)*r*.7);
     vColor=mix(vec3(.55,.8,.9),vec3(.8,.9,.7),h(id+3.0));
     vSoft=0.0; vGlyph=floor(h(id+8.0)*16.0);
     vAlpha=presence*.5;
@@ -350,11 +355,13 @@ export function createJourneyLayer(gl: WebGL2RenderingContext, atlas: WebGLTextu
 
       // Camera: climbs through the cloud banks, then flies forward through
       // the galaxy field, weaving gently and leaning with the pointer.
-      eye[0] = Math.sin(state.travel * 9.0) * 14 + state.parallax[0] * 1.5;
-      eye[1] = state.rise * 236 + Math.sin(state.travel * 6.0) * 6 + state.parallax[1];
-      eye[2] = -state.travel * 760;
+      // One descent: down past the coral of the helix, then through the
+      // galaxies, weaving a little and looking down more as they arrive.
+      eye[0] = Math.sin(state.travel * 7.0) * 6 + state.parallax[0] * 1.5;
+      eye[1] = 30 - state.travel * 1500 + state.parallax[1];
+      eye[2] = 14;
       perspective(projection, (60 * Math.PI) / 180, w / Math.max(h, 1), 0.1, 400);
-      viewFrom(view, eye, state.parallax[0] * 0.04 + Math.cos(state.travel * 9.0) * 0.12, state.parallax[1] * 0.03);
+      viewFrom(view, eye, state.parallax[0] * 0.04 + Math.cos(state.travel * 7.0) * 0.08, -0.18 - 0.45 * state.galaxies + state.parallax[1] * 0.03);
       gl.useProgram(particles);
       gl.enable(gl.BLEND);
       gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE);
