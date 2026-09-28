@@ -3,6 +3,7 @@ import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { SectionIntro } from "./SectionIntro";
 import { HologramBust } from "../gl/HologramBust";
+import { CodeRain } from "./CodeRain";
 
 const CONTACT_URL = "https://github.com/ata-314";
 
@@ -66,8 +67,17 @@ export function AboutPreview({
             {t.cta} →
           </Link>
         </div>
-        <div data-reveal aria-hidden className="order-1 h-[46svh] md:order-2 md:col-span-6 md:h-[72svh]">
-          <HologramBust />
+        <div data-reveal aria-hidden className="portrait-frame relative order-1 h-[46svh] md:order-2 md:col-span-6 md:h-[72svh]">
+          {/* Falling code behind, HUD ticks and markers round the portrait. */}
+          <CodeRain className="absolute inset-0 h-full w-full opacity-70" />
+          <span className="portrait-mark portrait-mark-tl">[[&nbsp;&nbsp;001&nbsp;&nbsp;]]</span>
+          <span className="portrait-ticks portrait-ticks-top" />
+          <span className="portrait-ticks portrait-ticks-bottom" />
+          <span className="portrait-cross" style={{ left: "4%", top: "50%" }} />
+          <span className="portrait-cross" style={{ right: "4%", top: "50%" }} />
+          <div className="relative h-full w-full">
+            <HologramBust />
+          </div>
         </div>
       </div>
     </section>

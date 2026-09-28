@@ -3,13 +3,13 @@
 import { useEffect, useRef } from "react";
 import { bustState } from "../three/scroll-state";
 
-// Holographic bust of the Ataberk Soylu scan for the About section. A small,
-// self-contained WebGL2 point cloud (120k face-weighted samples with a baked
-// cavity term, see scripts/bake-model.mjs) — the
-// hero stage and its bird are untouched. The projection materializes as the
-// section scrolls into view, follows the pointer with a damped yaw/pitch so
-// the head turns to face the cursor, ripples where the cursor sweeps across
-// the surface, and dissolves below the chest line.
+// Point-cloud portrait of the Ataberk Soylu scan for the About section, in
+// the register of a studio team portrait: 120k fine, dense points (face-
+// weighted samples with a baked cavity term, see scripts/bake-model.mjs)
+// under one hard, cold side light — the lit side ice white, the far side
+// falling into black — with the chest dissolving into glowing contour
+// lines that flow downward. It materializes as the section scrolls in,
+// turns toward the pointer, and ripples where the cursor sweeps across.
 const TEX_W = 2048;
 const ROWS = 59;
 const SAMPLES = 120000;
@@ -63,20 +63,22 @@ void main() {
   n.yz = tilt * n.yz;
   vec3 scatter = normalize(vec3(sin(aRnd * 37.0), cos(aRnd * 61.0) * 0.4, cos(aRnd * 47.0)));
   p += scatter * (1.0 - appear) * (1.2 + aRnd * 2.2);
-  // holographic jitter bands + slow float + occasional glitched row shear
-  p.x += sin(aPos.y * 60.0 + uTime * 7.0) * 0.0025;
-  float rowKey = floor(aPos.y * 34.0);
-  float rowHash = fract(sin(rowKey * 12.9898 + floor(uTime * 2.5) * 0.173) * 43758.5453);
-  p.x += step(0.985, rowHash) * sin(uTime * 40.0 + rowKey) * 0.008;
+  // a slow float
   p.y += sin(uTime * 0.7) * 0.03 - (1.0 - appear) * 0.2;
   // pointer sweep: particles near the cursor lift along their normal and
   // brighten — the ripple strength rides how fast the cursor is moving
   vec2 toTouch = p.xy - uTouch;
   float touch = exp(-dot(toTouch, toTouch) * 6.5) * uTouchVel;
   p += n * touch * 0.07;
-  // the projection has no lower body: dissolve below the chest line
-  float cut = smoothstep(-1.25, -0.45, aPos.y);
-  float cutEdge = exp(-pow((aPos.y + 0.72) * 2.6, 2.0));
+  // Below the neck the form turns into contour lines: only points near an
+  // iso-height band survive there, and the bands flow slowly downward and
+  // bend with a soft warp, like a topographic map of the chest.
+  float warp = sin(aPos.x * 4.1 + aPos.z * 3.1) * 0.11 + sin(aPos.x * 9.0 - aPos.z * 6.0) * 0.04;
+  float band = fract((aPos.y + warp) * 9.0 + uTime * 0.12);
+  float line = smoothstep(0.4, 0.49, abs(band - 0.5));
+  float chest = smoothstep(-0.22, -0.52, aPos.y);
+  float cut = mix(1.0, line, chest) * smoothstep(-1.45, -1.05, aPos.y);
+  float cutEdge = chest * line;
   // Camera distance is mirrored in sculpture-layer.ts (bird → bust morph).
   vec4 view = vec4(p.x, p.y - 0.2, p.z - 4.85, 1.0);
   gl_Position = uProj * view;
@@ -86,11 +88,13 @@ void main() {
   // the back of the head would print through the face: surfaces turned away
   // from the camera fade out, leaving only the visible shell.
   vFacing = smoothstep(-0.2, 0.3, viewNormal.z);
-  // Key + fill light carve the form; the baked cavity term darkens sockets,
-  // creases and the mouth line — that contrast is what carries the likeness.
-  vec3 key = normalize(vec3(-0.4, 0.55, 0.8));
+  // One hard key from the left and a whisper of fill: the lit side of the
+  // face reads crisp, the far side falls into black. The baked cavity term
+  // darkens sockets, creases and the mouth line.
+  vec3 key = normalize(vec3(-0.85, 0.35, 0.45));
   vec3 fill = normalize(vec3(0.6, -0.1, 0.8));
-  vLit = 0.14 + 0.9 * max(dot(viewNormal, key), 0.0) + 0.22 * max(dot(viewNormal, fill), 0.0);
+  float k = max(dot(viewNormal, key), 0.0);
+  vLit = 0.03 + 1.25 * pow(k, 1.4) + 0.06 * max(dot(viewNormal, fill), 0.0);
   vCav = aCav;
   // hologram slices locked to the model — fine, shallow bands
   vSlice = 0.9 + 0.1 * sin(aPos.y * 140.0 - uTime * 1.4);
@@ -101,7 +105,7 @@ void main() {
   vGlow = cutEdge;
   vRnd = aRnd;
   vTouch = touch;
-  gl_PointSize = uSize * (0.62 + aRnd * 0.45 + vRim * 0.25 + touch * 0.4 + vSweep * 0.3) / -view.z;
+  gl_PointSize = uSize * (0.55 + aRnd * 0.3 + touch * 0.4 + cutEdge * 0.9) / -view.z;
 }`;
 
 const FRAGMENT = `#version 300 es
@@ -123,27 +127,18 @@ void main() {
   if (vAlpha < 0.01) discard;
   float r = length(gl_PointCoord - 0.5);
   if (r > 0.5) discard;
-  float disc = exp(-r * r * 11.0) - exp(-2.75);
-  // projector artifacts, kept shallow so they never blur the features
-  float scan = 0.92 + 0.08 * sin(gl_FragCoord.y * 0.55 - uTime * 20.0);
-  float flick = 0.97 + 0.03 * sin(uTime * 41.0) * sin(uTime * 11.7 + 2.0);
-  // Hologram palette: deep teal in shadow, ice white where the key lands,
-  // lime only on the rim, the dissolve edge, the sweep and the pointer.
-  float occlusion = 1.0 - clamp(vCav * 1.15, 0.0, 1.0) * 0.94;
-  float ridge = clamp(-vCav, 0.0, 1.0);
-  // a gentle contrast curve: lit planes pop, sockets and creases stay dark
-  float light = pow(clamp(vLit * occlusion + ridge * 0.22, 0.0, 1.2), 1.25);
-  vec3 deep = vec3(0.07, 0.3, 0.4);
-  vec3 pale = vec3(0.9, 1.0, 1.0);
-  vec3 lime = vec3(0.784, 1.0, 0.243);
-  vec3 color = mix(deep, pale, clamp(light, 0.0, 1.0));
-  color = mix(color, lime, clamp(vRim * 0.4, 0.0, 0.45));
-  color += lime * vGlow * 1.1;
-  color = mix(color, vec3(0.9, 1.0, 0.75), vSweep * 0.5);
-  color = mix(color, lime, clamp(vTouch * 0.85, 0.0, 0.8));
+  float disc = smoothstep(0.5, 0.2, r);
+  // Monochrome: cold white where the key lands, down to black; the contour
+  // lines and the pointer glow a brighter ice blue.
+  float occlusion = 1.0 - clamp(vCav * 1.15, 0.0, 1.0) * 0.9;
+  float light = clamp(vLit * occlusion, 0.0, 1.3);
+  vec3 ice = vec3(0.86, 0.91, 1.0);
+  vec3 color = ice * light;
+  color += vec3(0.75, 0.85, 1.0) * vGlow * 2.2;
+  color = mix(color, vec3(0.8, 0.9, 1.0) * 1.2, clamp(vTouch * 0.8, 0.0, 0.8));
   float alpha = disc * vAlpha * vFacing
-    * (0.1 + light * 0.85 + vRim * 0.24 + vGlow * 0.3 + vSweep * 0.25 + vTouch * 0.5)
-    * scan * flick * vSlice * uGain;
+    * (0.04 + light * 0.95 + vGlow * 0.9 + vTouch * 0.5 + vSweep * 0.08)
+    * uGain;
   outColor = vec4(color, alpha);
 }`;
 
@@ -308,7 +303,7 @@ export function HologramBust() {
         // small viewports get bigger, brighter points: fewer pixels per point
         // would otherwise leave the bust too faint on phones
         const compact = Math.max(canvas.clientHeight / 640, 0.95);
-        gl.uniform1f(u("uSize"), (mobile ? 14 : 12.5) * pixelRatio * compact);
+        gl.uniform1f(u("uSize"), (mobile ? 10 : 8) * pixelRatio * compact);
         gl.uniform1f(u("uGain"), (mobile ? 1.35 : 1) * fade);
         gl.clear(gl.COLOR_BUFFER_BIT);
         // samples are area-weighted random, so a prefix is a uniform subset

@@ -445,7 +445,8 @@ void renderGrain(float id) {
     vec3 fillLight=normalize(vec3(.6,-.1,.8));
     float lit=.14+.9*max(dot(qn,key),0.0)+.22*max(dot(qn,fillLight),0.0);
     float shade=clamp(lit*(1.0-clamp(bn.w,0.0,1.0)*.88)+clamp(-bn.w,0.0,1.0)*.18,0.0,1.0);
-    bustTint=mix(vec3(.06,.26,.36),vec3(.82,.97,1.0),shade);
+    // Same monochrome as the portrait canvas the grains hand over to.
+    bustTint=mix(vec3(.01,.015,.03),vec3(.86,.91,1.0),shade);
     // Only the visible shell, cut below the chest like the hologram.
     float shell=smoothstep(-.2,.3,qn.z)*smoothstep(-1.25,-.45,bp.y);
     bustAlpha=mix(1.0,shell*(.3+shade*.8),m);

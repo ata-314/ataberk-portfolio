@@ -517,3 +517,11 @@ html[data-stage-static="true"] .scroll-hint-intro {
   letter-spacing: -0.02em;
 }
 .voyage-word { margin-inline: calc(var(--gap) / 2); transform-origin: 50% 55%; will-change: transform, opacity; }
+
+/* Portrait (About): HUD ticks and markers round the point-cloud face. */
+.portrait-frame { -webkit-mask-image: radial-gradient(120% 100% at 50% 45%, #000 60%, transparent); mask-image: radial-gradient(120% 100% at 50% 45%, #000 60%, transparent); }
+.portrait-mark { position: absolute; left: 4%; top: 4%; z-index: 2; font-family: var(--font-jetbrains), monospace; font-size: 10px; letter-spacing: 0.1em; color: rgb(220 230 255 / 0.7); }
+.portrait-ticks { position: absolute; left: 30%; width: 40%; height: 12px; z-index: 2; background: repeating-linear-gradient(90deg, rgb(220 230 255 / 0.75) 0 1px, transparent 1px 14px); -webkit-mask: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent); mask: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent); }
+.portrait-ticks-top { top: 4%; }
+.portrait-ticks-bottom { bottom: 4%; }
+.portrait-cross { position: absolute; z-index: 2; width: 13px; height: 13px; translate: 0 -50%; background: linear-gradient(rgb(220 230 255 / 0.8), rgb(220 230 255 / 0.8)) center / 1px 100% no-repeat, linear-gradient(rgb(220 230 255 / 0.8), rgb(220 230 255 / 0.8)) center / 100% 1px no-repeat; }
