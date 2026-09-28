@@ -422,6 +422,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       rect: new Float32Array(4), aspect: 1, yaw: 0, pitch: 0, lift: 0, morph: 0,
     };
     let bustElement: HTMLElement | null = null;
+    let servicesElement: HTMLElement | null = null;
+    let services = 0;
     const bustLoad = setTimeout(() => {
       void (async () => {
         try {
@@ -651,6 +653,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         document.documentElement.dataset.stageSettled = "true";
       }
       hero = damp(hero, scrollState.hero.current, 24, delta);
+      // Disperse behind the service grid, then hand back to the bust. The
+      // viewport envelope is reversible and independent of page length.
+      servicesElement ??= document.querySelector<HTMLElement>("#services");
+      let servicesTarget = 0;
+      if (servicesElement) {
+        const rect = servicesElement.getBoundingClientRect();
+        servicesTarget = smoothstep(rect.top / stageH, .95, .2)
+          * smoothstep(rect.bottom / stageH, .05, .65);
+      }
+      services = damp(services, servicesTarget, 7, delta);
       // Morph follows the hologram's place in the viewport: the bird unravels
       // into the bust as it rises into view, holds while it is centred and
       // re-forms as the section leaves.
@@ -772,7 +784,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         scanSmooth[0] / (8.2 * Math.tan(Math.PI / 8) * (stageW / stageH)),
         scanSmooth[1] / (8.2 * Math.tan(Math.PI / 8)),
         Math.min(1.4, scanVelocity + pointerActive * .3), {
-          hero, ready: readyMix, flap, finale,
+          hero, ready: readyMix, flap, finale, services,
           matrix: birdMatrix, view, projection,
           positions: positionTexture, normals: normalTexture,
           trail: wake, burst, intro, bust,

@@ -19,7 +19,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
 
   const links = [
     { href: `/${locale}#work`, label: t.work },
-    { href: `/${locale}#capabilities`, label: t.capabilities },
+    { href: `/${locale}#services`, label: locale === "tr" ? "Hizmetler" : "Services" },
     { href: `/${locale}/about`, label: t.about },
     { href: `/${locale}/lab`, label: t.lab },
     { href: `/${locale}#contact`, label: t.contact },

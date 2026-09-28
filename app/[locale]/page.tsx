@@ -7,7 +7,7 @@ import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { Reveal } from "@/components/motion/Reveal";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { WorkSection } from "@/components/sections/WorkSection";
-import { Capabilities } from "@/components/sections/Capabilities";
+import { Services } from "@/components/sections/Services";
 import {
   AISystems,
   AboutPreview,
@@ -39,10 +39,10 @@ export default async function Home({
             locale,
           }}
         />
+        <Services locale={locale} />
         <AboutPreview locale={locale} t={t.aboutPreview} about={t.about} />
         <WorkSection locale={locale} />
         <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
-        <Capabilities t={t.capabilities} />
         <AISystems t={t.aiSystems} />
         <ContactFinale t={t.contact} />
         <Footer t={t.footer} name={t.name} />

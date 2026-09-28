@@ -66,6 +66,7 @@ uniform float hero;
 uniform float birdReady;
 uniform float flap;
 uniform float finale;
+uniform float services;
 uniform vec4 edgeAges;
 // Pointer wake: recent cursor positions in NDC (xy), a swelling-then-
 // decaying strength (z) and the cursor's heading in radians (w). burst: click origin (xy) and age in seconds (z, -1 idle).
@@ -136,6 +137,7 @@ void renderGrain(float id) {
   vec3 local=vec3(p.x/spread,p.y,p.z);
   float assembly=smoothstep(.055+seed*.055,.61+seed*.055,hero)*birdReady;
   assembly*=1.0-finale;
+  assembly*=1.0-smoothstep(seed*.12,.82+seed*.18,services);
   // Normal from neighbouring depth texels: four fetches instead of six full
   // noise-field evaluations per grain per frame.
   vec3 n=vec3(0,0,1);
@@ -356,6 +358,8 @@ void renderGrain(float id) {
   gl_PointSize*=1.0+shoulder*.6*(1.0-assembly);
   alpha=mix(.8+light*.18,.95,assembly)*opacity*introAlpha;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
+  alpha*=mix(1.0,.18,services);
+  tint=mix(tint,mix(vec3(.35,.46,.4),tint,.3),services*.7);
   // Disturbed matter shifts hue: a lingering aqua-to-citron wash that
   // follows the cursor's path and fades back into the sea.
   float wash=clamp(lift*1.4,0.0,1.0);
@@ -439,7 +443,7 @@ void main() {
 }`;
 
 export type SculptureFlight = {
-  hero: number; ready: number; flap: number; finale: number;
+  hero: number; ready: number; flap: number; finale: number; services: number;
   matrix: Float32Array; view: Float32Array; projection: Float32Array;
   positions: WebGLTexture | null; normals: WebGLTexture | null;
   trail: Float32Array; burst: Float32Array;
@@ -482,7 +486,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -523,7 +527,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       // start of the assembly instead of stopping on the first scroll tick,
       // which read as the field freezing.
       const holdT=Math.min(1,Math.max(0,(flight.hero-.03)/.19));
-      const hold=flight.finale>.98 || flight.ready<.95 ? 0 : holdT*holdT*(3-2*holdT);
+      const hold=flight.finale>.98 || flight.ready<.95 ? 0 : holdT*holdT*(3-2*holdT)*(1-flight.services);
       const flowing=hold<.999;
       if(flowing) {
         flowTime+=delta*(1-hold);sourceX=px;sourceY=py;
@@ -582,6 +586,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       gl.uniform1i(uniforms.birdPositions,0);gl.uniform1i(uniforms.birdNormals,1);
       gl.uniform1f(uniforms.hero,flight.hero);gl.uniform1f(uniforms.birdReady,flight.ready);
       gl.uniform1f(uniforms.flap,flight.flap);gl.uniform1f(uniforms.finale,flight.finale);
+      gl.uniform1f(uniforms.services,flight.services);
       gl.uniformMatrix4fv(uniforms.birdMatrix,false,flight.matrix);
       gl.uniformMatrix4fv(uniforms.birdView,false,flight.view);
       gl.uniformMatrix4fv(uniforms.birdProjection,false,flight.projection);
