@@ -512,6 +512,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const wakeFollow: [number, number] = [0, 0];
     let wakeArmed = false;
     const burst = new Float32Array([0, 0, -1]);
+    // Cursor presence for the bird scatter: follows the damped wake point
+    // and fades in while the pointer is over the page (or a finger is down).
+    const hover = new Float32Array(3);
+    let hoverTarget = 0;
     const pushWake = (clientX: number, clientY: number) => {
       wakeTarget[0] = (clientX / stageW) * 2 - 1;
       wakeTarget[1] = -((clientY / stageH) * 2 - 1);
@@ -556,6 +560,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let scanVelocity = 0;
     const onPointerMove = (event: PointerEvent) => {
       pushWake(event.clientX, event.clientY);
+      if (event.pointerType === "mouse" || event.buttons) hoverTarget = 1;
       const aspect = stageW / Math.max(stageH, 1);
       pointer[0] = (event.clientX / stageW * 2 - 1) * (aspect < 1 ? 1.7 : 3.2);
       pointer[1] = -(event.clientY / stageH * 2 - 1) * 2;
@@ -577,7 +582,13 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       if (event.clientY >= stageH - margin) fireEdgeWave(2, 1.4);
       else if (event.clientY <= margin) fireEdgeWave(3, 1.4);
     };
-    const onPointerLeave = () => (pointerActive = 0);
+    const onPointerLeave = () => {
+      pointerActive = 0;
+      hoverTarget = 0;
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse") hoverTarget = 0;
+    };
     const onPointerDown = (event: PointerEvent) => {
       onPointerMove(event);
       waveAge = 0;
@@ -585,6 +596,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
     addEventListener("pointermove", onPointerMove, { passive: true });
     addEventListener("pointerdown", onPointerDown, { passive: true });
+    addEventListener("pointerup", onPointerUp, { passive: true });
     document.documentElement.addEventListener("pointerleave", onPointerLeave);
 
     const projection = new Float32Array(16);
@@ -710,6 +722,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       pointerSmooth[1] = damp(pointerSmooth[1], pointer[1], 7, delta);
       if (waveAge >= 0) waveAge = waveAge > 3.5 ? -1 : waveAge + delta;
       stepWake(delta);
+      hover[0] = wakeFollow[0];
+      hover[1] = wakeFollow[1];
+      hover[2] = damp(hover[2], wakeArmed ? hoverTarget : 0, 4, delta);
       if (burst[2] >= 0) burst[2] = burst[2] > 2.5 ? -1 : burst[2] + delta;
 
       // Two superposed slow sines per axis make the tide irregular: the fluid
@@ -824,6 +839,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           orbit, orbitRing,
           links: linksReady ? linkTexture : null,
           wind: direction,
+          hover,
         });
       if (firstFrame) {
         firstFrame = false;
@@ -840,6 +856,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       removeEventListener("resize", resize);
       removeEventListener("pointermove", onPointerMove);
       removeEventListener("pointerdown", onPointerDown);
+      removeEventListener("pointerup", onPointerUp);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
