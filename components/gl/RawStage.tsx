@@ -423,6 +423,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
     let bustElement: HTMLElement | null = null;
     let servicesElement: HTMLElement | null = null;
+    let orbitElement: HTMLElement | null = null;
     let services = 0;
     const bustLoad = setTimeout(() => {
       void (async () => {
@@ -627,6 +628,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let finale = 0;
     let flap = 0;
     let yaw = -1.07;
+    let bank = 0;
+    // Manifesto orbit: envelope, ring angle and the ring in NDC (centre xy,
+    // radii zw) around the manifesto copy.
+    let orbit = 0;
+    let orbitAngle = -Math.PI / 2;
+    const orbitRing = new Float32Array(4);
     const render = (now: number) => {
       if (disposed) return;
       frameId = requestAnimationFrame(render);
@@ -724,11 +731,63 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         : videoReady * (1 - smoothstep(hero, 0.14, 0.38));
       videoMix = damp(videoMix, targetVideo, 12, delta);
       const flight = flightAt(hero, scrollState.page.current, pointerSmooth, pointerActive);
+      let flightPosition: Vec3 = mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position;
+      let flightScale = flight.scale * (mobile ? 0.55 : 1);
+      // Manifesto: the bird leaves its path and circles the copy on a ring
+      // tilted toward the camera — close and large along the bottom, small
+      // and behind along the top — so it reads as wrapping the words.
+      orbitElement ??= document.querySelector<HTMLElement>("[data-orbit]");
+      let orbitTarget = 0;
+      if (orbitElement && hero > 0.999) {
+        const r = orbitElement.getBoundingClientRect();
+        const centre = (r.top + r.height / 2) / stageH;
+        orbitTarget = smoothstep(centre, 1.1, 0.62) * smoothstep(centre, -0.1, 0.38);
+        orbitRing[0] = ((r.left + r.width / 2) / stageW) * 2 - 1;
+        orbitRing[1] = 1 - ((r.top + r.height / 2) / stageH) * 2;
+        orbitRing[2] = Math.min(mobile ? 0.6 : 0.72, r.width / stageW + (mobile ? 0.02 : 0.04));
+        orbitRing[3] = Math.min(0.55, r.height / stageH + (mobile ? 0.08 : 0.06));
+      }
+      orbit = damp(orbit, orbitTarget, 3, delta);
+      if (orbit > 0.001) {
+        orbitAngle += delta * 0.9;
+        const cameraZ = mix(10.4, 8.2 - hero * 1.5 * (1 - finale), introEase);
+        const ringAt = (angle: number): Vec3 => {
+          const z = 0.2 - Math.sin(angle) * 0.75;
+          const halfY = (cameraZ - z) * Math.tan(Math.PI / 8);
+          const halfX = halfY * (stageW / Math.max(stageH, 1));
+          return [
+            (orbitRing[0] + Math.cos(angle) * orbitRing[2]) * halfX,
+            0.05 + (orbitRing[1] + Math.sin(angle) * orbitRing[3]) * halfY,
+            z,
+          ];
+        };
+        const ring = ringAt(orbitAngle);
+        const ahead = ringAt(orbitAngle + 0.05);
+        const ease = orbit * orbit * (3 - 2 * orbit);
+        flightPosition = [
+          mix(flightPosition[0], ring[0], ease),
+          mix(flightPosition[1], ring[1], ease),
+          mix(flightPosition[2], ring[2], ease),
+        ];
+        flightScale = mix(flightScale, mobile ? 0.4 : 0.58, ease);
+        const tangent: Vec3 = [ahead[0] - ring[0], ahead[1] - ring[1], ahead[2] - ring[2]];
+        flight.direction = [
+          mix(flight.direction[0], tangent[0] * 20, ease),
+          mix(flight.direction[1], tangent[1] * 20, ease),
+          mix(flight.direction[2], tangent[2] * 20, ease),
+        ];
+      }
       const directionLength = Math.hypot(...flight.direction) || 1;
       const direction: Vec3 = [flight.direction[0] / directionLength, flight.direction[1] / directionLength, flight.direction[2] / directionLength];
       const yawTarget = (direction[0] >= 0 ? 1 : -1) * 1.07;
       yaw = damp(yaw, yawTarget, 2.5, delta);
-      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)));
+      // On the ring the body pitches along the climb and dive; elsewhere the
+      // usual slight lean.
+      const facing = Math.sign(Math.sin(yaw)) || 1;
+      const climb = facing * Math.atan2(direction[1], Math.abs(direction[0]) + 0.35);
+      const bankTarget = mix(Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)), Math.max(-0.8, Math.min(0.8, climb)), orbit);
+      bank = damp(bank, bankTarget, 4, delta);
+      compose(birdMatrix, flightPosition, flightScale, yaw, bank);
       flap = (flap + delta) % 1;
 
       // A short dolly-in settles the camera as the field assembles.
