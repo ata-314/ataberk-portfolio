@@ -275,7 +275,7 @@ void renderGrain(float id) {
       normal=dot(blended,blended)>1e-4?normalize(blended):normal;
       shellDepth=grainRandom(uint(id)+7727u);
       shellDepth*=shellDepth;
-      anatomy-=normal*shellDepth*.045;
+      anatomy-=normal*shellDepth*.03;
     } else {
       anatomy+=normal*(seed-.5)*.028;
     }
@@ -285,24 +285,24 @@ void renderGrain(float id) {
     // shell.
     vec3 flowP=anatomy*2.4+vec3(0.0,time*.32,time*.21);
     vec3 current=vec3(noise(flowP),noise(flowP+17.3),noise(flowP+31.7))-.5;
-    anatomy+=current*.06;
+    anatomy+=current*.04;
     vec3 world=(birdMatrix*vec4(anatomy,1.0)).xyz;
     // Shedding: a share of grains, mostly along the silhouette, loosen from
     // the skin on their own cycle, drift off on the air behind the flight in
     // a soft plume, fade, and re-settle into place.
     float silhouette=smoothstep(.35,.9,1.0-abs(worldNormal.z));
-    float shedder=step(1.0-(.05+silhouette*.22),grainRandom(uint(id)+1733u));
+    float shedder=step(1.0-(.02+silhouette*.08),grainRandom(uint(id)+1733u));
     if(shedder>.5) {
       float life=fract(time*(.1+seed*.09)+grainRandom(uint(id)+911u));
       float away=smoothstep(0.0,.62,life)*(1.0-smoothstep(.62,.72,life));
       float reach=pow(smoothstep(0.0,.62,life),1.4);
-      vec3 plume=normalize(-birdWind+vec3(0.0,.35,0.0)+current*1.6)*(.5+seed*.9)+worldNormal*.25;
+      vec3 plume=normalize(-birdWind+vec3(0.0,.3,0.0)+current*.6)*(.28+seed*.3)+worldNormal*.12;
       world+=plume*reach*away;
       shedFade=1.0-smoothstep(.25,.62,life)*away*.9;
     }
-    // Cursor scatter: grains under the pointer burst outward in 3D — away
-    // from the cursor on screen, off the skin and into depth — and the wake
-    // stamps it leaves let them hang in the air and drift back as it fades.
+    // Cursor response: the skin under the pointer gives way as one soft,
+    // coherent mass — like pressing into sand — and eases back as the wake
+    // stamps fade. No per-grain randomness, so the texture stays even.
     vec4 rest=birdProjection*birdView*vec4(world,1.0);
     vec2 restNdc=rest.xy/rest.w;
     vec2 hoverAsp=vec2(aspect,1.0);
@@ -321,11 +321,10 @@ void renderGrain(float id) {
       birdDisturb+=f;
       away+=d/(length(d)+.02)*f;
     }
-    birdDisturb=min(birdDisturb*2.0,1.3);
+    birdDisturb=min(birdDisturb*1.4,1.0);
     if(birdDisturb>.001) {
       vec2 flee=away/(length(away)+1e-5);
-      vec3 scatterDir=normalize(vec3(flee,(grainRandom(uint(id)+3301u)-.5)*1.8)+worldNormal*.7+current*1.4);
-      world+=scatterDir*birdDisturb*(.16+seed*.38);
+      world+=(vec3(flee*.8,0.0)+worldNormal*.5+current*.3)*birdDisturb*.13;
     }
     vec4 target=birdProjection*birdView*vec4(world,1.0);
     destination=target.xy/target.w;
@@ -335,7 +334,7 @@ void renderGrain(float id) {
     // Wings are thin shells: light them from either side.
     float keyDot=dot(worldNormal,normalize(vec3(-.6,.8,1.0)));
     birdLight=.55+.7*max(keyDot,-keyDot*.6)+.25*max(dot(worldNormal,normalize(vec3(.7,-.2,.6))),0.0);
-    birdAO=mix(1.0,.55,shellDepth);
+    birdAO=mix(1.0,.78,shellDepth);
     // A restrained charge: sparse thin veins crawl over the anatomy, a slow
     // faint pulse runs along the wingspan and a rare grain sparks.
     float vein=noise(anatomy*5.5+vec3(0.0,time*1.3,time*.85));
@@ -344,7 +343,8 @@ void renderGrain(float id) {
     float span=anatomy.x*1.6+anatomy.z*.9;
     float arc=pow(.5+.5*sin(span*7.0-time*4.0+noise(anatomy*3.0+time*.5)*4.0),90.0);
     float spark=step(.996,grainRandom(uint(id)+uint(floor(time*10.0))*131u));
-    electric=clamp(veinLine*.55+arc*.3+spark*.5,0.0,.7);
+    // Kept faint so the packed surface reads as one even material.
+    electric=clamp(veinLine*.22+arc*.12+spark*.15,0.0,.3);
     electricColor=mix(vec3(.55,.95,1.0),vec3(.84,1.0,.3),.5+.5*sin(time*1.2+seed*6.28));
     // Sparks leap slightly off the surface.
     destination+=(vec2(grainRandom(uint(id)+uint(time*18.0)),grainRandom(uint(id)+977u+uint(time*18.0)))-.5)*.006*spark;
@@ -474,7 +474,7 @@ void renderGrain(float id) {
   gl_Position=vec4(position,depth,1.0);
   solid=assembly*(1.0-bustMix)*(1.0-helixMix);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
-  gl_PointSize=max(1.0,mix(fluidSize*introSize,(2.4+seed*.45)*pixelScale*mix(1.0,.85,shellDepth)*mix(.6,1.0,shedFade),assembly));
+  gl_PointSize=max(1.0,mix(fluidSize*introSize,(2.5+seed*.2)*pixelScale*mix(1.0,.9,shellDepth)*mix(.7,1.0,shedFade),assembly));
   // Kept below 1 so the body keeps its hue and lighting; the veins and the
   // halo pass carry the brightness.
   // Frosted silver with a faint lime cast; the brand colour lives in the
@@ -501,10 +501,9 @@ void renderGrain(float id) {
   alpha=mix(.8+light*.18,.95,assembly)*opacity*introAlpha;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
   alpha*=mix(1.0,shedFade,assembly);
-  // Scattered grains catch a little more light and shrink as they lift.
-  float airborne=smoothstep(0.0,.9,birdDisturb)*assembly;
-  tint=mix(tint,min(tint*1.35+vec3(.05,.08,.04),vec3(1.0)),airborne);
-  gl_PointSize*=mix(1.0,.72,airborne);
+  // Pressed grains catch a touch more light.
+  float airborne=smoothstep(0.0,1.0,birdDisturb)*assembly;
+  tint=mix(tint,min(tint*1.12,vec3(1.0)),airborne);
   // Services: grain by grain (staggered by seed, like the intro) the sea
   // takes on the section's violet / blue / magenta light, so the glass
   // cards read as lit by the same matter behind them.

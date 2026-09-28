@@ -9,6 +9,8 @@ import { bustState, scrollState } from "../three/scroll-state";
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
 const BIRD_SAMPLES = 9000;
 const INTRO_SECONDS = 3.2;
+// Which bank direction pitches the nose down for the current yaw.
+const GLIDE_PITCH_SIGN = 1;
 const BIRD_FRAMES = 16;
 const TEX_W = 2048;
 const ROWS_PER_FRAME = 5;
@@ -652,6 +654,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let dissolve = 0;
     let finale = 0;
     let flap = 0;
+    let flapPhase = 0;
+    let glideClock = 0;
     let yaw = -1.07;
     // Manifesto helix: envelope and the ring in NDC (centre xy, radii zw)
     // around the manifesto copy.
@@ -757,6 +761,24 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         : videoReady * (1 - smoothstep(hero, 0.14, 0.38));
       videoMix = damp(videoMix, targetVideo, 12, delta);
       const flight = flightAt(hero, scrollState.page.current, pointerSmooth, pointerActive);
+      // Glide: once the bird has formed it periodically stops
+      // beating, holds its wings level (bake frame 14) and slides down on a
+      // long diagonal, then flaps its way back up. Cycle length varies a
+      // little so the rhythm never reads as a loop.
+      glideClock += delta;
+      const cycleLength = 11 + Math.sin(Math.floor(glideClock / 11) * 12.9898) * 2.5;
+      const cycle = (glideClock % 11) / 11 * (11 / cycleLength);
+      const freeFlight = smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
+      const glide = smoothstep(cycle, 0.42, 0.48) * (1 - smoothstep(cycle, 0.72, 0.8)) * freeFlight;
+      const descent = cycle < 0.45 ? 0 : cycle < 0.78
+        ? smoothstep(cycle, 0.45, 0.78)
+        : 1 - smoothstep(cycle, 0.78, 1);
+      const travel = flight.direction[0] >= 0 ? 1 : -1;
+      flight.position = [
+        flight.position[0] + travel * descent * 0.7 * freeFlight,
+        flight.position[1] - descent * 0.95 * freeFlight,
+        flight.position[2],
+      ];
       // Manifesto: the bird comes apart and its grains wind a helix ring
       // around the copy (see the sculpture shader). The stage only measures
       // the copy block and eases the envelope in and out.
@@ -776,8 +798,15 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const direction: Vec3 = [flight.direction[0] / directionLength, flight.direction[1] / directionLength, flight.direction[2] / directionLength];
       const yawTarget = (direction[0] >= 0 ? 1 : -1) * 1.07;
       yaw = damp(yaw, yawTarget, 2.5, delta);
-      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)));
-      flap = (flap + delta) % 1;
+      // Nose dips while gliding down.
+      const glidePitch = glide * 0.22 * (yaw >= 0 ? -1 : 1) * GLIDE_PITCH_SIGN;
+      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + glidePitch);
+      // Wing beat slows to a hold on the level frame while gliding, with a
+      // slight sway so the wings stay alive.
+      flapPhase = (flapPhase + delta * (1 - glide * 0.97)) % 1;
+      const glideFrame = 14.2 / 16 + Math.sin(time * 1.3) * 0.012;
+      const toGlide = ((glideFrame - flapPhase + 1.5) % 1) - 0.5;
+      flap = (flapPhase + toGlide * glide + 1) % 1;
 
       // A short dolly-in settles the camera as the field assembles.
       const camera: Vec3 = [
