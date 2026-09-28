@@ -457,7 +457,7 @@ void renderGrain(float id) {
   gl_Position=vec4(position,depth,1.0);
   solid=assembly*(1.0-bustMix)*(1.0-helixMix);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
-  gl_PointSize=max(1.0,mix(fluidSize*introSize,(2.9+seed*.3)*pixelScale*mix(1.0,.85,shellDepth)*mix(1.0,.8,birdDisturb)*(1.0+birdGlint*.3),assembly));
+  gl_PointSize=max(1.0,mix(fluidSize*introSize,(2.9+seed*.3)*pixelScale*mix(1.0,.85,shellDepth)*mix(1.0,1.1,birdDisturb)*(1.0+birdGlint*.3),assembly));
   // Kept below 1 so the body keeps its hue and lighting; the veins and the
   // halo pass carry the brightness.
   // Frosted silver with a faint lime cast; the brand colour lives in the
@@ -484,9 +484,13 @@ void renderGrain(float id) {
   gl_PointSize*=1.0+shoulder*.6*(1.0-assembly);
   alpha=mix(.8+light*.18,.95,assembly)*opacity*introAlpha;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
-  // Grains swept off the skin catch the light and turn a pale, icy white.
+  // Grains swept off the skin catch the light and turn a pale, icy white —
+  // each at its own brightness and still bead-shaded, so a blown cloud
+  // keeps its grain and depth instead of flattening into a white sheet.
   float airborne=birdDisturb*assembly;
-  tint=mix(tint,vec3(.95,.99,1.0)*1.45,airborne*.95);
+  float sparkle=.7+grainRandom(uint(id)+4513u)*.55;
+  vec3 icy=mix(vec3(.8,.9,.97),vec3(.9,.98,1.0),grainRandom(uint(id)+6121u))*sparkle*mix(.75,1.15,birdLight*.6)*1.35;
+  tint=mix(tint,icy,airborne*.9);
   // Services: grain by grain (staggered by seed, like the intro) the sea
   // takes on the section's violet / blue / magenta light, so the glass
   // cards read as lit by the same matter behind them.
@@ -577,8 +581,9 @@ void main() {
   vec2 uv=gl_FragCoord.xy/flowSize;
   vec2 vel=texture(flowTex,uv).xy;
   vec2 carried=texture(flowTex,uv-vel*dt/worldSpan).xy;
-  // A slow rotation keyed to position turns straight strokes into curls.
-  float turn=sin(uv.x*9.0+time*.7)*cos(uv.y*7.0-time*.5)*1.4*dt;
+  // Strong currents curl back on themselves: a rotation keyed to position
+  // and scaled by speed turns straight strokes into eddies.
+  float turn=sin(uv.x*9.0+time*.7)*cos(uv.y*7.0-time*.5)*(1.4+length(vel)*1.1)*dt;
   carried=mat2(cos(turn),sin(turn),-sin(turn),cos(turn))*carried;
   carried*=exp(-1.1*dt);
   vec2 d=(uv-splatPos)*vec2(aspect,1.0);
@@ -622,13 +627,26 @@ layout(location=1) out vec4 outVel;
 ${field}
 ${birdSampling}
 ${grainCore}
+// Divergence-free curl noise: the curl of three offset noise potentials.
+// Grains following it roll into eddies, lobes and clumps instead of moving
+// as one sheet.
+vec3 potential(vec3 p) {
+  return vec3(noise(p),noise(p+vec3(31.4,7.1,2.3)),noise(p+vec3(-12.7,19.9,5.5)));
+}
+vec3 curlNoise(vec3 p) {
+  const float e=.15;
+  vec3 x0=potential(p-vec3(e,0,0)),x1=potential(p+vec3(e,0,0));
+  vec3 y0=potential(p-vec3(0,e,0)),y1=potential(p+vec3(0,e,0));
+  vec3 z0=potential(p-vec3(0,0,e)),z1=potential(p+vec3(0,0,e));
+  return vec3((y1.z-y0.z)-(z1.y-z0.y),(z1.x-z0.x)-(x1.z-x0.z),(x1.y-x0.y)-(y1.x-y0.x))/(2.0*e);
+}
 void main() {
   ivec2 px=ivec2(gl_FragCoord.xy);
   if(reset>.5) {outDisp=vec4(0);outVel=vec4(0);return;}
   float id=float(px.y)*${SIM_W}.0+float(px.x);
   vec4 state=texelFetch(dispTex,px,0);
   vec3 d=state.xyz;
-  float stir=state.w*exp(-.7*dt);
+  float stir=state.w*exp(-1.1*dt);
   vec3 v=texelFetch(velTex,px,0).xyz;
   vec3 n;float s;
   vec3 local=birdAnatomy(id,flap*16.0,time,n,s);
@@ -646,11 +664,17 @@ void main() {
   float strength=length(flow);
   float caught=smoothstep(.25,1.8,strength);
   if(caught>0.0) {
+    // Each grain takes the current at its own strength and a slightly
+    // different heading, so the blown mass fans out instead of sliding.
     float grip=.55+grainRandom(uint(id)+8111u)*.9;
-    vec3 stream=vec3(flow*grip,(air.z*2.0+air.x)*strength*.7);
+    float fan=(grainRandom(uint(id)+9337u)-.5)*1.1;
+    vec2 heading=mat2(cos(fan),sin(fan),-sin(fan),cos(fan))*flow;
+    vec3 stream=vec3(heading*grip,(air.z*2.0+air.x)*strength*.9);
     v+=(stream-v)*caught*min(1.0,4.5*dt);
-    v+=air*strength*(2.0+loose*3.0)*dt;
     stir=max(stir,smoothstep(.4,2.0,strength));
+  }
+  if(stir>.02) {
+    v+=curlNoise(p*.55+vec3(0.0,time*.35,time*.2))*(strength*1.3+stir*1.2)*dt;
   }
   // Home pull: firm at rest, very loose while stirred, so a blown cloud
   // hangs and drifts before it pours back into the form.
