@@ -5,9 +5,9 @@ import StageLoader from "@/components/gl/StageLoader";
 import { Hero } from "@/components/hero/Hero";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { Reveal } from "@/components/motion/Reveal";
-import { HudDock } from "@/components/hud/HudDock";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { WorkSection } from "@/components/sections/WorkSection";
+import { Ascent } from "@/components/sections/Ascent";
 import { Services } from "@/components/sections/Services";
 import {
   AISystems,
@@ -41,7 +41,6 @@ export default async function Home({
       <main id="content">
         <StageLoader />
         <Reveal />
-        <HudDock locale={locale} />
         <div data-scene={scene.sea}>
         <Hero
           t={{
@@ -55,6 +54,7 @@ export default async function Home({
         />
         </div>
         <div data-scene={scene.sky}><Services locale={locale} /></div>
+        <div data-scene={tr ? "Yükseliş" : "Ascent"}><Ascent locale={locale} /></div>
         <div data-scene={scene.limb}><AboutPreview locale={locale} t={t.aboutPreview} about={t.about} /></div>
         <div data-scene={scene.galaxies}><WorkSection locale={locale} /></div>
         <div data-scene={scene.helix}><Manifesto line={t.manifesto.line} sub={t.manifesto.sub} /></div>

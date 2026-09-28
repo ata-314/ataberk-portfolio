@@ -15,6 +15,7 @@ export function Manifesto({ line, sub }: { line: string; sub: string }) {
 
   useGSAP(
     () => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       const words = root.current?.querySelectorAll("[data-word]");
       if (!words?.length) return;
       gsap.fromTo(
@@ -46,7 +47,7 @@ export function Manifesto({ line, sub }: { line: string; sub: string }) {
       <div data-orbit className="hero-copy mx-auto max-w-5xl text-center">
         <p
           className="font-display leading-[1.08] font-semibold tracking-tight text-balance"
-          style={{ fontSize: "var(--text-h1)" }}
+          style={{ fontSize: "min(var(--text-h1), 8vw)" }}
         >
           {line.split(" ").map((w, i) => (
             <span key={i} data-word className="inline-block">

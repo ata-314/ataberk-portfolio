@@ -92,3 +92,34 @@
   .service-copy h3 { font-size: 1.25rem; }
 }
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) { .service-card { background: #1a1530; } }
+
+/* Flight composition: the open centre belongs to the bird. */
+.services-section { --violet: 142 192 187; --blue: 138 190 204; --magenta: 173 188 159; --indigo: 142 167 177; }
+.services-aura { display: none; }
+.services-heading h2 { font-family: var(--font-space), sans-serif; text-transform: none; letter-spacing: -.045em; background: none; color: var(--bone); }
+.services-label { color: var(--bone-dim); }
+.services-lead, .service-copy p { color: #bec8c6; }
+.service-card { border-radius: 14px; background: linear-gradient(145deg, rgb(21 37 40 / .82), rgb(5 13 17 / .7)); backdrop-filter: blur(12px); box-shadow: inset 0 1px rgb(218 241 234 / .1), 0 20px 50px rgb(0 0 0 / .2); }
+.service-beam, .service-flare, .service-halo { opacity: .3; }
+.service-copy h3 { font-family: var(--font-space), sans-serif; text-transform: none; letter-spacing: -.02em; }
+.service-copy p { font-family: var(--font-space), sans-serif; text-transform: none; letter-spacing: 0; }
+@media (min-width: 1024px) and (min-height: 640px) {
+  .services-grid { grid-template-rows: repeat(3, minmax(0, 1fr)); }
+  .service-card-0 { grid-area: 1 / 1 / 2 / 5; }
+  .service-card-1 { grid-area: 1 / 9 / 2 / 13; }
+  .service-card-2 { grid-area: 2 / 1 / 3 / 4; }
+  .service-card-3 { grid-area: 2 / 10 / 3 / 13; }
+  .service-card-4 { grid-area: 3 / 1 / 4 / 6; }
+  .service-card-5 { grid-area: 3 / 8 / 4 / 13; }
+  .service-card { flex-direction: row; align-items: center; }
+  .service-visual { flex: 0 0 32%; height: 100%; mask-image: none; }
+  .service-copy { margin-top: 0; padding: 1rem 1rem 1rem 0; }
+  .service-copy h3 { font-size: 1.1rem; }
+  .service-copy p { font-size: .8rem; line-height: 1.5; }
+}
+@media (prefers-reduced-motion: reduce) { .services-section { height: auto; max-height: none; } .services-grid { grid-template-rows: none; } .service-card { min-height: 200px; } }
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .services-grid { grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .service-card[class*="service-card-"] { grid-area: auto; grid-column: span 4; min-height: 260px; }
+}

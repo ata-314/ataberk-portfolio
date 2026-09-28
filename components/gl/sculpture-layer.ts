@@ -305,8 +305,8 @@ void renderGrain(float id) {
   // The body's colour: a gradient from head to tail between two hues that
   // drift around the wheel at their own pace, so the bird is always one
   // continuous blend and never the same blend twice.
-  float hueHead=fract(time*.019);
-  float hueTail=fract(hueHead+.3+.12*sin(time*.071));
+  float hueHead=.46+.025*sin(time*.07);
+  float hueTail=.19+.025*sin(time*.05);
   float electric=0.0;
   vec3 electricColor=vec3(.6,.97,1.0);
   if(assembly>0.0) {
@@ -927,7 +927,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       // start of the assembly instead of stopping on the first scroll tick,
       // which read as the field freezing.
       const holdT=Math.min(1,Math.max(0,(flight.hero-.03)/.19));
-      const hold=flight.finale>.98 || flight.ready<.95 ? 0 : holdT*holdT*(3-2*holdT)*(1-flight.services);
+      const hold=flight.finale>.98 || flight.ready<.95 ? 0 : holdT*holdT*(3-2*holdT);
       const flowing=hold<.999;
       if(flowing) {
         flowTime+=delta*(1-hold);sourceX=px;sourceY=py;

@@ -15,9 +15,9 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 const PALETTES: [string, string, string][] = [
   ["#3df5c4", "#2a5bff", "[= ◇ ⌒ ◇ =]"],
   ["#b6ff3e", "#0fa6a0", "</ ⌁ ⌁ />"],
-  ["#ff5ad1", "#6a3dff", "▷ ◯ ◁"],
-  ["#5fd7ff", "#8b5cf6", "{ ∿ ∿ }"],
-  ["#ffb23e", "#ff3e6c", "◈ ◈ ◈"],
+  ["#80b9b3", "#183b49", "▷ ◯ ◁"],
+  ["#8ae6ff", "#203b48", "{ ∿ ∿ }"],
+  ["#c4c9ab", "#384b48", "◈ ◈ ◈"],
   ["#7cf9ff", "#1dd3a0", "⌖ ⟡ ⌖"],
 ];
 
@@ -44,7 +44,7 @@ export function WorkSection({ locale }: { locale: Locale }) {
       const n = cards.length;
       const apply = (progress: number) => {
         const vw = innerWidth, vh = innerHeight;
-        const radius = Math.min(vw * 0.3, 440);
+        const radius = Math.min(vw * 0.22, 340);
         const lens = 1400;
         // Scroll turns the helix: one card comes round to the front per step.
         const turn = progress * (n - 1);
@@ -53,12 +53,12 @@ export function WorkSection({ locale }: { locale: Locale }) {
           const rel = i - turn;
           const angle = rel * 1.05;
           const z = Math.cos(angle) * radius - radius * 0.2;
-          const x = Math.sin(angle) * radius * 1.25;
+          const x = Math.sin(angle) * radius * 1.25 - vw * 0.17;
           const y = rel * 150;
           const s = lens / (lens - z);
           const visible = Math.max(0, 1 - Math.abs(rel) / 2.4);
           const near = (Math.cos(angle) + 1) / 2;
-          card.style.transform = `translate(-50%, -50%) translate3d(${(vw / 2 + x * s).toFixed(1)}px, ${(vh * 0.5 + y * s).toFixed(1)}px, 0) scale(${(0.62 * s).toFixed(4)}) rotateY(${(-Math.sin(angle) * 38).toFixed(2)}deg)`;
+          card.style.transform = `translate(-50%, -50%) translate3d(${(vw / 2 + x * s).toFixed(1)}px, ${(vh * 0.59 + y * s).toFixed(1)}px, 0) scale(${(0.62 * s).toFixed(4)}) rotateY(${(-Math.sin(angle) * 38).toFixed(2)}deg)`;
           card.style.opacity = (visible * (0.25 + 0.75 * near)).toFixed(3);
           card.style.filter = `brightness(${(0.45 + 0.55 * near).toFixed(3)})`;
           card.style.zIndex = String(Math.round(near * 20));

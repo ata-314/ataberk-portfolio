@@ -689,3 +689,15 @@ main#content p { line-height: 1.75; }
 @media (max-width: 767px) {
   .lab-panel-copy { flex-direction: column; text-align: center; }
 }
+
+/* Journey copy is editorial; only navigation and chapter cues use the HUD face. */
+main#content .services-lead,
+main#content .service-copy p,
+main#content .ascent-copy > p:last-child,
+main#content .work-card-idea {
+  font-family: var(--font-space), sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.6;
+}
+main#content .ascent-caption { font-family: var(--font-space), sans-serif; }

@@ -85,21 +85,28 @@ export function Services({ locale }: { locale: Locale }) {
         const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
         return t * t * (3 - 2 * t);
       };
+      let vw = 0, vh = 0;
+      let homes: { x: number; y: number }[] = [];
+      const measure = () => {
+        vw = section.clientWidth; vh = section.clientHeight;
+        homes = cards.map(card => ({
+          x: card.offsetLeft + card.offsetWidth / 2,
+          y: card.offsetTop + card.offsetHeight / 2,
+        }));
+        const inner = section.querySelector<HTMLElement>(".services-inner")!;
+        homes.forEach(home => { home.x += inner.offsetLeft; home.y += inner.offsetTop; });
+      };
       const apply = (progress: number) => {
         section.dataset.entering = String(progress < 0.999);
-        const orbit = smooth(progress, 0, 0.58);
+        const orbit = smooth(progress, 0, 0.62);
         const unfold = smooth(progress, 0.5, 0.9);
         const arrive = smooth(progress, 0, 0.12);
-        const vw = innerWidth, vh = innerHeight;
         const cx = vw / 2, cy = vh * 0.52;
-        const gridBox = grid.getBoundingClientRect();
         const radius = Math.min(vw * 0.36, 560);
         const lens = 1500;
         cards.forEach((card, i) => {
-          const w = card.offsetWidth, h = card.offsetHeight;
-          const homeX = gridBox.left + card.offsetLeft - grid.offsetLeft + w / 2;
-          const homeY = gridBox.top + card.offsetTop - grid.offsetTop + h / 2;
-          const angle = (i / cards.length) * Math.PI * 2 + orbit * Math.PI * 2.6 - Math.PI * 0.5;
+          const { x: homeX, y: homeY } = homes[i];
+          const angle = (i / cards.length) * Math.PI * 2 + orbit * Math.PI * 1.35 - Math.PI * 0.5;
           const depth = Math.cos(angle);
           // Helix: around the bird, tilted so the ring reads in depth, and
           // stacked a little in height so the cards wind rather than circle.
@@ -107,7 +114,7 @@ export function Services({ locale }: { locale: Locale }) {
           const z = depth * radius * 0.85 - radius * 0.35 - (1 - arrive) * 900;
           const y = (i - (cards.length - 1) / 2) * 38 * (1 - orbit * 0.4) - depth * radius * 0.16;
           const s = lens / (lens - z);
-          const size = 0.46 * s;
+          const size = 0.66 * s;
           const tx = mix(cx + x * s - homeX, 0, unfold);
           const ty = mix(cy + y * s - homeY, 0, unfold);
           const scale = mix(size, 1, unfold);
@@ -125,14 +132,15 @@ export function Services({ locale }: { locale: Locale }) {
         heading.style.transform = `translateY(${((1 - smooth(progress, 0.62, 0.9)) * 24).toFixed(1)}px)`;
       };
       const mix = (a: number, b: number, t: number) => a + (b - a) * t;
+      measure();
       const trigger = ScrollTrigger.create({
         trigger: section,
         start: "top top",
-        end: "+=240%",
+        end: "+=185%",
         pin: true,
         scrub: true,
         onUpdate: self => apply(self.progress),
-        onRefresh: self => apply(self.progress),
+        onRefresh: self => { measure(); apply(self.progress); },
       });
       apply(trigger.progress);
       return () => {

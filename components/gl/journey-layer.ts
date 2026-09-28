@@ -73,7 +73,7 @@ void main() {
   sky+=vec3(.05,.12,.13)*smoothstep(.45,.9,haze)*(1.0-space);
   // Leaving the atmosphere: the planet's curved limb glows beneath,
   // thinning and sinking as space takes over.
-  float limbY=-.62-space*.5;
+  float limbY=-.38-space*.5;
   float limbR=2.6;
   float limb=length(p-vec2(0.0,limbY-limbR))-limbR;
   vec3 atmosphere=vec3(.25,.75,.95)*exp(-abs(limb)*28.0)*.9+vec3(.05,.2,.32)*exp(-max(limb,0.0)*6.0)*.6;
@@ -81,7 +81,7 @@ void main() {
   // Space: near-black with a violet / teal nebula that drifts with travel.
   vec2 q=p*1.4+vec2(travel*1.6,travel*.6);
   float n=fbm(q+fbm(q*1.7+time*.01));
-  vec3 nebula=mix(vec3(.18,.05,.32),vec3(.03,.28,.34),smoothstep(.3,.8,fbm(q*.7+9.0)));
+  vec3 nebula=mix(vec3(.035,.08,.11),vec3(.03,.18,.2),smoothstep(.3,.8,fbm(q*.7+9.0)));
   vec3 deep=vec3(.003,.005,.014)+nebula*smoothstep(.45,.95,n)*.28;
   vec3 col=mix(sky,deep,space);
   col+=atmosphere*limbShow*step(limb,.4)*(1.0-step(limb,-.001)*.85);
@@ -132,21 +132,21 @@ void main() {
     pos=centre+o;
     float bright=.55+.45*h(id+3.0);
     vColor=mix(vec3(.62,.86,.95),vec3(.85,1.0,.82),h(c+11.0)*.5)*bright;
-    vAlpha=.075*presence;
-    size=26.0+h(id+5.0)*34.0;
+    vAlpha=.026*presence;
+    size=65.0+h(id+5.0)*95.0;
   } else if(kind<1.5) {
     // Galaxies of data: spiral arms of code glyphs around a bright core,
     // with dotted data rings, each tilted, coloured and turning on its own.
     float g=floor(id/perGalaxy);
     float k=id-g*perGalaxy;
-    vec3 centre=vec3((h(g+1.0)-.5)*70.0,236.0+(h(g+2.0)-.5)*44.0,-70.0-g*85.0-h(g+3.0)*30.0);
-    float radius=16.0+h(g+4.0)*18.0;
+    vec3 centre=vec3(sin(g*2.4+.8)*36.0,236.0+cos(g*1.7)*18.0,-100.0-g*100.0);
+    float radius=25.0+h(g+4.0)*15.0;
     float arms=2.0+floor(h(g+5.0)*3.0);
     float twist=2.2+h(g+6.0)*1.6;
     float spin=time*(.035+h(g+7.0)*.04)*(h(g+8.0)<.5?-1.0:1.0);
     float kindPick=h(k*1.37+g*91.0);
     vec3 local;
-    float hueBase=h(g+10.0);
+    float hueBase=.38+h(g+10.0)*.12;
     float t;
     if(kindPick<.12) {
       // Core bulge.
@@ -168,14 +168,15 @@ void main() {
       float a=arm/arms*6.2832+log(1.0+t*6.0)*twist+gauss(k+8.0)*.35*(1.0-t*.5)+spin/(.4+t);
       float r=t*radius;
       local=vec3(cos(a)*r,gauss(k+9.0)*radius*.035,sin(a)*r)+vec3(gauss(k+10.0),0.0,gauss(k+11.0))*radius*.05;
-      vColor=mix(hue(hueBase),hue(hueBase+.18),t)*(.75+.5*h(k+12.0));
+      vColor=mix(hue(hueBase),hue(hueBase-.18),t)*(.75+.5*h(k+12.0));
       vColor=mix(vColor,vec3(1),.25*(1.0-t));
     }
-    pos=centre+tilt(.9+h(g+13.0)*.9,h(g+14.0)*6.2832)*local;
+    pos=centre+tilt(.85+h(g+13.0)*.35,.18*sin(g*2.1))*local;
+    vColor=mix(vColor,vec3(.72,.86,.85),.55);
     vGlyph=floor(h(k+15.0)*16.0);
     vSoft=kindPick<.12?1.0:0.0;
     vAlpha=presence*(.55+.45*h(k+16.0));
-    size=kindPick<.12?9.0:5.5+h(k+17.0)*3.5;
+    size=kindPick<.12?7.0:7.0+h(k+17.0)*4.0;
   } else if(kind>2.5) {
     // Bokeh: large out-of-focus motes floating just in front of the lens,
     // set in camera space so they stay with the viewer through every
@@ -187,8 +188,8 @@ void main() {
     vp.y=mod(h(id+5.0)*1.6*z+time*(.015+h(id+4.0)*.03)*z,1.6*z)-.8*z;
     gl_Position=projection*vec4(vp,1.0);
     float pick=h(id+6.0);
-    vColor=pick<.45?vec3(1.0,.78,.32):pick<.8?vec3(.35,.95,.85):vec3(.6,.5,1.0);
-    vAlpha=presence*(.05+h(id+7.0)*.12)*(1.0-smoothstep(9.0,11.2,z));
+    vColor=mix(vec3(.58,.8,.82),vec3(.85,.92,.64),pick);
+    vAlpha=presence*(.02+h(id+7.0)*.04)*(1.0-smoothstep(9.0,11.2,z));
     vSoft=2.0;
     gl_PointSize=clamp((18.0+h(id+8.0)*60.0)*pixelScale*(5.0/z),4.0,160.0);
     return;
@@ -199,9 +200,10 @@ void main() {
     float r=4.0+h(id+1.0)*38.0;
     float z=eye.z-mod(h(id+2.0)*260.0-eye.z*1.0,260.0);
     pos=vec3(eye.x+cos(a)*r,eye.y+sin(a)*r*.7,z);
-    vColor=mix(vec3(.6,.8,1.0),vec3(.8,.6,1.0),h(id+3.0));
+    vColor=mix(vec3(.55,.8,.9),vec3(.8,.9,.7),h(id+3.0));
+    vSoft=0.0; vGlyph=floor(h(id+8.0)*16.0);
     vAlpha=presence*.5;
-    size=2.0;
+    size=4.0;
   }
   vec4 viewPos=view*vec4(pos,1.0);
   gl_Position=projection*viewPos;
@@ -285,18 +287,12 @@ function perspective(out: Float32Array, fov: number, aspect: number, near: numbe
 function viewFrom(out: Float32Array, eye: [number, number, number], yaw: number, pitch: number) {
   const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
   // Camera basis: right, up, back.
-  const r = [cy, 0, -sy];
-  const u = [sy * sp, cp, cy * sp];
-  const b = [sy * cp, -sp, cy * cp];
-  out.set([
-    r[0], u[0], b[0], 0,
-    r[1], u[1], b[1], 0,
-    r[2], u[2], b[2], 0,
-    -(r[0] * eye[0] + r[1] * eye[1] + r[2] * eye[2]),
-    -(u[0] * eye[0] + u[1] * eye[1] + u[2] * eye[2]),
-    -(b[0] * eye[0] + b[1] * eye[1] + b[2] * eye[2]),
-    1,
-  ]);
+  out[0]=cy; out[1]=sy*sp; out[2]=sy*cp; out[3]=0;
+  out[4]=0; out[5]=cp; out[6]=-sp; out[7]=0;
+  out[8]=-sy; out[9]=cy*sp; out[10]=cy*cp; out[11]=0;
+  out[12]=-(cy*eye[0]-sy*eye[2]);
+  out[13]=-(sy*sp*eye[0]+cp*eye[1]+cy*sp*eye[2]);
+  out[14]=-(sy*cp*eye[0]-sp*eye[1]+cy*cp*eye[2]); out[15]=1;
 }
 
 export function createJourneyLayer(gl: WebGL2RenderingContext, atlas: WebGLTexture | null, mobile: boolean) {
@@ -327,12 +323,13 @@ export function createJourneyLayer(gl: WebGL2RenderingContext, atlas: WebGLTextu
   const vao = gl.createVertexArray();
   const projection = new Float32Array(16);
   const view = new Float32Array(16);
+  const eye: [number, number, number] = [0, 0, 0];
   const scale = mobile ? 0.35 : 1;
-  const CLOUDS = Math.round(40000 * scale);
+  const CLOUDS = Math.round(16000 * scale);
   const GALAXIES = 8;
   const PER_GALAXY = Math.round(11000 * scale);
   const DUST = Math.round(5000 * scale);
-  const BOKEH = mobile ? 28 : 64;
+  const BOKEH = mobile ? 6 : 14;
 
   return {
     render(w: number, h: number, time: number, state: JourneyState) {
@@ -353,11 +350,9 @@ export function createJourneyLayer(gl: WebGL2RenderingContext, atlas: WebGLTextu
 
       // Camera: climbs through the cloud banks, then flies forward through
       // the galaxy field, weaving gently and leaning with the pointer.
-      const eye: [number, number, number] = [
-        Math.sin(state.travel * 9.0) * 14 + state.parallax[0] * 1.5,
-        state.rise * 236 + Math.sin(state.travel * 6.0) * 6 + state.parallax[1] * 1.0,
-        -state.travel * 760,
-      ];
+      eye[0] = Math.sin(state.travel * 9.0) * 14 + state.parallax[0] * 1.5;
+      eye[1] = state.rise * 236 + Math.sin(state.travel * 6.0) * 6 + state.parallax[1];
+      eye[2] = -state.travel * 760;
       perspective(projection, (60 * Math.PI) / 180, w / Math.max(h, 1), 0.1, 400);
       viewFrom(view, eye, state.parallax[0] * 0.04 + Math.cos(state.travel * 9.0) * 0.12, state.parallax[1] * 0.03);
       gl.useProgram(particles);

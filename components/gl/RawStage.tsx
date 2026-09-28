@@ -389,6 +389,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       });
     }
     let journeyEnd: HTMLElement | null = null;
+    let ascentElement: HTMLElement | null = null;
     const setupTexture = (
       unit: number,
       texture: WebGLTexture | null,
@@ -832,7 +833,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // climbs, flutters and loops over a noise wander, eased per action —
       // fast for reflexes, slow for glides — and only once the bird has
       // formed and is free on the page.
-      const freeFlight = smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale) * (1 - services) * (1 - workHold);
+      ascentElement ??= document.querySelector<HTMLElement>("#ascent");
+      const ascentBox = ascentElement?.getBoundingClientRect();
+      const ascentHold = ascentBox ? smoothstep(ascentBox.top / stageH, 1, 0.1)
+        * smoothstep(ascentBox.bottom / stageH, 0.1, 0.8) : 0;
+      const freeFlight = (1 - ascentHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale) * (1 - services) * (1 - workHold);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
       const ease = motion.snappy ? 7 : 2.2;
@@ -848,13 +853,13 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       flight.position = [flight.position[0] + eased.x, flight.position[1] + eased.y, flight.position[2] + eased.z];
       // Services: the bird holds the centre of the screen while the cards
       // orbit it, then stays behind the bento as it opens.
-      const centreHold = Math.max(services, workHold) * smoothstep(hero, 0.95, 1);
+      const centreHold = Math.max(services, workHold, ascentHold) * smoothstep(hero, 0.95, 1);
       flight.position = [
-        mix(flight.position[0], 0, centreHold),
-        mix(flight.position[1], 0.45, centreHold),
+        mix(flight.position[0], mobile ? 0 : ascentHold * 2.0, centreHold),
+        mix(flight.position[1], 0.45 + ascentHold * (mobile ? 1.2 : 0.5), centreHold),
         mix(flight.position[2], 0.4, centreHold),
       ];
-      flight.scale = mix(flight.scale, 0.72, centreHold);
+      flight.scale = mix(flight.scale, 0.44 + ascentHold * (mobile ? -0.08 : 0.12), centreHold);
       // Manifesto: the bird comes apart and its grains wind a helix ring
       // around the copy (see the sculpture shader). The stage only measures
       // the copy block and eases the envelope in and out.
@@ -985,10 +990,19 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         }
         const js = journeyState;
         js.reveal = damp(js.reveal, smoothstep(hero, 0.4, 0.95), 4, delta);
-        js.rise = damp(js.rise, smoothstep(j, 0, 0.38), 4, delta);
-        js.space = damp(js.space, smoothstep(j, 0.22, 0.46), 4, delta);
-        js.galaxies = damp(js.galaxies, smoothstep(j, 0.32, 0.5), 4, delta);
-        js.travel = damp(js.travel, smoothstep(j, 0.35, 1), 4, delta);
+        ascentElement ??= document.querySelector<HTMLElement>("#ascent");
+        const ascentRect = ascentElement?.getBoundingClientRect();
+        const climb = ascentRect ? Math.max(0, Math.min(1,
+          (stageH - ascentRect.top) / (ascentRect.height + stageH * 0.4))) : j;
+        const workSection = workElement?.closest<HTMLElement>("[data-scene]");
+        const workTop = workSection?.getBoundingClientRect().top ?? 0;
+        const contactTop = journeyEnd?.getBoundingClientRect().top ?? stageH;
+        const voyage = Math.max(0, Math.min(1,
+          (stageH - workTop) / Math.max(stageH, contactTop - workTop)));
+        js.rise = damp(js.rise, smoothstep(climb, 0, 0.75), 4, delta);
+        js.space = damp(js.space, smoothstep(climb, 0.28, 0.95), 4, delta);
+        js.galaxies = damp(js.galaxies, smoothstep(climb, 0.68, 1), 4, delta);
+        js.travel = damp(js.travel, voyage, 4, delta);
         js.parallax[0] = damp(js.parallax[0], hover[2] > 0.5 ? hover[0] : 0, 2, delta);
         js.parallax[1] = damp(js.parallax[1], hover[2] > 0.5 ? hover[1] : 0, 2, delta);
         journey.render(canvas.width, canvas.height, time, js);
@@ -1021,10 +1035,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       post?.finish(time, {
         // The data sea is dense and bright: bloom eases off while it fills
         // the frame (opening and finale) so it never flares to white.
-        bloom: 0.7 * (1 - 0.55 * Math.max(finale, videoMix)),
+        bloom: 0.38 * (1 - 0.55 * Math.max(finale, videoMix)),
         threshold: 0.72 + 0.2 * Math.max(finale, videoMix),
-        aberration: 0.015,
-        grain: 0.035,
+        aberration: 0.002,
+        grain: 0.016,
         grade: [0.0, 0.32, 0.38],
       });
       prevBird.set(birdMatrix);
