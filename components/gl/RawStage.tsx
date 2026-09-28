@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
+import { buildBirdLinks } from "./bird-links";
 import { bustState, scrollState } from "../three/scroll-state";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
@@ -388,6 +389,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.uniform1i(u("uAtlas"), 3);
 
     let birdReady = 0;
+    const linkTexture = gl.createTexture();
+    let linksReady = false;
     try {
       const response = await birdBake;
       if (!response.ok) throw new Error(`bird bake: ${response.status}`);
@@ -406,6 +409,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.bindTexture(gl.TEXTURE_2D, normalTexture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, TEX_W, ROWS_PER_FRAME, 0, gl.RGBA, gl.HALF_FLOAT, new Uint16Array(buffer, POSITION_ELEMENTS * 2, NORMAL_ELEMENTS));
       birdReady = 1;
+      await yieldTask();
+      // Surface neighbours: the grains fill the triangles between samples
+      // and the plexus cage runs along the same edges.
+      const links = buildBirdLinks(new Uint16Array(buffer, 0, BIRD_SAMPLES * 4), BIRD_SAMPLES, TEX_W);
+      gl.activeTexture(gl.TEXTURE6);
+      gl.bindTexture(gl.TEXTURE_2D, linkTexture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, TEX_W, links.rows, 0, gl.RGBA, gl.FLOAT, links.texels);
+      linksReady = true;
       await yieldTask();
     } catch (error) {
       console.error("bird texture failed:", error);
@@ -796,7 +809,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uBirdReady"), readyMix);
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -809,6 +822,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           positions: positionTexture, normals: normalTexture,
           trail: wake, burst, intro, bust,
           orbit, orbitRing,
+          links: linksReady ? linkTexture : null,
         });
       if (firstFrame) {
         firstFrame = false;
@@ -830,6 +844,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
       gl.deleteTexture(normalTexture);
+      gl.deleteTexture(linkTexture);
       gl.deleteTexture(bustTexture);
       clearTimeout(bustLoad);
       bustState.driven = false;

@@ -44,6 +44,25 @@ vec3 normalAt(vec3 p) {
 }
 `;
 
+// Animated bird surface: baked sample positions (16 flap frames, 5 rows
+// each) and rest-pose normals, both sampled with NEAREST filtering.
+const birdSampling = /* glsl */ `vec3 birdSample(float index,float frame) {
+  float row=floor(index/2048.0);
+  float column=(mod(index,2048.0)+.5)/2048.0;
+  vec3 a=texture(birdPositions,vec2(column,(floor(frame)*5.0+row+.5)/80.0)).xyz;
+  vec3 b=texture(birdPositions,vec2(column,(mod(floor(frame)+1.0,16.0)*5.0+row+.5)/80.0)).xyz;
+  return mix(a,b,fract(frame));
+}
+vec3 birdNormalAt(float index) {
+  float row=floor(index/2048.0);
+  float column=(mod(index,2048.0)+.5)/2048.0;
+  return texture(birdNormals,vec2(column,(row+.5)/5.0)).xyz;
+}
+vec4 birdNeighbours(float index) {
+  return texelFetch(birdLinks,ivec2(int(mod(index,2048.0)),int(floor(index/2048.0))),0);
+}
+`;
+
 // One persistent population: fluid grains, boundary waves and bird anatomy.
 // Scroll changes each grain's position, never its membership or visibility.
 const vertex = `#version 300 es
@@ -92,9 +111,15 @@ uniform float morph;
 // amount of bird that has unwound onto it.
 uniform vec4 orbitRing;
 uniform float orbitMix;
+// Three nearest surface neighbours per bird sample (see bird-links.ts).
+uniform sampler2D birdLinks;
+uniform float linksReady;
 out vec3 tint;
 out float alpha;
+// 1 for grains packed into the formed bird: opaque, depth-tested beads.
+out float solid;
 ${field}
+${birdSampling}
 float grainRandom(uint value) {
   value ^= value >> 16u;
   value *= 0x7feb352du;
@@ -133,7 +158,7 @@ void renderGrain(float id) {
   vec3 rd=normalize(vec3(screen.x*aspect*2.5,screen.y*2.5,-7.0));
   float spread=max(1.0,aspect*1.05);
   vec4 surface=texture(surfaceMap,screen*.5+.5);
-  tint=vec3(0); alpha=0.0; gl_PointSize=1.0;
+  tint=vec3(0); alpha=0.0; gl_PointSize=1.0; solid=0.0;
   gl_Position=vec4(2.0,2.0,2.0,1.0);
   if(surface.b<.98) return;
   float distance=(surface.r+surface.g/255.0)*12.0;
@@ -216,23 +241,48 @@ void renderGrain(float id) {
   vec2 source=sourceClip.xy/sourceClip.w;
   vec2 destination=source;
   float birdLight=1.0;
+  float birdAO=1.0;
+  float shellDepth=0.0;
+  float birdZ=.999;
   float electric=0.0;
   vec3 electricColor=vec3(.6,.97,1.0);
   if(assembly>0.0) {
-    // Every source ID maps to baked anatomy; repeated samples receive a
-    // tiny normal offset so all grains remain separate within the feathers.
+    // Every source ID lands on a small triangle between a baked sample and
+    // two of its surface neighbours, so ~24 grains per sample pack the skin
+    // edge to edge. Most sit just under the surface: a dense, bead-packed
+    // shell with volume rather than a scatter of points.
     float index=mod(id*37.0,9000.0);
     float frame=flap*16.0;
-    float row=floor(index/2048.0);
-    float column=(mod(index,2048.0)+.5)/2048.0;
-    vec3 a=texture(birdPositions,vec2(column,(floor(frame)*5.0+row+.5)/80.0)).xyz;
-    vec3 b=texture(birdPositions,vec2(column,(mod(floor(frame)+1.0,16.0)*5.0+row+.5)/80.0)).xyz;
-    vec3 normal=texture(birdNormals,vec2(column,(row+.5)/5.0)).xyz;
-    vec3 anatomy=mix(a,b,fract(frame))+normal*(seed-.5)*.028;
+    vec3 anatomy=birdSample(index,frame);
+    vec3 normal=birdNormalAt(index);
+    if(linksReady>.5) {
+      vec4 nb=birdNeighbours(index);
+      float pick=floor(grainRandom(uint(id)+4441u)*3.0);
+      float ia=pick<.5?nb.x:pick<1.5?nb.y:nb.z;
+      float ib=pick<.5?nb.y:pick<1.5?nb.z:nb.x;
+      // A patch centred on the sample and spanned by the two neighbour
+      // edges, so neighbouring patches overlap instead of leaving gaps.
+      float u=(grainRandom(uint(id)+5003u)-.5)*1.25,v=(grainRandom(uint(id)+6007u)-.5)*1.25;
+      vec3 centre=anatomy;
+      anatomy=centre+(birdSample(ia,frame)-centre)*u+(birdSample(ib,frame)-centre)*v;
+      vec3 blended=normal+birdNormalAt(ia)*abs(u)+birdNormalAt(ib)*abs(v);
+      normal=dot(blended,blended)>1e-4?normalize(blended):normal;
+      shellDepth=grainRandom(uint(id)+7727u);
+      shellDepth*=shellDepth;
+      anatomy-=normal*shellDepth*.045;
+    } else {
+      anatomy+=normal*(seed-.5)*.028;
+    }
     vec4 target=birdProjection*birdView*birdMatrix*vec4(anatomy,1.0);
     destination=target.xy/target.w;
+    birdZ=clamp(target.z/target.w,-1.0,.99);
     vec3 worldNormal=normalize(mat3(birdMatrix)*normal);
-    birdLight=.65+.85*max(dot(worldNormal,normalize(vec3(-.6,.8,1.0))),0.0);
+    // Hard key light and occlusion by depth into the shell give the mass
+    // its sculpted, snow-packed read.
+    // Wings are thin shells: light them from either side.
+    float keyDot=dot(worldNormal,normalize(vec3(-.6,.8,1.0)));
+    birdLight=.48+.85*max(keyDot,-keyDot*.7)+.3*max(dot(worldNormal,normalize(vec3(.7,-.2,.6))),0.0);
+    birdAO=mix(1.0,.6,shellDepth);
     // A restrained charge: sparse thin veins crawl over the anatomy, a slow
     // faint pulse runs along the wingspan and a rare grain sparks.
     float vein=noise(anatomy*5.5+vec3(0.0,time*1.3,time*.85));
@@ -365,13 +415,19 @@ void renderGrain(float id) {
     helixMix=m;
     helixPulse=pow(.5+.5*sin(u*3.0-time*2.2),18.0);
   }
-  gl_Position=vec4(position,0.0,1.0);
+  float depth=mix(.999,birdZ,assembly);
+  depth=mix(depth,.3,bustMix);
+  depth=mix(depth,.3-helixDepth*.05,helixMix);
+  gl_Position=vec4(position,depth,1.0);
+  solid=assembly*(1.0-bustMix)*(1.0-helixMix);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
-  gl_PointSize=max(1.0,mix(fluidSize*introSize,(1.8+seed*.65)*pixelScale,assembly));
+  gl_PointSize=max(1.0,mix(fluidSize*introSize,(2.3+seed*.9)*pixelScale*mix(1.0,.8,shellDepth),assembly));
   // Kept below 1 so the body keeps its hue and lighting; the veins and the
   // halo pass carry the brightness.
-  vec3 birdBody=min(mix(lime*.7+citron*.3,vec3(.8,.96,1.0),.18)*birdLight*1.05,vec3(.95));
-  tint=mix(tint,birdBody,assembly*.85);
+  // Frosted silver with a faint lime cast; the brand colour lives in the
+  // veins and the halo.
+  vec3 birdBody=min(mix(vec3(.84,.9,.92),lime,.14)*birdLight*birdAO,vec3(.97));
+  tint=mix(tint,birdBody,assembly*.92);
   // Veins burn white-hot at the core and fringe into the electric hue.
   vec3 hot=mix(electricColor,vec3(1.0),.25)*1.25;
   tint=mix(tint,hot,clamp(electric,0.0,1.0)*assembly);
@@ -423,6 +479,7 @@ void renderGrain(float id) {
   }
   if(glowPass>.5) {
     // Halo pass: only bird grains, drawn large and soft with additive blend.
+    solid=0.0;
     if(assembly<.05) {alpha=0.0;gl_Position=vec4(2.0,2.0,2.0,1.0);return;}
     // Halo mostly around live veins and sparks; the body keeps only a faint
     // lime aura (no red/blue, which washed the green body out to grey).
@@ -438,6 +495,7 @@ const fragment = `#version 300 es
 precision highp float;
 in vec3 tint;
 in float alpha;
+in float solid;
 uniform vec2 resolution;
 uniform float glowPass;
 out vec4 color;
@@ -449,9 +507,47 @@ void main() {
   vec3 n=vec3(p.x,-p.y,sqrt(1.0-r2));
   vec3 lamp=normalize(vec3(-.4,.6,1.0));
   float light=.38+.72*max(dot(n,lamp),0.0);
+  // Packed beads: each grain reads as its own small sphere, darker at the
+  // rim so neighbours separate, with a crisp opaque edge.
+  light=mix(light,(.2+.95*max(dot(n,lamp),0.0))*(.55+.45*n.z),solid);
   float spec=pow(max(dot(n,normalize(vec3(-.2,.3,1.0))),0.0),24.0);
-  float edge=1.0-smoothstep(.68,1.0,r2);
-  color=vec4(tint*light+vec3(.87,1.0,.58)*spec*.35*max(tint.r,max(tint.g,tint.b)),edge*alpha);
+  float edge=mix(1.0-smoothstep(.68,1.0,r2),1.0,solid);
+  vec3 sheen=mix(vec3(.87,1.0,.58),vec3(.9,.97,1.0),solid);
+  color=vec4(tint*light+sheen*spec*mix(.35,.5,solid)*max(tint.r,max(tint.g,tint.b)),edge*mix(alpha,min(1.0,alpha*1.06),solid));
+}`;
+// Plexus cage: the neighbour edges of every third sample, lifted just off
+// the skin and swept by a scan band. Faint, thin and technical.
+const cageVertex = `#version 300 es
+precision highp float;
+uniform sampler2D birdPositions;
+uniform sampler2D birdNormals;
+uniform sampler2D birdLinks;
+uniform mat4 birdMatrix;
+uniform mat4 birdView;
+uniform mat4 birdProjection;
+uniform float flap;
+uniform float time;
+uniform float cage;
+out float lineAlpha;
+out float lineScan;
+${birdSampling}
+void main() {
+  int link=gl_VertexID/2;
+  float base=float(link/2)*3.0;
+  vec4 nb=birdNeighbours(base);
+  float index=gl_VertexID%2==0?base:(link%2==0?nb.x:nb.y);
+  vec3 p=birdSample(index,flap*16.0)+birdNormalAt(index)*.06;
+  gl_Position=birdProjection*birdView*birdMatrix*vec4(p,1.0);
+  lineScan=pow(.5+.5*sin(p.y*3.2+p.x*.8-time*2.4),10.0);
+  lineAlpha=cage*(.1+lineScan*.4);
+}`;
+const cageFragment = `#version 300 es
+precision highp float;
+in float lineAlpha;
+in float lineScan;
+out vec4 color;
+void main() {
+  color=vec4(mix(vec3(.72,.86,.9),vec3(.84,1.0,.45),lineScan),lineAlpha);
 }`;
 const canvasVertex = `#version 300 es
 precision highp float;
@@ -498,6 +594,7 @@ export type SculptureFlight = {
   trail: Float32Array; burst: Float32Array;
   intro: number;
   orbit: number; orbitRing: Float32Array;
+  links: WebGLTexture | null;
   bust: {
     texture: WebGLTexture | null; ready: boolean; rows: number; count: number;
     rect: Float32Array; aspect: number; yaw: number; pitch: number; lift: number; morph: number;
@@ -525,6 +622,8 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   };
   const program=makeProgram(vertex,fragment);
   const surfaceProgram=makeProgram(canvasVertex,surfaceFragment);
+  const cageProgram=makeProgram(cageVertex,cageFragment);
+  const cageUniforms=Object.fromEntries(["birdPositions","birdNormals","birdLinks","birdMatrix","birdView","birdProjection","flap","time","cage"].map(name=>[name,gl.getUniformLocation(cageProgram,name)]));
   const surfaceUniforms=Object.fromEntries(["resolution","pointer","time","fieldTime","activity"].map(name=>[name,gl.getUniformLocation(surfaceProgram,name)]));
   const surfaceMap=gl.getUniformLocation(program,"surfaceMap");
   const texture=gl.createTexture();
@@ -536,7 +635,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph","orbitRing","orbitMix"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph","orbitRing","orbitMix","birdLinks","linksReady"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -648,6 +747,8 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       gl.uniform1f(uniforms.intro,flight.intro);
       gl.uniform1f(uniforms.orbitMix,flight.orbit);
       gl.uniform4fv(uniforms.orbitRing,flight.orbitRing);
+      gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,flight.links);
+      gl.uniform1i(uniforms.birdLinks,6);gl.uniform1f(uniforms.linksReady,flight.links?1:0);
       const bust=flight.bust;
       const morph=bust.ready?bust.morph:0;
       gl.uniform1f(uniforms.morph,morph);
@@ -659,8 +760,26 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         gl.uniform1f(uniforms.bustYaw,bust.yaw);gl.uniform1f(uniforms.bustPitch,bust.pitch);
         gl.uniform1f(uniforms.bustLift,bust.lift);
       }
-      // Constant draw count and frozen source mask throughout assembly.
+      // Constant draw count and frozen source mask throughout assembly. The
+      // formed bird's beads are depth-tested so the near side occludes the
+      // far side; the sea sits at the far plane behind it.
+      gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
       gl.drawArrays(gl.POINTS,0,columns*rows);
+      gl.disable(gl.DEPTH_TEST);
+      const formed=Math.min(1,Math.max(0,(flight.hero-.35)/.35));
+      const cage=formed*formed*(3-2*formed)*flight.ready*(1-flight.finale)*(1-flight.services)*(1-morph)*(1-flight.orbit);
+      if(flight.links && cage>.01) {
+        gl.useProgram(cageProgram);
+        gl.uniform1i(cageUniforms.birdPositions,0);gl.uniform1i(cageUniforms.birdNormals,1);gl.uniform1i(cageUniforms.birdLinks,6);
+        gl.uniformMatrix4fv(cageUniforms.birdMatrix,false,flight.matrix);
+        gl.uniformMatrix4fv(cageUniforms.birdView,false,flight.view);
+        gl.uniformMatrix4fv(cageUniforms.birdProjection,false,flight.projection);
+        gl.uniform1f(cageUniforms.flap,flight.flap);gl.uniform1f(cageUniforms.time,time);
+        gl.uniform1f(cageUniforms.cage,cage);
+        gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ZERO,gl.ONE);
+        gl.drawArrays(gl.LINES,0,6000*2);
+        gl.useProgram(program);
+      }
       gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
       // Additive halo over the forming bird. A subset of IDs still covers
       // every anatomy sample (index = id*37 mod 9000).
@@ -674,6 +793,6 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         gl.uniform1f(uniforms.glowPass,0);
       }
     },
-    dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteBuffer(probeBuffer);if(probeFence) gl.deleteSync(probeFence);gl.deleteVertexArray(vao);},
+    dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);gl.deleteProgram(cageProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteBuffer(probeBuffer);if(probeFence) gl.deleteSync(probeFence);gl.deleteVertexArray(vao);},
   };
 }
