@@ -5,6 +5,7 @@ import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour } from "./bird-behaviour";
+import { createJourneyLayer, type JourneyState } from "./journey-layer";
 import { bustState, scrollState } from "../three/scroll-state";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
@@ -352,6 +353,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const positionTexture = gl.createTexture();
     const normalTexture = gl.createTexture();
     const atlasTexture = createAtlas(gl);
+    const journey = createJourneyLayer(gl, atlasTexture, mobile);
+    // Journey chapters, eased: the climb and the flight follow the page from
+    // the services section to the contact finale.
+    const journeyState: JourneyState = { reveal: 0, rise: 0, space: 0, travel: 0, galaxies: 0, parallax: [0, 0] };
+    let journeyStart: HTMLElement | null = null;
+    let journeyEnd: HTMLElement | null = null;
     const setupTexture = (
       unit: number,
       texture: WebGLTexture | null,
@@ -784,7 +791,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // climbs, flutters and loops over a noise wander, eased per action —
       // fast for reflexes, slow for glides — and only once the bird has
       // formed and is free on the page.
-      const freeFlight = smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
+      const freeFlight = smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale) * (1 - services);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
       const ease = motion.snappy ? 7 : 2.2;
@@ -798,6 +805,15 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       eased.hold = damp(eased.hold, motion.hold * freeFlight, 5, delta);
       eased.holdFrame = motion.hold > 0.01 ? motion.holdFrame : eased.holdFrame;
       flight.position = [flight.position[0] + eased.x, flight.position[1] + eased.y, flight.position[2] + eased.z];
+      // Services: the bird holds the centre of the screen while the cards
+      // orbit it, then stays behind the bento as it opens.
+      const centreHold = services * smoothstep(hero, 0.95, 1);
+      flight.position = [
+        mix(flight.position[0], 0, centreHold),
+        mix(flight.position[1], 0.45, centreHold),
+        mix(flight.position[2], 0.4, centreHold),
+      ];
+      flight.scale = mix(flight.scale, 0.72, centreHold);
       // Manifesto: the bird comes apart and its grains wind a helix ring
       // around the copy (see the sculpture shader). The stage only measures
       // the copy block and eases the envelope in and out.
@@ -869,7 +885,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         worldSpan[1] = 2 * Math.max(depth, 0.5) * tanHalf;
         worldSpan[0] = worldSpan[1] * aspect;
       }
-      const birdVisible = hero > 0.06 && readyMix > 0.5 && finale < 0.98 && services < 0.98;
+      const birdVisible = hero > 0.06 && readyMix > 0.5 && finale < 0.98;
       simInput.reset = !birdVisible || !simPrimed;
       simInput.dt = Math.max(1 / 240, Math.min(delta, 1 / 30));
       simInput.hover = hover[2];
@@ -912,6 +928,29 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      {
+        // Measured from the services pin spacer when pinned, so the climb
+        // keeps moving while the section holds the screen.
+        const servicesSection = document.querySelector<HTMLElement>("#services");
+        const spacer = servicesSection?.parentElement;
+        journeyStart = spacer?.classList.contains("pin-spacer") ? spacer : servicesSection;
+        journeyEnd ??= document.querySelector<HTMLElement>("#contact");
+        let j = 0;
+        if (journeyStart && journeyEnd) {
+          const start = journeyStart.getBoundingClientRect().top - stageH;
+          const end = journeyEnd.getBoundingClientRect().top;
+          j = Math.max(0, Math.min(1, -start / Math.max(end - start, 1)));
+        }
+        const js = journeyState;
+        js.reveal = damp(js.reveal, smoothstep(hero, 0.4, 0.95), 4, delta);
+        js.rise = damp(js.rise, smoothstep(j, 0, 0.38), 4, delta);
+        js.space = damp(js.space, smoothstep(j, 0.22, 0.46), 4, delta);
+        js.galaxies = damp(js.galaxies, smoothstep(j, 0.32, 0.5), 4, delta);
+        js.travel = damp(js.travel, smoothstep(j, 0.35, 1), 4, delta);
+        js.parallax[0] = damp(js.parallax[0], hover[2] > 0.5 ? hover[0] : 0, 2, delta);
+        js.parallax[1] = damp(js.parallax[1], hover[2] > 0.5 ? hover[1] : 0, 2, delta);
+        journey.render(canvas.width, canvas.height, time, js);
+      }
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -947,6 +986,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       removeEventListener("pointerup", onPointerUp);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
+      journey.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
       gl.deleteTexture(normalTexture);

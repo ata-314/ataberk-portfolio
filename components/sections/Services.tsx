@@ -50,10 +50,12 @@ export function Services({ locale }: { locale: Locale }) {
     return () => observer.disconnect();
   }, []);
 
-  // Entrance: cards surface out of the page's depth — pushed back in Z,
-  // tipped away and dark, they rise and tilt up to the glass plane as the
-  // section scrolls in, their vignettes lighting up a beat later. Scrubbed
-  // like the rest of the site, so scrolling back sinks them again.
+  // Desktop: the section pins and the cards orbit the bird at the centre of
+  // the screen on a tilted helix — near cards large and bright, far ones
+  // small and dim — then leave the orbit and unfold into the bento grid.
+  // Depth is projected here (not by nested CSS 3D) so every card shares one
+  // vanishing point at the bird. Scrubbed, so scrolling back winds them up.
+  // Smaller screens keep the per-card rise out of the page's depth.
   useGSAP(() => {
     const section = root.current;
     if (!section) return;
@@ -67,18 +69,81 @@ export function Services({ locale }: { locale: Locale }) {
         scrollTrigger: { trigger: section, start: "top 95%", end: "top 12%", scrub: 0.6, onUpdate: auraState, onRefresh: auraState },
       });
       const cards = gsap.utils.toArray<HTMLElement>(".service-card", section);
-      const depth = { "--ey": "170px", "--ez": "-560px", "--erx": "34deg", opacity: 0 };
-      const rest = { "--ey": "0px", "--ez": "0px", "--erx": "0deg", opacity: 1 };
-      const entering = (self: ScrollTrigger) => { section.dataset.entering = String(self.progress < 1); };
-      const groups = conditions?.desktop ? [cards] : cards.map(card => [card]);
-      groups.forEach(group => {
-        const trigger = conditions?.desktop ? section.querySelector("[data-services-grid]") : group[0];
-        gsap.timeline({ scrollTrigger: { trigger, start: "top 96%", end: conditions?.desktop ? "top 28%" : "top 55%", scrub: 0.6, onUpdate: entering, onRefresh: entering } })
-          .fromTo(group, depth, { ...rest, ease: "power3.out", duration: 1, stagger: 0.14 })
-          .fromTo(group.map(card => card.querySelector(".service-visual")), { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, ease: "power2.out", duration: 0.7, stagger: 0.14 }, 0.35);
+      if (!conditions?.desktop) {
+        const entering = (self: ScrollTrigger) => { section.dataset.entering = String(self.progress < 1); };
+        cards.forEach(card => {
+          gsap.timeline({ scrollTrigger: { trigger: card, start: "top 96%", end: "top 55%", scrub: 0.6, onUpdate: entering, onRefresh: entering } })
+            .fromTo(card, { "--ey": "170px", "--ez": "-560px", "--erx": "34deg", opacity: 0 }, { "--ey": "0px", "--ez": "0px", "--erx": "0deg", opacity: 1, ease: "power3.out", duration: 1 })
+            .fromTo(card.querySelector(".service-visual"), { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, ease: "power2.out", duration: 0.7 }, 0.35);
+        });
+        return;
+      }
+      const grid = section.querySelector<HTMLElement>("[data-services-grid]");
+      const heading = section.querySelector<HTMLElement>(".services-heading");
+      if (!grid || !heading) return;
+      const smooth = (x: number, a: number, b: number) => {
+        const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+        return t * t * (3 - 2 * t);
+      };
+      const apply = (progress: number) => {
+        section.dataset.entering = String(progress < 0.999);
+        const orbit = smooth(progress, 0, 0.58);
+        const unfold = smooth(progress, 0.5, 0.9);
+        const arrive = smooth(progress, 0, 0.12);
+        const vw = innerWidth, vh = innerHeight;
+        const cx = vw / 2, cy = vh * 0.52;
+        const gridBox = grid.getBoundingClientRect();
+        const radius = Math.min(vw * 0.36, 560);
+        const lens = 1500;
+        cards.forEach((card, i) => {
+          const w = card.offsetWidth, h = card.offsetHeight;
+          const homeX = gridBox.left + card.offsetLeft - grid.offsetLeft + w / 2;
+          const homeY = gridBox.top + card.offsetTop - grid.offsetTop + h / 2;
+          const angle = (i / cards.length) * Math.PI * 2 + orbit * Math.PI * 2.6 - Math.PI * 0.5;
+          const depth = Math.cos(angle);
+          // Helix: around the bird, tilted so the ring reads in depth, and
+          // stacked a little in height so the cards wind rather than circle.
+          const x = Math.sin(angle) * radius;
+          const z = depth * radius * 0.85 - radius * 0.35 - (1 - arrive) * 900;
+          const y = (i - (cards.length - 1) / 2) * 38 * (1 - orbit * 0.4) - depth * radius * 0.16;
+          const s = lens / (lens - z);
+          const size = 0.46 * s;
+          const tx = mix(cx + x * s - homeX, 0, unfold);
+          const ty = mix(cy + y * s - homeY, 0, unfold);
+          const scale = mix(size, 1, unfold);
+          const turn = mix(-Math.sin(angle) * 32, 0, unfold);
+          const near = (depth + 1) / 2;
+          card.style.setProperty("--hx", `${tx.toFixed(1)}px`);
+          card.style.setProperty("--hy", `${ty.toFixed(1)}px`);
+          card.style.setProperty("--hs", scale.toFixed(4));
+          card.style.setProperty("--hry", `${turn.toFixed(2)}deg`);
+          card.style.opacity = String(mix((0.28 + 0.72 * near) * arrive, 1, unfold));
+          card.style.filter = unfold > 0.98 ? "" : `brightness(${mix(0.55 + 0.45 * near, 1, unfold).toFixed(3)})`;
+          card.style.zIndex = String(unfold > 0.5 ? 1 : Math.round(near * 10));
+        });
+        heading.style.opacity = String(smooth(progress, 0.62, 0.9));
+        heading.style.transform = `translateY(${((1 - smooth(progress, 0.62, 0.9)) * 24).toFixed(1)}px)`;
+      };
+      const mix = (a: number, b: number, t: number) => a + (b - a) * t;
+      const trigger = ScrollTrigger.create({
+        trigger: section,
+        start: "top top",
+        end: "+=240%",
+        pin: true,
+        scrub: true,
+        onUpdate: self => apply(self.progress),
+        onRefresh: self => apply(self.progress),
       });
+      apply(trigger.progress);
+      return () => {
+        cards.forEach(card => {
+          ["--hx", "--hy", "--hs", "--hry"].forEach(v => card.style.removeProperty(v));
+          card.style.opacity = card.style.filter = card.style.zIndex = "";
+        });
+        heading.style.opacity = heading.style.transform = "";
+      };
     });
-    return () => { mm.revert(); delete section.dataset.aura; };
+    return () => { mm.revert(); delete section.dataset.aura; delete section.dataset.entering; };
   }, { scope: root });
 
   const follow = (event: PointerEvent<HTMLElement>) => {

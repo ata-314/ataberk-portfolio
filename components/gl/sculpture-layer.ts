@@ -221,7 +221,6 @@ void renderGrain(float id) {
   vec3 local=vec3(p.x/spread,p.y,p.z);
   float assembly=smoothstep(.055+seed*.055,.61+seed*.055,hero)*birdReady;
   assembly*=1.0-finale;
-  assembly*=1.0-smoothstep(seed*.12,.82+seed*.18,services);
   // Normal from neighbouring depth texels: four fetches instead of six full
   // noise-field evaluations per grain per frame.
   vec3 n=vec3(0,0,1);
@@ -523,7 +522,7 @@ void renderGrain(float id) {
   // Services: grain by grain (staggered by seed, like the intro) the sea
   // takes on the section's violet / blue / magenta light, so the glass
   // cards read as lit by the same matter behind them.
-  float servicesGrain=smoothstep(seed*.45,.55+seed*.45,services);
+  float servicesGrain=smoothstep(seed*.45,.55+seed*.45,services)*(1.0-assembly);
   float hueField=.5+.5*sin(screen.x*2.3+screen.y*1.7+time*.15+seed*2.0);
   vec3 servicesHue=mix(vec3(.62,.5,1.0),vec3(.36,.62,1.0),hueField);
   servicesHue=mix(servicesHue,vec3(.93,.45,.98),smoothstep(.72,1.0,fract(seed*7.13)));

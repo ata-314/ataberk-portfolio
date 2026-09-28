@@ -33,9 +33,11 @@
   -webkit-backdrop-filter: blur(40px) saturate(180%);
   backdrop-filter: blur(40px) saturate(180%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 0 0 .5px rgba(255,255,255,.05), inset 0 -50px 70px rgba(8,4,24,.3), 0 30px 70px rgba(4,2,16,.45);
-  --ey: 0px; --ez: 0px; --erx: 0deg; transform-origin: 50% 100%; transform: perspective(1000px) translate3d(0, var(--ey), var(--ez)) rotateX(calc(var(--rx) + var(--erx))) rotateY(var(--ry)); transition: transform .4s ease, border-color .4s ease, box-shadow .4s ease; }
+  --ey: 0px; --ez: 0px; --erx: 0deg; transform-origin: 50% 100%; transition: transform .4s ease, border-color .4s ease, box-shadow .4s ease;
+  /* --h*: the desktop orbit (projected position, scale and turn), identity at rest. */
+  transform: translate3d(var(--hx, 0px), var(--hy, 0px), 0) scale(var(--hs, 1)) perspective(1000px) rotateY(var(--hry, 0deg)) translate3d(0, var(--ey), var(--ez)) rotateX(calc(var(--rx) + var(--erx))) rotateY(var(--ry)); }
 /* While the scrubbed entrance drives the transform, CSS must not smooth it too. */
-.services-section[data-entering="true"] .service-card { transition: border-color .4s ease, box-shadow .4s ease; will-change: transform, opacity; }
+.services-section[data-entering="true"] .service-card { transition: border-color .4s ease, box-shadow .4s ease; will-change: transform, opacity; transform-origin: 50% 50%; }
 .service-card-0 { grid-column: span 5; --beam-x: 38%; --beam-r: -14deg; }
 .service-card-1 { grid-column: span 4; --glow: var(--blue); --beam-x: 20%; --beam-r: 20deg; }
 .service-card-2 { grid-column: span 3; --glow: var(--magenta); --beam-x: 52%; --beam-r: -22deg; }
