@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
 import { createTunnelLayer } from "./tunnel-layer";
+import { createVortexLayer } from "./vortex-layer";
 import { createPost } from "./post";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour } from "./bird-behaviour";
@@ -278,6 +279,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let voyageHold = 0;
     let voyage = 0;
     let tunnelIn = 0;
+    // The voyage vortex: headline letters (and the bird's grains, through the
+    // sculpture's helix ring) wind round the bird and are sucked into the
+    // tunnel mouth. Sampled once the section holds the screen.
+    const vortex = createVortexLayer(gl);
+    let vortexSampled = "";
+    const birdNdc: [number, number] = [0, 0];
     gl.bindVertexArray(vao);
     gl.useProgram(program);
     // Sparse grains supply the handoff; the particle sculpture carries entry.
@@ -853,7 +860,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         const sway = Math.sin(time * 0.6) * 0.18 * tunnelIn;
         flight.position = [
           mix(flight.position[0], sway, voyageHold),
-          mix(flight.position[1], 0.12 - tunnelIn * 0.15 + Math.sin(time * 0.8) * 0.05, voyageHold),
+          // Phones: above the headline, which sits low on the screen.
+          mix(flight.position[1], (mobile ? 1.15 * (1 - tunnelIn) : 0.12) - tunnelIn * 0.15 + Math.sin(time * 0.8) * 0.05, voyageHold),
           mix(flight.position[2], -tunnelIn * 0.8, voyageHold),
         ];
         flight.scale = mix(flight.scale, 0.95 - tunnelIn * 0.25, voyageHold);
@@ -946,6 +954,35 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
       const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
+      // Where the bird is on screen: the vortex turns round it.
+      {
+        const bx = birdMatrix[12], by = birdMatrix[13], bz = birdMatrix[14];
+        const vx = view[0] * bx + view[4] * by + view[8] * bz + view[12];
+        const vy = view[1] * bx + view[5] * by + view[9] * bz + view[13];
+        const vz = view[2] * bx + view[6] * by + view[10] * bz + view[14];
+        const cw = -vz || 1;
+        birdNdc[0] = (projection[0] * vx) / cw;
+        birdNdc[1] = (projection[5] * vy) / cw;
+      }
+      if (voyage > 0.02 && voyageHold > 0.5) {
+        const key = `${stageW}x${stageH}`;
+        if (vortexSampled !== key && vortex.sample(stageW, stageH, mobile ? 14000 : 34000)) vortexSampled = key;
+      }
+      const vortexPresence = smoothstep(voyage, 0.1, 0.13) * (1 - smoothstep(voyage, 0.42, 0.47)) * voyageHold;
+      const vortexForm = smoothstep(voyage, 0.11, 0.3);
+      const suction = smoothstep(voyage, 0.27, 0.42);
+      // The bird's own grains join it: they unwind onto a ring round the
+      // bird that shrinks into the centre, then re-form the bird in the
+      // tunnel.
+      const birdOrbit = smoothstep(voyage, 0.13, 0.23) * (1 - smoothstep(voyage, 0.38, 0.47)) * voyageHold;
+      if (birdOrbit > orbit) {
+        const aspect = stageW / Math.max(stageH, 1);
+        const radius = 0.3 * (1 - suction * 0.92);
+        orbitRing[0] = birdNdc[0];
+        orbitRing[1] = birdNdc[1];
+        orbitRing[2] = radius / aspect;
+        orbitRing[3] = radius * 0.42;
+      }
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       // The corridor streams toward us; its light shifts deeper in.
       const tunnelExit = smoothstep(voyage, 0.86, 0.99);
@@ -962,17 +999,19 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           matrix: birdMatrix, view, projection,
           positions: positionTexture, normals: normalTexture,
           trail: wake, burst, intro, bust,
-          orbit, orbitRing,
+          orbit: Math.max(orbit, birdOrbit), orbitRing,
           links: linksReady ? linkTexture : null,
           sim: simInput,
         }, sceneTarget);
+      if (sceneTarget) gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget);
+      vortex.render(canvas.width, canvas.height, time, birdNdc, vortexForm, suction, vortexPresence, pixelRatio * 1.3);
       post?.finish(time, {
         bloom: 0.8,
         threshold: 0.72,
         aberration: 0.02,
         grain: 0.04,
         grade: [0.0, 0.25, 0.3],
-        amount: tunnelIn,
+        amount: Math.max(tunnelIn, vortexPresence * 0.8),
         ring: tunnelIn,
       });
       prevBird.set(birdMatrix);
@@ -996,6 +1035,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
       tunnel.dispose();
+      vortex.dispose();
       post?.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
