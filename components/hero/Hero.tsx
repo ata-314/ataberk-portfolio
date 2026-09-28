@@ -133,7 +133,7 @@ export function Hero({ t }: { t: HeroStrings }) {
               </span>
             </div>
             <div data-hero-name className="hero-enter order-1 -mx-5 md:order-2 md:mx-0" style={{ ["--d" as string]: "0.05s" }}>
-              <CodeName words={["ATABERK"]} label={t.name} fill className="hero-name" />
+              <CodeName words={["ATABERX"]} label={t.name} fill handoffLast className="hero-name" />
             </div>
           </div>
         </div>

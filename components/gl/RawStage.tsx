@@ -5,6 +5,7 @@ import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
 import { createTunnelLayer } from "./tunnel-layer";
 import { createVortexLayer } from "./vortex-layer";
+import { createXLayer } from "./x-layer";
 import { createPost } from "./post";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour } from "./bird-behaviour";
@@ -285,6 +286,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const vortex = createVortexLayer(gl);
     let vortexSampled = "";
     const birdNdc: [number, number] = [0, 0];
+    // The X: the name's last letter handed over as particles, assembled
+    // into a structure behind the bird and flown through into the tunnel.
+    const xLayer = createXLayer(gl, mobile);
+    let xSampled = "";
+    const xCentre: [number, number, number] = [0, 0.2, -2.8];
     gl.bindVertexArray(vao);
     gl.useProgram(program);
     // Sparse grains supply the handoff; the particle sculpture carries entry.
@@ -968,6 +974,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         const key = `${stageW}x${stageH}`;
         if (vortexSampled !== key && vortex.sample(stageW, stageH, mobile ? 14000 : 34000)) vortexSampled = key;
       }
+      // The X: sampled from the name while it is on screen, formed while the
+      // name disperses, then rushing at the camera as the vortex pulls in.
+      if (hero < 0.04 && document.querySelector("[data-hero-name] [data-code-ready]")) {
+        const key = `${stageW}x${stageH}`;
+        if (xSampled !== key && xLayer.sample(stageW, stageH)) xSampled = key;
+      }
       const vortexPresence = smoothstep(voyage, 0.1, 0.13) * (1 - smoothstep(voyage, 0.42, 0.47)) * voyageHold;
       const vortexForm = smoothstep(voyage, 0.11, 0.3);
       const suction = smoothstep(voyage, 0.27, 0.42);
@@ -986,6 +998,22 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       // The corridor streams toward us; its light shifts deeper in.
       const tunnelExit = smoothstep(voyage, 0.86, 0.99);
+      {
+        const approach = smoothstep(voyage, 0.2, 0.4);
+        const pull = approach * approach;
+        xCentre[0] = mix(0, birdMatrix[12], approach);
+        xCentre[1] = mix(0.2, birdMatrix[13], approach);
+        xCentre[2] = mix(-2.8, 8.2, pull);
+        xLayer.render(view, projection, time, {
+          centre: xCentre,
+          scale: (mobile ? 1.0 : 1.5) * (1 + approach * 0.6),
+          yaw: Math.sin(time * 0.15) * 0.35 + approach * 1.4,
+          form: smoothstep(hero, 0.05, 0.32),
+          presence: smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(voyage, 0.4, 0.46)),
+          approach,
+          pixel: pixelRatio,
+        });
+      }
       tunnel.render(view, projection, time, (voyage - 0.34) * 150 + tunnelExit * tunnelExit * 140, tunnelIn,
         smoothstep(voyage, 0.5, 0.95), smoothstep(voyage, 0.3, 0.5), tunnelExit);
       // The sea surfaces grain by grain in the sculpture shader; only a very
@@ -1036,6 +1064,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       sculpture.dispose();
       tunnel.dispose();
       vortex.dispose();
+      xLayer.dispose();
       post?.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);

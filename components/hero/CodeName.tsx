@@ -43,12 +43,16 @@ export function CodeName({
   label,
   className,
   fill = false,
+  handoffLast = false,
 }: {
   words: string[];
   label?: string;
   className?: string;
   // Scale the name to span its container exactly, instead of only shrinking.
   fill?: boolean;
+  // The last letter stays out of the scroll dispersal and fades out as the
+  // stage takes it over as particles (see gl/x-layer).
+  handoffLast?: boolean;
 }) {
   const root = useRef<HTMLHeadingElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -75,6 +79,9 @@ export function CodeName({
     let nameCy = 0;
     let rectLeft = 0;
     let rectTop = 0;
+    // Canvas-space x range of the last letter (handoffLast).
+    let lastLeft = Infinity;
+    let lastRight = -Infinity;
     let atlasBone: HTMLCanvasElement | null = null;
     let atlasLime: HTMLCanvasElement | null = null;
     let frame = 0;
@@ -150,6 +157,8 @@ export function CodeName({
       m.font = font;
       m.fillStyle = "#fff";
       const range = document.createRange();
+      lastLeft = Infinity;
+      lastRight = -Infinity;
       for (const el of textEls) {
         const marker = document.createElement("span");
         marker.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
@@ -163,6 +172,10 @@ export function CodeName({
           range.setEnd(node, c + 1);
           const r = range.getBoundingClientRect();
           m.fillText(text[c], r.left - box.left + PAD, baseline);
+          if (c === text.length - 1 && el === textEls[textEls.length - 1]) {
+            lastLeft = r.left - box.left + PAD - cell;
+            lastRight = r.right - box.left + PAD + cell;
+          }
         }
       }
       const data = m.getImageData(0, 0, cols, rows).data;
@@ -268,7 +281,8 @@ export function CodeName({
         const displaced = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (cell * 6));
         // Dispersal: glyphs leave in a seeded order, rising up and away from
         // the name's centre, mutating faster and fading as they go.
-        const k0 = Math.min(1, Math.max(0, scatter * 1.4 - g.seed * 0.4));
+        const isLast = handoffLast && g.hx >= lastLeft && g.hx <= lastRight;
+        const k0 = isLast ? 0 : Math.min(1, Math.max(0, scatter * 1.4 - g.seed * 0.4));
         const k = k0 * k0 * (3 - 2 * k0);
         const rate = 0.5 + g.seed * 2.5 + (1 - e) * 14 + displaced * 22 + k * 30;
         const glyph = Math.floor(g.seed * 997 + t * rate) % CHARSET.length;
@@ -277,7 +291,8 @@ export function CodeName({
         // displaced glyphs heat up.
         const hot = (u < 0.6 && g.seed > 0.55) || displaced * (0.4 + g.seed) > 0.62 || (k > 0.04 && g.seed > 0.45);
         const fade = Math.min(1, u / 0.35);
-        const alpha = bright * Math.min(1, g.cover * 1.65) * fade * (1 - displaced * 0.25) * (1 - k);
+        const handed = isLast ? Math.min(1, Math.max(0, (scrollState.hero.current - 0.04) / 0.025)) : 0;
+        const alpha = bright * Math.min(1, g.cover * 1.65) * fade * (1 - displaced * 0.25) * (1 - k) * (1 - handed);
         if (alpha < 0.01) continue;
         // Rises from slightly below its home and swells from a pinpoint.
         const scale = 0.3 + 0.7 * e;
@@ -404,7 +419,7 @@ export function CodeName({
       document.documentElement.removeEventListener("pointerleave", onLeave);
       delete heading.dataset.codeReady;
     };
-  }, [fill]);
+  }, [fill, handoffLast]);
 
   return (
     <h1 ref={root} aria-label={label ?? words.join(" ")} className={`relative ${className ?? ""}`}>

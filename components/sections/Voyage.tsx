@@ -71,7 +71,9 @@ export function Voyage({ locale }: { locale: Locale }) {
         },
       },
     })
-      .to(meta, { opacity: 0, y: -10, duration: 0.05, stagger: 0.01 }, 0.07)
+      // Containers, not the meta items the arrival animates, so the two
+      // scrubbed timelines never fight over the same opacity.
+      .to([q(".voyage-top"), q(".voyage-aside")], { opacity: 0, y: -10, duration: 0.05, stagger: 0.01 }, 0.07)
       .to(headline, { opacity: 0, duration: 0.03 }, 0.11)
       .fromTo(caption, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.06 }, 0.46)
       .to(caption, { opacity: 0, duration: 0.05 }, 0.86)
