@@ -12,6 +12,14 @@
 .services-aura i:nth-child(3) { left: 28%; top: 52%; width: 36vw; height: 30vw; background: radial-gradient(circle, rgb(217 70 239 / .7), transparent 65%); --dx: 8vw; --dy: -6vh; animation-delay: -12s; }
 .services-aura i:nth-child(4) { left: 74%; top: 55%; width: 26vw; height: 26vw; background: radial-gradient(circle, rgb(99 102 241 / .9), transparent 65%); --dx: -7vw; --dy: -7vh; animation-delay: -4s; }
 @keyframes services-drift { to { transform: translate(var(--dx), var(--dy)) scale(1.15); } }
+.services-aura i { scale: var(--aura-s, 1); }
+/* Entrance: the colour surfaces as grains first — a dot mask whose dots grow
+   until they merge — echoing the particle sea it condenses out of. The mask
+   only exists while entering, so the settled glow costs nothing extra. */
+.services-section[data-aura="in"] .services-aura i {
+  -webkit-mask: radial-gradient(circle, #000 calc(var(--dot, 0) * 1px), transparent calc(var(--dot, 0) * 1px + 1px)) 0 0 / 9px 9px, radial-gradient(circle, #000 calc(var(--dot, 0) * 1.45px), transparent calc(var(--dot, 0) * 1.45px + 1px)) 4px 6px / 14px 14px;
+  mask: radial-gradient(circle, #000 calc(var(--dot, 0) * 1px), transparent calc(var(--dot, 0) * 1px + 1px)) 0 0 / 9px 9px, radial-gradient(circle, #000 calc(var(--dot, 0) * 1.45px), transparent calc(var(--dot, 0) * 1.45px + 1px)) 4px 6px / 14px 14px;
+}
 .services-inner { position: relative; z-index: 1; }
 
 .services-heading { display: flex; justify-content: space-between; align-items: end; gap: 2rem; margin-bottom: 2.5rem; }

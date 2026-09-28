@@ -351,19 +351,27 @@ void renderGrain(float id) {
   float shoulder=exp(-pow(scanDistance/.11,2.0));
   float trail=exp(-max(scanDistance,0.0)*5.5)*smoothstep(-.015,.035,scanDistance);
   // The sweep waits until the sea has fully surfaced.
-  float scan=(core+shoulder*.6+trail*.38)*(1.0-assembly)*smoothstep(.85,1.0,intro);
+  float scan=(core+shoulder*.6+trail*.38)*(1.0-assembly)*smoothstep(.85,1.0,intro)*(1.0-services);
   vec3 scanColor=mix(vec3(.18,1.0,.65),vec3(.62,.94,1.0),shoulder);
   tint+=scanColor*scan*1.55;
-  tint=mix(tint,vec3(.86,1.0,1.0)*2.0,core*.8*(1.0-assembly)*smoothstep(.85,1.0,intro));
+  tint=mix(tint,vec3(.86,1.0,1.0)*2.0,core*.8*(1.0-assembly)*smoothstep(.85,1.0,intro)*(1.0-services));
   gl_PointSize*=1.0+shoulder*.6*(1.0-assembly);
   alpha=mix(.8+light*.18,.95,assembly)*opacity*introAlpha;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
-  alpha*=mix(1.0,.18,services);
-  tint=mix(tint,mix(vec3(.35,.46,.4),tint,.3),services*.7);
+  // Services: grain by grain (staggered by seed, like the intro) the sea
+  // takes on the section's violet / blue / magenta light, so the glass
+  // cards read as lit by the same matter behind them.
+  float servicesGrain=smoothstep(seed*.45,.55+seed*.45,services);
+  float hueField=.5+.5*sin(screen.x*2.3+screen.y*1.7+time*.15+seed*2.0);
+  vec3 servicesHue=mix(vec3(.62,.5,1.0),vec3(.36,.62,1.0),hueField);
+  servicesHue=mix(servicesHue,vec3(.93,.45,.98),smoothstep(.72,1.0,fract(seed*7.13)));
+  tint=mix(tint,servicesHue*(.8+.35*light),servicesGrain*.95);
+  alpha*=mix(1.0,.36,servicesGrain);
   // Disturbed matter shifts hue: a lingering aqua-to-citron wash that
   // follows the cursor's path and fades back into the sea.
   float wash=clamp(lift*1.4,0.0,1.0);
   vec3 wakeHue=mix(vec3(.38,.95,1.0),vec3(.86,1.0,.34),.5+.5*sin(time*.6+position.x*2.4+seed*1.5));
+  wakeHue=mix(wakeHue,vec3(.82,.62,1.0),services);
   tint=mix(tint,wakeHue*(.75+.35*light),wash*.8);
   tint+=wakeHue*min(lift,1.2)*.25;
   if(bustMix>0.0) {

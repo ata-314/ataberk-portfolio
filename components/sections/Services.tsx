@@ -60,6 +60,12 @@ export function Services({ locale }: { locale: Locale }) {
     const mm = gsap.matchMedia();
     mm.add({ desktop: "(min-width: 1024px) and (min-height: 640px)", reduce: "(prefers-reduced-motion: reduce)" }, ({ conditions }) => {
       if (conditions?.reduce) return;
+      const aura = section.querySelector<HTMLElement>(".services-aura");
+      const auraState = (self: ScrollTrigger) => { section.dataset.aura = self.progress < 1 ? "in" : "done"; };
+      gsap.fromTo(aura, { "--dot": 0, "--aura-s": 0.55 }, {
+        "--dot": 7, "--aura-s": 1, ease: "power1.in",
+        scrollTrigger: { trigger: section, start: "top 95%", end: "top 12%", scrub: 0.6, onUpdate: auraState, onRefresh: auraState },
+      });
       const cards = gsap.utils.toArray<HTMLElement>(".service-card", section);
       const depth = { "--ey": "170px", "--ez": "-560px", "--erx": "34deg", opacity: 0 };
       const rest = { "--ey": "0px", "--ez": "0px", "--erx": "0deg", opacity: 1 };
@@ -72,7 +78,7 @@ export function Services({ locale }: { locale: Locale }) {
           .fromTo(group.map(card => card.querySelector(".service-visual")), { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, ease: "power2.out", duration: 0.7, stagger: 0.14 }, 0.35);
       });
     });
-    return () => mm.revert();
+    return () => { mm.revert(); delete section.dataset.aura; };
   }, { scope: root });
 
   const follow = (event: PointerEvent<HTMLElement>) => {
