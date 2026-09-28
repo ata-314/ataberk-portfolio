@@ -5,11 +5,7 @@ import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour } from "./bird-behaviour";
-import { createJourneyLayer, type JourneyState } from "./journey-layer";
-import { createPost } from "./post";
-import { createCardsLayer, type JourneyCard } from "./cards-layer";
-import { HELIX, HELIX_SHARE, helixOffset, pickCard } from "./helix";
-import { bustState, journeyState as journeyScroll, scrollState } from "../three/scroll-state";
+import { bustState, scrollState } from "../three/scroll-state";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
 const BIRD_SAMPLES = 9000;
@@ -356,59 +352,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const positionTexture = gl.createTexture();
     const normalTexture = gl.createTexture();
     const atlasTexture = createAtlas(gl);
-    const journey = createJourneyLayer(gl, atlasTexture, mobile);
-    // Film look over the whole world (bloom, grade, grain); null where float
-    // render targets are unavailable, in which case the canvas is drawn to.
-    const post = createPost(gl);
-    // Journey chapters, eased: the climb and the flight follow the page from
-    // the services section to the contact finale.
-    const journeyState: JourneyState = { reveal: 0, rise: 0, space: 0, travel: 0, galaxies: 0, parallax: [0, 0] };
-    // Hero title card, drawn in the stage so the bird flies in front of it.
-    // Words come from the DOM ([data-hero-title], one line per "|").
-    let titleArrive = 0;
-    let titleAlpha = 0;
-    const titleSource = document.querySelector<HTMLElement>("[data-hero-title]")?.dataset.heroTitle;
-    if (titleSource) {
-      void document.fonts.ready.then(() => {
-        if (disposed) return;
-        const lines = titleSource.split("|");
-        const art = document.createElement("canvas");
-        art.width = 2048;
-        art.height = 1024;
-        const ctx = art.getContext("2d");
-        if (!ctx) return;
-        const family = getComputedStyle(document.body).getPropertyValue("--font-hud").trim() || "sans-serif";
-        let size = 300;
-        ctx.font = `500 ${size}px ${family}`;
-        const widest = Math.max(...lines.map((l) => ctx.measureText(l).width));
-        size = Math.min(size * (art.width * 0.98) / widest, (art.height / lines.length) * 0.86);
-        ctx.font = `500 ${size}px ${family}`;
-        ctx.fillStyle = "#fff";
-        ctx.textBaseline = "top";
-        lines.forEach((line, i) => ctx.fillText(line, 0, i * size * 1.02 + (art.height - lines.length * size * 1.02) / 2));
-        journey.setTitle(art);
-      });
-    }
-    let journeyEnd: HTMLElement | null = null;
-    // Curved glass cards wrapped round the bird in the journey scene; their
-    // copy comes from the page ([data-journey-cards]).
-    const cards = createCardsLayer(gl);
-    let cardCount = 0;
-    let journeyHold = 0;
-    let helixProgress = 0;
-    const cardSource = document.querySelector<HTMLScriptElement>("[data-journey-cards]")?.textContent;
-    if (cardSource) {
-      void document.fonts.ready.then(() => {
-        if (disposed) return;
-        const style = getComputedStyle(document.body);
-        const font = style.getPropertyValue("--font-hud").trim() || "sans-serif";
-        const mono = style.getPropertyValue("--font-jetbrains").trim() || "monospace";
-        const list = JSON.parse(cardSource) as JourneyCard[];
-        cards.setCards(list, font, mono);
-        cardCount = list.length;
-      });
-    }
-    let ascentElement: HTMLElement | null = null;
     const setupTexture = (
       unit: number,
       texture: WebGLTexture | null,
@@ -501,8 +444,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
     let bustElement: HTMLElement | null = null;
     let servicesElement: HTMLElement | null = null;
-    let workElement: HTMLElement | null = null;
-    let workHold = 0;
     let orbitElement: HTMLElement | null = null;
     let services = 0;
     const bustLoad = setTimeout(() => {
@@ -663,13 +604,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
     addEventListener("pointermove", onPointerMove, { passive: true });
     addEventListener("pointerdown", onPointerDown, { passive: true });
-    // A click on the card under the pointer opens it (JourneySection acts).
-    const onClick = (event: MouseEvent) => {
-      if (journeyScroll.hovered < 0 || !journeyScroll.active) return;
-      if ((event.target as HTMLElement | null)?.closest("a, button")) return;
-      dispatchEvent(new CustomEvent("journey-card", { detail: journeyScroll.hovered }));
-    };
-    addEventListener("click", onClick);
     addEventListener("pointerup", onPointerUp, { passive: true });
     document.documentElement.addEventListener("pointerleave", onPointerLeave);
 
@@ -782,15 +716,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           * smoothstep(rect.bottom / stageH, .05, .65);
       }
       services = damp(services, servicesTarget, 7, delta);
-      // Work: while its section holds the screen the bird is the centre the
-      // project cards orbit.
-      workElement ??= document.querySelector<HTMLElement>("#work");
-      let workTarget = 0;
-      if (workElement?.dataset.helix === "true") {
-        const rect = workElement.getBoundingClientRect();
-        workTarget = smoothstep(rect.top / stageH, 0.6, 0.02) * smoothstep(rect.bottom / stageH, 0.4, 0.98);
-      }
-      workHold = damp(workHold, workTarget, 5, delta);
       // Morph follows the hologram's place in the viewport: the bird unravels
       // into the bust as it rises into view, holds while it is centred and
       // re-forms as the section leaves.
@@ -855,25 +780,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         : videoReady * (1 - smoothstep(hero, 0.14, 0.38));
       videoMix = damp(videoMix, targetVideo, 12, delta);
       const flight = flightAt(hero, scrollState.page.current, pointerSmooth, pointerActive);
-      // Journey: while its scene approaches and holds the screen the bird is
-      // the axis the cards wrap round.
-      {
-        const section = document.querySelector<HTMLElement>("#journey");
-        const box = (section?.parentElement?.classList.contains("pin-spacer") ? section.parentElement : section)?.getBoundingClientRect();
-        const target = box ? smoothstep(box.top / stageH, 0.9, 0.05) * smoothstep(box.bottom / stageH, 0.05, 0.9) : 0;
-        journeyHold = damp(journeyHold, target, 4, delta);
-        helixProgress = Math.min(1, journeyScroll.progress / HELIX_SHARE);
-      }
-      const galaxyPhase = smoothstep(journeyScroll.progress, HELIX_SHARE, 1);
       // Behaviour: a non-repeating sequence of glides, darts, stoops, turns,
       // climbs, flutters and loops over a noise wander, eased per action —
       // fast for reflexes, slow for glides — and only once the bird has
       // formed and is free on the page.
-      ascentElement ??= document.querySelector<HTMLElement>("#ascent");
-      const ascentBox = ascentElement?.getBoundingClientRect();
-      const ascentHold = ascentBox ? smoothstep(ascentBox.top / stageH, 1, 0.1)
-        * smoothstep(ascentBox.bottom / stageH, 0.1, 0.8) : 0;
-      const freeFlight = (1 - journeyHold) * (1 - ascentHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale) * (1 - services) * (1 - workHold);
+      const freeFlight = smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
       const ease = motion.snappy ? 7 : 2.2;
@@ -887,23 +798,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       eased.hold = damp(eased.hold, motion.hold * freeFlight, 5, delta);
       eased.holdFrame = motion.hold > 0.01 ? motion.holdFrame : eased.holdFrame;
       flight.position = [flight.position[0] + eased.x, flight.position[1] + eased.y, flight.position[2] + eased.z];
-      // Services: the bird holds the centre of the screen while the cards
-      // orbit it, then stays behind the bento as it opens.
-      const centreHold = Math.max(services, workHold, ascentHold) * smoothstep(hero, 0.95, 1);
-      flight.position = [
-        mix(flight.position[0], mobile ? 0 : ascentHold * 2.0, centreHold),
-        mix(flight.position[1], 0.45 + ascentHold * (mobile ? 1.2 : 0.5), centreHold),
-        mix(flight.position[2], 0.4, centreHold),
-      ];
-      flight.scale = mix(flight.scale, 0.44 + ascentHold * (mobile ? -0.08 : 0.12), centreHold);
-      // The journey axis: the bird at the centre of the helix, a little
-      // larger; through the galaxies it dives, nose down.
-      flight.position = [
-        mix(flight.position[0], 0, journeyHold),
-        mix(flight.position[1], HELIX.centreY - 0.05, journeyHold),
-        mix(flight.position[2], 0, journeyHold),
-      ];
-      flight.scale = mix(flight.scale, mobile ? 0.9 : 0.62, journeyHold);
       // Manifesto: the bird comes apart and its grains wind a helix ring
       // around the copy (see the sculpture shader). The stage only measures
       // the copy block and eases the envelope in and out.
@@ -929,7 +823,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       yaw = damp(yaw, yawTarget, motion.snappy ? 7 : eased.yawMix > 0.05 ? 4.5 : 2.5, delta);
       // Nose dips while gliding down.
       // Positive pitch dips the nose; loops and barrel rolls add whole turns.
-      const pitch = eased.pitch + motion.spinPitch * freeFlight + galaxyPhase * journeyHold * 0.55;
+      const pitch = eased.pitch + motion.spinPitch * freeFlight;
       const roll = Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + eased.bank + motion.spinRoll * freeFlight;
       compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, roll, pitch);
       // The wing beat runs at the behaviour's rate and eases onto a held
@@ -972,18 +866,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         }
         cursorPoint.set([px, py, pz]);
         cursorPrimed = hover[2] > 0.5;
-        const offset = helixOffset(helixProgress, Math.max(cardCount, 1));
-        const picked = journeyHold > 0.6 && galaxyPhase < 0.05 && hover[2] > 0.5 && cardCount
-          ? pickCard([camera[0], camera[1], camera[2]], [dx, dy, dz], offset, cardCount)
-          : -1;
-        if (picked !== journeyScroll.hovered) {
-          journeyScroll.hovered = picked;
-          document.documentElement.dataset.cardHover = String(picked >= 0);
-        }
         worldSpan[1] = 2 * Math.max(depth, 0.5) * tanHalf;
         worldSpan[0] = worldSpan[1] * aspect;
       }
-      const birdVisible = hero > 0.06 && readyMix > 0.5 && finale < 0.98;
+      const birdVisible = hero > 0.06 && readyMix > 0.5 && finale < 0.98 && services < 0.98;
       simInput.reset = !birdVisible || !simPrimed;
       simInput.dt = Math.max(1 / 240, Math.min(delta, 1 / 30));
       simInput.hover = hover[2];
@@ -1025,33 +911,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uBirdReady"), readyMix);
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
-      const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      {
-        journeyEnd ??= document.querySelector<HTMLElement>("#contact");
-        const j = journeyScroll.progress;
-        const js = journeyState;
-        js.reveal = damp(js.reveal, smoothstep(hero, 0.4, 0.95), 4, delta);
-        // One descent: the horizon sinks away as the helix begins, space
-        // closes in, and past the last card the galaxies rise to meet us.
-        js.rise = damp(js.rise, smoothstep(j, 0, 0.1), 4, delta);
-        js.space = damp(js.space, smoothstep(j, 0, 0.16), 4, delta);
-        js.galaxies = damp(js.galaxies, smoothstep(j, HELIX_SHARE - 0.1, HELIX_SHARE), 4, delta);
-        js.travel = damp(js.travel, j, 6, delta);
-        js.parallax[0] = damp(js.parallax[0], hover[2] > 0.5 ? hover[0] : 0, 2, delta);
-        js.parallax[1] = damp(js.parallax[1], hover[2] > 0.5 ? hover[1] : 0, 2, delta);
-        journey.render(canvas.width, canvas.height, time, js);
-        // Title card: arrives once the bird has formed, holds, and leaves as
-        // the services scene takes the screen.
-        const titleTarget = smoothstep(hero, 0.6, 0.7) * (1 - services) * (1 - journeyHold);
-        titleAlpha = damp(titleAlpha, titleTarget, 5, delta);
-        titleArrive = titleTarget > 0.5 ? Math.min(1, titleArrive + delta / 0.7) : Math.max(0, titleArrive - delta / 0.4);
-        const tw = mobile ? 0.9 : 0.5;
-        const th = tw * (stageW / Math.max(stageH, 1)) * 0.5;
-        const tx = mobile ? 0.05 : 0.1;
-        const ty = mobile ? 0.52 : 0.5 - th / 2;
-        journey.drawTitle(canvas.width, canvas.height, time, [tx, ty, tx + tw, ty + th], titleAlpha, titleArrive);
-      }
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -1066,22 +926,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           orbit, orbitRing,
           links: linksReady ? linkTexture : null,
           sim: simInput,
-        }, sceneTarget);
-      // The cards share the bird's camera and depth, so the bird hides the
-      // cards behind it and the cards in front cover it.
-      if (sceneTarget) gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget);
-      gl.viewport(0, 0, canvas.width, canvas.height);
-      cards.render(view, projection, [camera[0], camera[1], camera[2]], helixOffset(helixProgress, Math.max(cardCount, 1)),
-        journeyHold * (1 - smoothstep(journeyScroll.progress, HELIX_SHARE - 0.05, HELIX_SHARE + 0.01)), journeyScroll.hovered, time, delta);
-      post?.finish(time, {
-        // The data sea is dense and bright: bloom eases off while it fills
-        // the frame (opening and finale) so it never flares to white.
-        bloom: 0.38 * (1 - 0.55 * Math.max(finale, videoMix)),
-        threshold: 0.72 + 0.2 * Math.max(finale, videoMix),
-        aberration: 0.002,
-        grain: 0.016,
-        grade: [0.0, 0.32, 0.38],
-      });
+        });
       prevBird.set(birdMatrix);
       simPrimed = birdVisible;
       if (firstFrame) {
@@ -1099,14 +944,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       removeEventListener("resize", resize);
       removeEventListener("pointermove", onPointerMove);
       removeEventListener("pointerdown", onPointerDown);
-      removeEventListener("click", onClick);
-      cards.dispose();
-      delete document.documentElement.dataset.cardHover;
       removeEventListener("pointerup", onPointerUp);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
-      journey.dispose();
-      post?.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
       gl.deleteTexture(normalTexture);

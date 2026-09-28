@@ -7,14 +7,10 @@ import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { scrollState } from "../three/scroll-state";
 
-// HUD chrome: a small mark on the left; on the right a dark glass capsule
-// of links and, beneath it, the scene chip — the name of the chapter on
-// screen with << >> to step between chapters. The open menu is a glass
-// sheet. Chapters are any elements marked data-scene="NAME".
+// Apple-style liquid glass capsule floating at the top of every page, above
+// all content layers. Always visible; the open menu is a glass sheet.
 export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const [open, setOpen] = useState(false);
-  const [scene, setScene] = useState<{ name: string; index: number; count: number } | null>(null);
-  const scenes = useRef<HTMLElement[]>([]);
   const pathname = usePathname();
   const other = locale === "tr" ? "en" : "tr";
   const otherPath = pathname.replace(`/${locale}`, `/${other}`);
@@ -52,38 +48,6 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
     };
   }, [pathname]);
 
-  // Scene chip: the chapter whose middle is nearest the viewport centre.
-  useEffect(() => {
-    let raf = 0;
-    const pick = () => {
-      raf = 0;
-      const list = Array.from(document.querySelectorAll<HTMLElement>("[data-scene]"));
-      scenes.current = list;
-      if (!list.length) return setScene(null);
-      const mid = innerHeight / 2;
-      let best = 0, bestDistance = Infinity;
-      list.forEach((el, i) => {
-        const r = el.getBoundingClientRect();
-        const d = r.top <= mid && r.bottom >= mid ? 0 : Math.min(Math.abs(r.top - mid), Math.abs(r.bottom - mid));
-        if (d < bestDistance) { bestDistance = d; best = i; }
-      });
-      setScene((prev) => {
-        const name = list[best].dataset.scene ?? "";
-        return prev && prev.name === name && prev.index === best && prev.count === list.length ? prev : { name, index: best, count: list.length };
-      });
-    };
-    const request = () => { if (!raf) raf = requestAnimationFrame(pick); };
-    pick();
-    addEventListener("scroll", request, { passive: true });
-    addEventListener("resize", request);
-    return () => { cancelAnimationFrame(raf); removeEventListener("scroll", request); removeEventListener("resize", request); };
-  }, [pathname]);
-  const step = (by: number) => {
-    if (!scene) return;
-    const target = scenes.current[(scene.index + by + scene.count) % scene.count];
-    target?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   // Menu: Escape closes, focus is trapped inside while open
   useEffect(() => {
     if (!open) return;
@@ -116,54 +80,39 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   }, [open]);
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-[100] flex items-start justify-between px-4 pt-4 md:px-8 md:pt-6">
-      <Link
-        href={`/${locale}`}
-        className="pointer-events-auto flex flex-col gap-1 transition-opacity hover:opacity-70"
-      >
-        <span className="font-display text-[15px] leading-none text-bone">Ataberk</span>
-        <span className="hud-label hidden md:block">Creative Technologist</span>
-      </Link>
-      <div className="pointer-events-auto flex flex-col items-end gap-2">
-        <div className="hud-pill flex items-center gap-1 px-2 py-1.5">
-          <nav aria-label="Main" className="hidden items-center md:flex">
-            {links.map((l, i) => (
-              <span key={l.label} className="flex items-center">
-                {i > 0 && <span aria-hidden className="hud-divider" />}
-                <Link href={l.href} className="hud-link px-3 py-1">
-                  {l.label}
-                </Link>
-              </span>
-            ))}
-            <Link
-              href={otherPath}
-              className="hud-link ml-2 rounded-full border border-white/15 px-2.5 py-1"
-              aria-label={other === "en" ? "Switch to English" : "Türkçeye geç"}
-            >
-              {other.toUpperCase()}
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-[100] flex justify-center px-3 pt-3 md:pt-5">
+      <div className="liquid-glass pointer-events-auto relative flex w-full max-w-[40rem] items-center justify-between rounded-full py-1.5 pr-1.5 pl-5 md:w-auto md:max-w-none md:gap-6">
+        <Link
+          href={`/${locale}`}
+          className="font-display text-[16px] font-semibold tracking-[-0.02em] text-bone transition-opacity hover:opacity-70"
+        >
+          Ataberk
+        </Link>
+        <nav aria-label="Main" className="hidden items-center text-[13px] md:flex">
+          {links.map((l) => (
+            <Link key={l.label} href={l.href} className="glass-item px-3.5 py-2 text-bone/80">
+              {l.label}
             </Link>
-          </nav>
-          <button
-            ref={menuButton}
-            type="button"
-            onClick={() => setOpen(true)}
-            className="hud-link px-3 py-1 md:hidden"
-            aria-haspopup="dialog"
-            aria-expanded={open}
-            aria-controls="mobile-navigation"
+          ))}
+          <Link
+            href={otherPath}
+            className="glass-item ml-1 bg-white/[0.07] px-3 py-2 text-[12px] text-bone/80"
+            aria-label={other === "en" ? "Switch to English" : "Türkçeye geç"}
           >
-            {t.menu}
-          </button>
-        </div>
-        {scene && (
-          <div className="hud-chip hidden items-center md:flex" aria-live="polite">
-            <button type="button" onClick={() => step(-1)} aria-label={locale === "tr" ? "Önceki sahne" : "Previous scene"}>&lt;&lt;</button>
-            <span className="hud-label min-w-[11rem] text-center">
-              {String(scene.index + 1).padStart(2, "0")} · {scene.name}
-            </span>
-            <button type="button" onClick={() => step(1)} aria-label={locale === "tr" ? "Sonraki sahne" : "Next scene"}>&gt;&gt;</button>
-          </div>
-        )}
+            {other.toUpperCase()}
+          </Link>
+        </nav>
+        <button
+          ref={menuButton}
+          type="button"
+          onClick={() => setOpen(true)}
+          className="glass-item bg-white/[0.08] px-4 py-2 text-[13px] text-bone md:hidden"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls="mobile-navigation"
+        >
+          {t.menu}
+        </button>
       </div>
 
       {open && (

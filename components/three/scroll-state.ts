@@ -15,13 +15,3 @@ export const bustState = {
   pitch: 0,
   lift: 0,
 };
-
-// The journey scene: progress 0..1 across its pinned run (helix of cards,
-// then the descent through the galaxies), whether it holds the screen, and
-// the card under the pointer (-1 for none). Written by JourneySection and
-// the stage respectively.
-export const journeyState = {
-  progress: 0,
-  active: 0,
-  hovered: -1,
-};

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, Audiowide, Chakra_Petch, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Archivo, Audiowide, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { notFound } from "next/navigation";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
 import { site } from "@/content/site";
@@ -15,13 +15,6 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-space",
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "700"],
-});
-// HUD display face (human decision 2026-09-29): squared, technical capitals
-// for every heading, in the Active Theory register.
-const chakra = Chakra_Petch({
-  variable: "--font-hud",
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600"],
 });
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
@@ -109,7 +102,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <body
-        className={`${archivo.variable} ${audiowide.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${chakra.variable} antialiased`}
+        className={`${archivo.variable} ${audiowide.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <noscript>
           <style>{`header, [data-hero-identity] { opacity: 1 !important; pointer-events: auto !important; }`}</style>

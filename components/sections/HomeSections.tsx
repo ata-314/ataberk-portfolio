@@ -1,15 +1,14 @@
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
+import { SectionIntro } from "./SectionIntro";
 import { HologramBust } from "../gl/HologramBust";
-import { HexPanel } from "./HexPanel";
 
 const CONTACT_URL = "https://github.com/ata-314";
 
-// Lab · AI systems: a wide honeycomb panel of living data with the lab
-// entry at its lens, then the working systems as HUD rows.
-export function AISystems({ t, locale }: { t: SiteContent["aiSystems"]; locale: Locale }) {
-  const tr = locale === "tr";
+// The working systems behind the visual work, as glass tiles in a two-column
+// definition grid.
+export function AISystems({ t }: { t: SiteContent["aiSystems"] }) {
   return (
     <section
       id="ai-systems"
@@ -17,39 +16,17 @@ export function AISystems({ t, locale }: { t: SiteContent["aiSystems"]; locale: 
       style={{ paddingBlock: "var(--space-section)" }}
     >
       <div className="mx-auto max-w-[88rem]">
-        <div data-reveal className="lab-panel">
-          <HexPanel className="absolute inset-0 h-full w-full" />
-          <div className="lab-panel-copy">
-            <Link href={`/${locale}/lab`} className="lab-panel-link font-display">
-              {"// Lab ->"}
-            </Link>
-            <Link href={`/${locale}/lab`} aria-label="Lab" className="lab-panel-ring">
-              <span aria-hidden>✦</span>
-            </Link>
-            <p className="max-w-[26ch] font-mono text-[11px] leading-[1.8] tracking-[0.1em] text-bone/85 uppercase">
-              {tr ? "Prototiplerin üretime dönüştüğü deney alanım." : "My home for experiments, where prototypes become production."}
-            </p>
-          </div>
-        </div>
-        <div className="mt-20 grid gap-6 md:grid-cols-12">
-          <div className="md:col-span-4">
-            <p className="hud-label">{tr ? "Çalışan sistemler" : "Working systems"}</p>
-            <h2 className="font-display mt-3 leading-[0.95]" style={{ fontSize: "clamp(2rem, 4vw, 3.6rem)" }}>
-              {t.heading}
-            </h2>
-          </div>
-          <dl className="md:col-span-7 md:col-start-6">
-            {t.entries.map((e, i) => (
-              <div key={e.name} data-reveal className="lab-row">
-                <dt className="flex items-baseline gap-4">
-                  <span className="hud-label">{String(i + 1).padStart(2, "0")}</span>
-                  <span lang="en" className="font-display text-xl md:text-2xl">{e.name}</span>
-                </dt>
-                <dd className="mt-2 pl-9 font-mono text-[12px] leading-[1.8] tracking-[0.06em] text-bone-dim uppercase">{e.desc}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        <SectionIntro title={t.heading} lead={t.lead} />
+        <dl className="mt-16 grid gap-3 md:mt-24 md:grid-cols-2 md:gap-4">
+          {t.entries.map((e) => (
+            <div key={e.name} data-reveal className="glass-tile p-7 md:p-10">
+              <dt lang="en" className="font-display text-2xl font-semibold tracking-[-0.03em]">
+                {e.name}
+              </dt>
+              <dd className="mt-3 max-w-lg text-[15px] leading-relaxed text-bone-dim">{e.desc}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </section>
   );
@@ -75,7 +52,7 @@ export function AboutPreview({
         <div data-reveal className="hero-copy order-2 md:order-1 md:col-span-6">
           <p
             className="font-display leading-[1.02] font-semibold tracking-[-0.04em] text-balance"
-            style={{ fontSize: "clamp(1.8rem, 3.1vw, 3.2rem)" }}
+            style={{ fontSize: "clamp(2.2rem, 4.4vw, 4.4rem)" }}
           >
             {t.line}
           </p>
@@ -105,7 +82,6 @@ export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
       className="pointer-events-none relative z-20 flex min-h-[90svh] flex-col justify-end px-5 pb-[10svh] md:px-10"
     >
       <div className="hero-copy mx-auto w-full max-w-[88rem]">
-        <p data-reveal className="hud-label mb-6">{t.heading} · signal</p>
         <h2
           data-reveal
           className="font-display max-w-[16ch] leading-[0.95] font-semibold tracking-[-0.05em] text-balance"

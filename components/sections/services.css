@@ -24,7 +24,7 @@
 
 .services-heading { display: flex; justify-content: space-between; align-items: end; gap: 2rem; margin-bottom: 2.5rem; }
 .services-label { color: rgb(var(--violet)); font-size: .85rem; margin-bottom: .8rem; letter-spacing: .02em; }
-.services-heading h2 { font-family: var(--font-hud), sans-serif; text-transform: uppercase; font-size: clamp(2.2rem, 4vw, 4rem); font-weight: 500; letter-spacing: .01em; line-height: 1.02; background: linear-gradient(180deg, #fff 30%, #c9c2e8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.services-heading h2 { font-family: var(--font-archivo), sans-serif; font-size: clamp(2.4rem, 4.4vw, 4.4rem); font-weight: 550; letter-spacing: -.055em; line-height: 1.02; background: linear-gradient(180deg, #fff 30%, #c9c2e8); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .services-lead { max-width: 24rem; color: #b9b5c8; line-height: 1.6; font-size: .95rem; }
 .services-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: .85rem; }
 
@@ -33,11 +33,9 @@
   -webkit-backdrop-filter: blur(40px) saturate(180%);
   backdrop-filter: blur(40px) saturate(180%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 0 0 .5px rgba(255,255,255,.05), inset 0 -50px 70px rgba(8,4,24,.3), 0 30px 70px rgba(4,2,16,.45);
-  --ey: 0px; --ez: 0px; --erx: 0deg; transform-origin: 50% 100%; transition: transform .4s ease, border-color .4s ease, box-shadow .4s ease;
-  /* --h*: the desktop orbit (projected position, scale and turn), identity at rest. */
-  transform: translate3d(var(--hx, 0px), var(--hy, 0px), 0) scale(var(--hs, 1)) perspective(1000px) rotateY(var(--hry, 0deg)) translate3d(0, var(--ey), var(--ez)) rotateX(calc(var(--rx) + var(--erx))) rotateY(var(--ry)); }
+  --ey: 0px; --ez: 0px; --erx: 0deg; transform-origin: 50% 100%; transform: perspective(1000px) translate3d(0, var(--ey), var(--ez)) rotateX(calc(var(--rx) + var(--erx))) rotateY(var(--ry)); transition: transform .4s ease, border-color .4s ease, box-shadow .4s ease; }
 /* While the scrubbed entrance drives the transform, CSS must not smooth it too. */
-.services-section[data-entering="true"] .service-card { transition: border-color .4s ease, box-shadow .4s ease; will-change: transform, opacity; transform-origin: 50% 50%; }
+.services-section[data-entering="true"] .service-card { transition: border-color .4s ease, box-shadow .4s ease; will-change: transform, opacity; }
 .service-card-0 { grid-column: span 5; --beam-x: 38%; --beam-r: -14deg; }
 .service-card-1 { grid-column: span 4; --glow: var(--blue); --beam-x: 20%; --beam-r: 20deg; }
 .service-card-2 { grid-column: span 3; --glow: var(--magenta); --beam-x: 52%; --beam-r: -22deg; }
@@ -56,7 +54,7 @@
 .service-halo { position: absolute; left: 50%; top: 45%; width: 70cqh; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; background: radial-gradient(circle, rgb(var(--glow) / .45), rgb(var(--glow) / .12) 45%, transparent 70%); filter: blur(14px); animation: services-halo 6s ease-in-out infinite alternate; }
 @keyframes services-halo { to { opacity: .6; scale: 1.15; } }
 .service-copy { position: relative; z-index: 2; margin-top: -1.4rem; padding: 0 1.6rem 1.5rem; }
-.service-copy h3 { font-family: var(--font-hud),sans-serif; text-transform: uppercase; font-size: clamp(1rem,1.2vw,1.25rem); line-height: 1.2; font-weight: 500; letter-spacing: .02em; color: #fff; }
+.service-copy h3 { font-family: var(--font-archivo),sans-serif; font-size: clamp(1.05rem,1.3vw,1.35rem); line-height: 1.2; font-weight: 550; letter-spacing: -.03em; color: #fff; }
 .service-copy p { color: #bdb8cf; font-size: .88rem; line-height: 1.55; margin-top: .45rem; max-width: 44ch; }
 @media (hover: hover) and (pointer: fine) {
   .service-card:hover { border-color: rgba(255,255,255,.22); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -50px 70px rgba(8,4,24,.25), 0 34px 80px rgba(4,2,16,.5); }
@@ -92,34 +90,3 @@
   .service-copy h3 { font-size: 1.25rem; }
 }
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) { .service-card { background: #1a1530; } }
-
-/* Flight composition: the open centre belongs to the bird. */
-.services-section { --violet: 142 192 187; --blue: 138 190 204; --magenta: 173 188 159; --indigo: 142 167 177; }
-.services-aura { display: none; }
-.services-heading h2 { font-family: var(--font-space), sans-serif; text-transform: none; letter-spacing: -.045em; background: none; color: var(--bone); }
-.services-label { color: var(--bone-dim); }
-.services-lead, .service-copy p { color: #bec8c6; }
-.service-card { border-radius: 14px; background: linear-gradient(145deg, rgb(21 37 40 / .82), rgb(5 13 17 / .7)); backdrop-filter: blur(12px); box-shadow: inset 0 1px rgb(218 241 234 / .1), 0 20px 50px rgb(0 0 0 / .2); }
-.service-beam, .service-flare, .service-halo { opacity: .3; }
-.service-copy h3 { font-family: var(--font-space), sans-serif; text-transform: none; letter-spacing: -.02em; }
-.service-copy p { font-family: var(--font-space), sans-serif; text-transform: none; letter-spacing: 0; }
-@media (min-width: 1024px) and (min-height: 640px) {
-  .services-grid { grid-template-rows: repeat(3, minmax(0, 1fr)); }
-  .service-card-0 { grid-area: 1 / 1 / 2 / 5; }
-  .service-card-1 { grid-area: 1 / 9 / 2 / 13; }
-  .service-card-2 { grid-area: 2 / 1 / 3 / 4; }
-  .service-card-3 { grid-area: 2 / 10 / 3 / 13; }
-  .service-card-4 { grid-area: 3 / 1 / 4 / 6; }
-  .service-card-5 { grid-area: 3 / 8 / 4 / 13; }
-  .service-card { flex-direction: row; align-items: center; }
-  .service-visual { flex: 0 0 32%; height: 100%; mask-image: none; }
-  .service-copy { margin-top: 0; padding: 1rem 1rem 1rem 0; }
-  .service-copy h3 { font-size: 1.1rem; }
-  .service-copy p { font-size: .8rem; line-height: 1.5; }
-}
-@media (prefers-reduced-motion: reduce) { .services-section { height: auto; max-height: none; } .services-grid { grid-template-rows: none; } .service-card { min-height: 200px; } }
-
-@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
-  .services-grid { grid-template-rows: repeat(2, minmax(0, 1fr)); }
-  .service-card[class*="service-card-"] { grid-area: auto; grid-column: span 4; min-height: 260px; }
-}

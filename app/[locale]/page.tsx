@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n";
 import { site } from "@/content/site";
+import StageLoader from "@/components/gl/StageLoader";
+import { Hero } from "@/components/hero/Hero";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { Reveal } from "@/components/motion/Reveal";
 import { Manifesto } from "@/components/sections/Manifesto";
-import { HomeExperience } from "@/components/experience/HomeExperience";
+import { WorkSection } from "@/components/sections/WorkSection";
+import { Services } from "@/components/sections/Services";
 import {
   AISystems,
   AboutPreview,
@@ -12,9 +15,6 @@ import {
   Footer,
 } from "@/components/sections/HomeSections";
 
-// Home: one 3D world (the chrome eagle, the card helix, the galaxies) behind
-// the page, driven by scroll through its stations, then the closing
-// sections over the deep field.
 export default async function Home({
   params,
 }: {
@@ -23,30 +23,29 @@ export default async function Home({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const t = site[locale];
-  const tr = locale === "tr";
-  // Chapters, named in the HUD scene chip.
-  const scene = {
-    sea: tr ? "Boşluk · Başlangıç" : "Void · Opening",
-    sky: tr ? "Sarmal · Hizmetler & İşler" : "Helix · Services & Work",
-    galaxies: tr ? "Galaksiler" : "Galaxies",
-    limb: tr ? "Hakkında" : "About",
-    helix: tr ? "Manifesto" : "Manifesto",
-    lab: tr ? "Lab · AI sistemleri" : "Lab · AI systems",
-    signal: tr ? "Sinyal · İletişim" : "Signal · Contact",
-  };
 
   return (
     <SmoothScroll>
       <main id="content">
+        <StageLoader />
         <Reveal />
-        <HomeExperience locale={locale} tagline={t.tagline} sceneNames={scene} />
-        <div data-station="after" className="relative z-10">
-          <div data-scene={scene.limb}><AboutPreview locale={locale} t={t.aboutPreview} about={t.about} /></div>
-          <div data-scene={scene.helix}><Manifesto line={t.manifesto.line} sub={t.manifesto.sub} /></div>
-          <div data-scene={scene.lab}><AISystems t={t.aiSystems} locale={locale} /></div>
-          <div data-scene={scene.signal}><ContactFinale t={t.contact} /></div>
-          <Footer t={t.footer} name={t.name} />
-        </div>
+        <Hero
+          t={{
+            name: t.name,
+            title: t.title,
+            tagline: t.tagline,
+            ctaWork: locale === "tr" ? "Seçili işler" : "Selected work",
+            ctaAbout: t.nav.about,
+            locale,
+          }}
+        />
+        <Services locale={locale} />
+        <AboutPreview locale={locale} t={t.aboutPreview} about={t.about} />
+        <WorkSection locale={locale} />
+        <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
+        <AISystems t={t.aiSystems} />
+        <ContactFinale t={t.contact} />
+        <Footer t={t.footer} name={t.name} />
       </main>
     </SmoothScroll>
   );

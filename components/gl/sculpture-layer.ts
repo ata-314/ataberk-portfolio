@@ -221,6 +221,7 @@ void renderGrain(float id) {
   vec3 local=vec3(p.x/spread,p.y,p.z);
   float assembly=smoothstep(.055+seed*.055,.61+seed*.055,hero)*birdReady;
   assembly*=1.0-finale;
+  assembly*=1.0-smoothstep(seed*.12,.82+seed*.18,services);
   // Normal from neighbouring depth texels: four fetches instead of six full
   // noise-field evaluations per grain per frame.
   vec3 n=vec3(0,0,1);
@@ -305,8 +306,8 @@ void renderGrain(float id) {
   // The body's colour: a gradient from head to tail between two hues that
   // drift around the wheel at their own pace, so the bird is always one
   // continuous blend and never the same blend twice.
-  float hueHead=.46+.025*sin(time*.07);
-  float hueTail=.19+.025*sin(time*.05);
+  float hueHead=fract(time*.019);
+  float hueTail=fract(hueHead+.3+.12*sin(time*.071));
   float electric=0.0;
   vec3 electricColor=vec3(.6,.97,1.0);
   if(assembly>0.0) {
@@ -504,8 +505,8 @@ void renderGrain(float id) {
   // The sweep waits until the sea has fully surfaced.
   float scan=(core+shoulder*.6+trail*.38)*(1.0-assembly)*smoothstep(.85,1.0,intro)*(1.0-services);
   vec3 scanColor=mix(vec3(.18,1.0,.65),vec3(.62,.94,1.0),shoulder);
-  tint+=scanColor*scan*.95;
-  tint=mix(tint,vec3(.86,1.0,1.0)*1.1,core*.6*(1.0-assembly)*smoothstep(.85,1.0,intro)*(1.0-services));
+  tint+=scanColor*scan*1.55;
+  tint=mix(tint,vec3(.86,1.0,1.0)*2.0,core*.8*(1.0-assembly)*smoothstep(.85,1.0,intro)*(1.0-services));
   gl_PointSize*=1.0+shoulder*.6*(1.0-assembly);
   alpha=mix(.8+light*.18,.95,assembly)*opacity*introAlpha;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
@@ -522,7 +523,7 @@ void renderGrain(float id) {
   // Services: grain by grain (staggered by seed, like the intro) the sea
   // takes on the section's violet / blue / magenta light, so the glass
   // cards read as lit by the same matter behind them.
-  float servicesGrain=smoothstep(seed*.45,.55+seed*.45,services)*(1.0-assembly);
+  float servicesGrain=smoothstep(seed*.45,.55+seed*.45,services);
   float hueField=.5+.5*sin(screen.x*2.3+screen.y*1.7+time*.15+seed*2.0);
   vec3 servicesHue=mix(vec3(.62,.5,1.0),vec3(.36,.62,1.0),hueField);
   servicesHue=mix(servicesHue,vec3(.93,.45,.98),smoothstep(.72,1.0,fract(seed*7.13)));
@@ -916,9 +917,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
     });
   };
   return {
-    // output: the framebuffer the grains finally draw into (the stage's HDR
-    // scene when post-processing is on, else the canvas).
-    render(w: number,h: number,time: number,opacity: number,px: number,py: number,activity: number,flight: SculptureFlight,output: WebGLFramebuffer|null=null) {
+    render(w: number,h: number,time: number,opacity: number,px: number,py: number,activity: number,flight: SculptureFlight) {
       collectProbe();
       if(opacity<.002) return;
       const delta=Math.max(0,Math.min(time-lastTime,.05)); lastTime=time;
@@ -927,7 +926,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       // start of the assembly instead of stopping on the first scroll tick,
       // which read as the field freezing.
       const holdT=Math.min(1,Math.max(0,(flight.hero-.03)/.19));
-      const hold=flight.finale>.98 || flight.ready<.95 ? 0 : holdT*holdT*(3-2*holdT);
+      const hold=flight.finale>.98 || flight.ready<.95 ? 0 : holdT*holdT*(3-2*holdT)*(1-flight.services);
       const flowing=hold<.999;
       if(flowing) {
         flowTime+=delta*(1-hold);sourceX=px;sourceY=py;
@@ -974,7 +973,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
           probeFence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);
         }
       }
-      gl.bindFramebuffer(gl.FRAMEBUFFER,output);gl.viewport(0,0,w,h);gl.enable(gl.BLEND);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.enable(gl.BLEND);
       gl.useProgram(program);gl.uniform1i(surfaceMap,4);
       gl.uniform2f(uniforms.resolution,w,h); gl.uniform2f(uniforms.grid,columns,rows);
       gl.uniform2f(uniforms.pointer,sourceX,sourceY); gl.uniform1f(uniforms.time,time);
@@ -1041,7 +1040,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         gl.uniformMatrix4fv(su.birdProjection,false,flight.projection);
         gl.drawArrays(gl.TRIANGLES,0,3);
         simRead=write;
-        gl.bindFramebuffer(gl.FRAMEBUFFER,output);
+        gl.bindFramebuffer(gl.FRAMEBUFFER,null);
         gl.viewport(0,0,w,h);
         gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
         gl.useProgram(program);

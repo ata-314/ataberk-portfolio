@@ -18,15 +18,13 @@ export function Reveal() {
     () => {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-      // These triggers refresh after the pinned scenes (services, work),
-      // whose spacers move everything below them.
       // Copy is scrubbed directly to scroll position: it rises in through the
       // lower band of the viewport, holds through the middle, and slips out
       // through the upper band — every pixel of scroll moves the text.
       document.querySelectorAll<HTMLElement>("[data-reveal]").forEach((el) => {
         gsap
           .timeline({
-            scrollTrigger: { trigger: el, start: "top 98%", end: "bottom 2%", scrub: 0.5, refreshPriority: -1 },
+            scrollTrigger: { trigger: el, start: "top 98%", end: "bottom 2%", scrub: 0.5 },
           })
           .fromTo(
             el,
@@ -43,7 +41,7 @@ export function Reveal() {
         if (!words.length) return;
         gsap
           .timeline({
-            scrollTrigger: { trigger: heading, start: "top 96%", end: "bottom 4%", scrub: 0.5, refreshPriority: -1 },
+            scrollTrigger: { trigger: heading, start: "top 96%", end: "bottom 4%", scrub: 0.5 },
           })
           .fromTo(
             words,
