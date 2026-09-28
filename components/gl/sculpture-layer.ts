@@ -75,7 +75,9 @@ const grainCore = /* glsl */ `float grainRandom(uint value) {
 }
 // Every grain lands on a small patch spanned by a baked sample and two of its
 // surface neighbours, so ~24 grains per sample pack the skin edge to edge;
-// most sit just under the surface, and all ride a slow breathing current.
+// most sit just under the surface. Each grain also slowly circles inside its
+// patch on its own phase, so the skin churns like sand in a current, and
+// all of them ride a slow breathing swell.
 vec3 birdAnatomy(float id,float frame,float t,out vec3 normal,out float shellDepth) {
   float index=mod(id*37.0,9000.0);
   vec3 anatomy=birdSample(index,frame);
@@ -86,7 +88,9 @@ vec3 birdAnatomy(float id,float frame,float t,out vec3 normal,out float shellDep
     float pick=floor(grainRandom(uint(id)+4441u)*3.0);
     float ia=pick<.5?nb.x:pick<1.5?nb.y:nb.z;
     float ib=pick<.5?nb.y:pick<1.5?nb.z:nb.x;
-    float u=(grainRandom(uint(id)+5003u)-.5)*1.25,v=(grainRandom(uint(id)+6007u)-.5)*1.25;
+    float spin=t*(.35+grainRandom(uint(id)+919u)*.5)+grainRandom(uint(id)+1291u)*6.2832;
+    float u=(grainRandom(uint(id)+5003u)-.5)*.8+sin(spin)*.28;
+    float v=(grainRandom(uint(id)+6007u)-.5)*.8+cos(spin*1.13)*.28;
     vec3 centre=anatomy;
     anatomy=centre+(birdSample(ia,frame)-centre)*u+(birdSample(ib,frame)-centre)*v;
     vec3 blended=normal+birdNormalAt(ia)*abs(u)+birdNormalAt(ib)*abs(v);
@@ -98,7 +102,7 @@ vec3 birdAnatomy(float id,float frame,float t,out vec3 normal,out float shellDep
     anatomy+=normal*(grainRandom(uint(id)+41u)-.5)*.028;
   }
   vec3 flowP=anatomy*2.4+vec3(0.0,t*.32,t*.21);
-  anatomy+=(vec3(noise(flowP),noise(flowP+17.3),noise(flowP+31.7))-.5)*.04;
+  anatomy+=(vec3(noise(flowP),noise(flowP+17.3),noise(flowP+31.7))-.5)*.05;
   return anatomy;
 }
 `;
@@ -283,6 +287,7 @@ void renderGrain(float id) {
   float shellDepth=0.0;
   float birdZ=.999;
   float birdDisturb=0.0;
+  float birdGlint=0.0;
   float electric=0.0;
   vec3 electricColor=vec3(.6,.97,1.0);
   if(assembly>0.0) {
@@ -306,7 +311,12 @@ void renderGrain(float id) {
     // Wings are thin shells: light them from either side.
     float keyDot=dot(worldNormal,normalize(vec3(-.6,.8,1.0)));
     birdLight=.55+.7*max(keyDot,-keyDot*.6)+.25*max(dot(worldNormal,normalize(vec3(.7,-.2,.6))),0.0);
-    birdAO=mix(1.0,.78,shellDepth);
+    birdAO=mix(1.0,.6,shellDepth);
+    // Life on the skin: soft icy sheens drift across the body and single
+    // grains catch the light for an instant.
+    float sheen=smoothstep(.6,.84,noise(anatomy*2.6+vec3(time*.35,-time*.22,time*.18)));
+    float twinkle=step(.988,grainRandom(uint(id)+uint(floor(time*5.0+seed*5.0))*977u));
+    birdGlint=sheen*.55+twinkle;
     // A restrained charge: sparse thin veins crawl over the anatomy, a slow
     // faint pulse runs along the wingspan and a rare grain sparks.
     float vein=noise(anatomy*5.5+vec3(0.0,time*1.3,time*.85));
@@ -446,13 +456,14 @@ void renderGrain(float id) {
   gl_Position=vec4(position,depth,1.0);
   solid=assembly*(1.0-bustMix)*(1.0-helixMix);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
-  gl_PointSize=max(1.0,mix(fluidSize*introSize,(2.5+seed*.2)*pixelScale*mix(1.0,.9,shellDepth)*mix(1.0,.8,birdDisturb),assembly));
+  gl_PointSize=max(1.0,mix(fluidSize*introSize,(2.9+seed*.3)*pixelScale*mix(1.0,.85,shellDepth)*mix(1.0,.8,birdDisturb)*(1.0+birdGlint*.3),assembly));
   // Kept below 1 so the body keeps its hue and lighting; the veins and the
   // halo pass carry the brightness.
   // Frosted silver with a faint lime cast; the brand colour lives in the
   // veins and the halo.
   vec3 birdBody=min(mix(vec3(.64,.7,.77),lime,.08)*birdLight*birdAO,vec3(.97));
   tint=mix(tint,birdBody,assembly*.92);
+  tint+=vec3(.7,.93,1.0)*birdGlint*.4*assembly;
   // Veins burn white-hot at the core and fringe into the electric hue.
   vec3 hot=mix(electricColor,vec3(1.0),.25)*1.25;
   tint=mix(tint,hot,clamp(electric,0.0,1.0)*assembly);
@@ -591,7 +602,7 @@ void main() {
   // Inertia from the body's travel only (same pose under last frame's
   // transform): wing beats stay crisp, sudden moves leave grains behind.
   vec3 before=(prevMatrix*vec4(local,1.0)).xyz;
-  float loose=pow(grainRandom(uint(id)+2113u),5.0);
+  float loose=pow(grainRandom(uint(id)+2113u),3.5);
   d-=(home-before)*mix(.12,.35,loose);
   vec3 p=home+d;
   // Stirred grains are held more loosely, so a wake lingers as a drifting
@@ -599,7 +610,7 @@ void main() {
   v-=d*mix(30.0,10.0,loose)*mix(1.0,.3,stir)*dt;
   vec3 q=p*1.15+vec3(0.0,time*.23,time*.15);
   vec3 air=vec3(noise(q),noise(q+19.1),noise(q+37.3))-.5;
-  v+=air*(.5+loose*2.8)*dt;
+  v+=air*(.6+loose*3.6)*dt;
   if(hoverAmt>.001) {
     vec3 w=p-rayOrigin;
     vec3 off=w-rayDir*max(dot(w,rayDir),0.0);

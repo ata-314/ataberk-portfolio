@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
 import { buildBirdLinks } from "./bird-links";
+import { createBirdBehaviour } from "./bird-behaviour";
 import { bustState, scrollState } from "../three/scroll-state";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
@@ -655,13 +656,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let finale = 0;
     let flap = 0;
     let flapPhase = 0;
-    let flapRate = 1;
-    let glideClock = 0;
-    // Sudden manoeuvres between glides (see the render loop).
-    let maneuver: { kind: number; start: number; length: number; side: number } | null = null;
-    let nextManeuver = 5;
-    let maneuverBank = 0;
-    let stoop = 0;
+    const behaviour = createBirdBehaviour();
+    // Eased behaviour outputs (see bird-behaviour.ts).
+    const eased = { x: 0, y: 0, z: 0, bank: 0, pitch: 0, beat: 1, hold: 0, holdFrame: 0 };
     // Grain simulation inputs: last frame's body and the cursor as a 3D ray.
     const prevBird = new Float32Array(16);
     const rayOrigin = new Float32Array(3);
@@ -779,61 +776,23 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         : videoReady * (1 - smoothstep(hero, 0.14, 0.38));
       videoMix = damp(videoMix, targetVideo, 12, delta);
       const flight = flightAt(hero, scrollState.page.current, pointerSmooth, pointerActive);
-      // Glide: once the bird has formed it periodically stops
-      // beating, holds its wings level (bake frame 14) and slides down on a
-      // long diagonal, then flaps its way back up. Cycle length varies a
-      // little so the rhythm never reads as a loop.
-      glideClock += delta;
-      const cycleLength = 11 + Math.sin(Math.floor(glideClock / 11) * 12.9898) * 2.5;
-      const cycle = (glideClock % 11) / 11 * (11 / cycleLength);
+      // Behaviour: a non-repeating sequence of glides, darts, stoops, turns,
+      // climbs, flutters and loops over a noise wander, eased per action —
+      // fast for reflexes, slow for glides — and only once the bird has
+      // formed and is free on the page.
       const freeFlight = smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
-      const glide = smoothstep(cycle, 0.42, 0.48) * (1 - smoothstep(cycle, 0.72, 0.8)) * freeFlight;
-      const descent = cycle < 0.45 ? 0 : cycle < 0.78
-        ? smoothstep(cycle, 0.45, 0.78)
-        : 1 - smoothstep(cycle, 0.78, 1);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
-      flight.position = [
-        flight.position[0] + travel * descent * 0.7 * freeFlight,
-        flight.position[1] - descent * 0.95 * freeFlight,
-        flight.position[2],
-      ];
-      // Between glides the bird breaks its line every few seconds: a sideways
-      // dart, a stoop with wings folded, a snap U-turn or a hard climb on
-      // rapid beats. Fast attack, slow release, so each reads as a reflex.
-      if (!maneuver && time > nextManeuver && glide < 0.05 && freeFlight > 0.5) {
-        const kind = Math.floor(Math.random() * 4);
-        maneuver = { kind, start: time, length: [0.9, 1.25, 1.4, 1.3][kind], side: Math.random() < 0.5 ? -1 : 1 };
-      }
-      let offsetX = 0, offsetY = 0, offsetZ = 0, bankTarget = 0, beat = 1, hold = 0, turning = false;
-      if (maneuver) {
-        const m = (time - maneuver.start) / maneuver.length;
-        if (m >= 1) {
-          maneuver = null;
-          nextManeuver = time + 3 + Math.random() * 4;
-        } else {
-          const attack = 0.22;
-          const envelope = m < attack ? 1 - Math.pow(1 - m / attack, 3) : 1 - smoothstep(m, attack, 1);
-          const pulse = Math.sin(m * Math.PI);
-          const side = maneuver.side;
-          if (maneuver.kind === 0) {
-            offsetX = side * 1.1 * envelope; offsetZ = 0.35 * envelope; bankTarget = side * 0.4 * envelope; beat = 1.8;
-          } else if (maneuver.kind === 1) {
-            offsetY = -1.25 * envelope; offsetX = travel * 0.45 * envelope; hold = envelope;
-          } else if (maneuver.kind === 2) {
-            turning = m < 0.7; offsetX = -travel * 0.9 * pulse; offsetY = 0.3 * pulse; bankTarget = side * 0.45 * pulse; beat = 1.4;
-          } else {
-            offsetY = 1.0 * envelope; bankTarget = -side * 0.15 * pulse; beat = 2.4;
-          }
-        }
-      }
-      flight.position = [
-        flight.position[0] + offsetX * freeFlight,
-        flight.position[1] + offsetY * freeFlight,
-        flight.position[2] + offsetZ * freeFlight,
-      ];
-      maneuverBank = damp(maneuverBank, bankTarget * freeFlight, 8, delta);
-      flapRate = damp(flapRate, beat, 6, delta);
-      stoop = damp(stoop, hold * freeFlight, 7, delta);
+      const motion = behaviour.step(time, travel);
+      const ease = motion.snappy ? 7 : 2.2;
+      eased.x = damp(eased.x, motion.x * freeFlight, ease, delta);
+      eased.y = damp(eased.y, motion.y * freeFlight, ease, delta);
+      eased.z = damp(eased.z, motion.z * freeFlight, ease, delta);
+      eased.bank = damp(eased.bank, motion.bank * freeFlight, 7, delta);
+      eased.pitch = damp(eased.pitch, motion.pitch * freeFlight, 5, delta);
+      eased.beat = damp(eased.beat, motion.beat, 5, delta);
+      eased.hold = damp(eased.hold, motion.hold * freeFlight, 5, delta);
+      eased.holdFrame = motion.hold > 0.01 ? motion.holdFrame : eased.holdFrame;
+      flight.position = [flight.position[0] + eased.x, flight.position[1] + eased.y, flight.position[2] + eased.z];
       // Manifesto: the bird comes apart and its grains wind a helix ring
       // around the copy (see the sculpture shader). The stage only measures
       // the copy block and eases the envelope in and out.
@@ -851,19 +810,18 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       orbit = damp(orbit, orbitTarget, 2.2, delta);
       const directionLength = Math.hypot(...flight.direction) || 1;
       const direction: Vec3 = [flight.direction[0] / directionLength, flight.direction[1] / directionLength, flight.direction[2] / directionLength];
+      const turning = motion.turn && freeFlight > 0.5;
       const yawTarget = (direction[0] >= 0 ? 1 : -1) * 1.07 * (turning ? -1 : 1);
-      yaw = damp(yaw, yawTarget, maneuver ? 7 : 2.5, delta);
+      yaw = damp(yaw, yawTarget, motion.snappy ? 7 : 2.5, delta);
       // Nose dips while gliding down.
-      const glidePitch = glide * 0.22 * (yaw >= 0 ? -1 : 1) * GLIDE_PITCH_SIGN;
-      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + glidePitch + maneuverBank);
-      // Wing beat slows to a hold on the level frame while gliding, with a
-      // slight sway so the wings stay alive.
-      // A stoop folds the wings down (bake frames 8–10).
-      flapPhase = (flapPhase + delta * flapRate * (1 - glide * 0.97) * (1 - stoop * 0.95)) % 1;
-      const glideFrame = 14.2 / 16 + Math.sin(time * 1.3) * 0.012;
-      const toGlide = ((glideFrame - flapPhase + 1.5) % 1) - 0.5;
-      const toStoop = ((9.5 / 16 - flapPhase + 1.5) % 1) - 0.5;
-      flap = (flapPhase + toGlide * glide + toStoop * stoop + 1) % 1;
+      const glidePitch = eased.pitch * (yaw >= 0 ? -1 : 1) * GLIDE_PITCH_SIGN;
+      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + glidePitch + eased.bank);
+      // The wing beat runs at the behaviour's rate and eases onto a held
+      // frame (wings level to glide, folded to stoop) with a slight sway.
+      flapPhase = (flapPhase + delta * eased.beat * (1 - eased.hold * 0.97)) % 1;
+      const holdFrame = eased.holdFrame + Math.sin(time * 1.3) * 0.012;
+      const toHold = ((holdFrame - flapPhase + 1.5) % 1) - 0.5;
+      flap = (flapPhase + toHold * eased.hold + 1) % 1;
 
       // A short dolly-in settles the camera as the field assembles.
       const camera: Vec3 = [
