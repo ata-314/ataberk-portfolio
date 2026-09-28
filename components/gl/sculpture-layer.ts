@@ -88,6 +88,10 @@ uniform float bustYaw;
 uniform float bustPitch;
 uniform float bustLift;
 uniform float morph;
+// Manifesto helix: ring around the copy in NDC (centre xy, radii zw) and the
+// amount of bird that has unwound onto it.
+uniform vec4 orbitRing;
+uniform float orbitMix;
 out vec3 tint;
 out float alpha;
 ${field}
@@ -332,6 +336,35 @@ void renderGrain(float id) {
     float shell=smoothstep(-.2,.3,qn.z)*smoothstep(-1.25,-.45,bp.y);
     bustAlpha=mix(1.0,shell*(.3+shade*.8),m);
   }
+  // Manifesto: the bird comes apart grain by grain and the grains wind two
+  // helix strands around a ring that encircles the copy. The coil turns and
+  // flows along the ring; depth reads through size and light, so the strands
+  // pass in front of and behind the ring's core.
+  float helixMix=0.0;
+  float helixDepth=0.0;
+  float helixPulse=0.0;
+  if(orbitMix>.001 && assembly>0.0) {
+    float along=grainRandom(uint(id)+1231u);
+    float strand=mod(id,2.0);
+    float dust=step(.9,grainRandom(uint(id)+2749u));
+    float u=along*6.28318+time*.22;
+    float phi=u*13.0+strand*3.14159265-time*1.5;
+    vec2 ring=orbitRing.xy+vec2(cos(u)*orbitRing.z,sin(u)*orbitRing.w);
+    vec2 outward=normalize(vec2(cos(u)*orbitRing.w*aspect,sin(u)*orbitRing.z));
+    float tube=(aspect<1.0?.055:.075)*(1.0+dust*(seed-.5)*1.6);
+    helixDepth=sin(phi);
+    vec2 coil=outward*cos(phi)*tube+vec2(0.0,helixDepth*tube*.35);
+    vec2 target=ring+coil/asp;
+    target+=(vec2(grainRandom(uint(id)+61u),grainRandom(uint(id)+89u))-.5)*(.006+dust*.03)/asp;
+    // Staggered release: each grain swings out of the bird on a curl.
+    float order=mix(seed,grainRandom(uint(id)+503u),.5);
+    float m=smoothstep(order*.55,order*.55+.4,orbitMix)*assembly;
+    vec2 travel=(target-position)*asp;
+    vec2 curl=vec2(-travel.y,travel.x)/asp*sin(m*3.14159265)*(.35+seed*.3);
+    position=mix(position,target,m)+curl;
+    helixMix=m;
+    helixPulse=pow(.5+.5*sin(u*3.0-time*2.2),18.0);
+  }
   gl_Position=vec4(position,0.0,1.0);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
   gl_PointSize=max(1.0,mix(fluidSize*introSize,(1.8+seed*.65)*pixelScale,assembly));
@@ -380,13 +413,21 @@ void renderGrain(float id) {
     alpha*=bustAlpha*(1.0-smoothstep(.88,.99,morph));
     gl_PointSize=mix(gl_PointSize,(1.5+seed*.8)*pixelScale,bustMix);
   }
+  if(helixMix>0.0) {
+    float front=.5+.5*helixDepth;
+    vec3 coilTint=mix(lime*.55+citron*.25,vec3(.82,1.0,.9),front*.55)*mix(.35,1.2,front);
+    coilTint+=electricColor*helixPulse*.9;
+    tint=mix(tint,coilTint,helixMix);
+    alpha*=mix(1.0,mix(.45,1.0,front),helixMix);
+    gl_PointSize=mix(gl_PointSize,(1.1+seed*.7)*pixelScale*mix(.7,1.45,front)*(1.0+helixPulse*.5),helixMix);
+  }
   if(glowPass>.5) {
     // Halo pass: only bird grains, drawn large and soft with additive blend.
     if(assembly<.05) {alpha=0.0;gl_Position=vec4(2.0,2.0,2.0,1.0);return;}
     // Halo mostly around live veins and sparks; the body keeps only a faint
     // lime aura (no red/blue, which washed the green body out to grey).
     tint=mix(vec3(.3,.85,.05),electricColor*1.4,clamp(electric,0.0,1.0));
-    alpha=(.006+electric*.18)*assembly*opacity*(1.0-morph);
+    alpha=(.006+electric*.18)*assembly*opacity*(1.0-morph)*(1.0-orbitMix);
     gl_PointSize*=3.2;
   }
 }
@@ -456,6 +497,7 @@ export type SculptureFlight = {
   positions: WebGLTexture | null; normals: WebGLTexture | null;
   trail: Float32Array; burst: Float32Array;
   intro: number;
+  orbit: number; orbitRing: Float32Array;
   bust: {
     texture: WebGLTexture | null; ready: boolean; rows: number; count: number;
     rect: Float32Array; aspect: number; yaw: number; pitch: number; lift: number; morph: number;
@@ -494,7 +536,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph","orbitRing","orbitMix"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -604,6 +646,8 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       gl.uniform3fv(uniforms.burst,flight.burst);
       gl.uniform1f(uniforms.glowPass,0);
       gl.uniform1f(uniforms.intro,flight.intro);
+      gl.uniform1f(uniforms.orbitMix,flight.orbit);
+      gl.uniform4fv(uniforms.orbitRing,flight.orbitRing);
       const bust=flight.bust;
       const morph=bust.ready?bust.morph:0;
       gl.uniform1f(uniforms.morph,morph);
@@ -620,7 +664,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
       // Additive halo over the forming bird. A subset of IDs still covers
       // every anatomy sample (index = id*37 mod 9000).
-      if(flight.hero>.06 && flight.ready>.5 && flight.finale<.98 && morph<.98) {
+      if(flight.hero>.06 && flight.ready>.5 && flight.finale<.98 && morph<.98 && flight.orbit<.98) {
         gl.uniform1f(uniforms.glowPass,1);
         // Add light only: leave destination alpha untouched, or the halo's
         // accumulated alpha greys the transparent, premultiplied canvas.
