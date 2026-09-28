@@ -8,8 +8,8 @@ import { useGSAP } from "@gsap/react";
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 // Editorial manifesto: lines unmask as the bird's traces pass — a scrubbed
-// clip reveal, not a mechanical fade. The stage flies the bird on a tilted
-// ring around the [data-orbit] block while it is centred.
+// clip reveal, not a mechanical fade. The stage unwinds the bird into a
+// helix ring of its grains around the [data-orbit] block while it is centred.
 export function Manifesto({ line, sub }: { line: string; sub: string }) {
   const root = useRef<HTMLElement>(null);
 
