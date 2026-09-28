@@ -823,6 +823,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           trail: wake, burst, intro, bust,
           orbit, orbitRing,
           links: linksReady ? linkTexture : null,
+          wind: direction,
         });
       if (firstFrame) {
         firstFrame = false;

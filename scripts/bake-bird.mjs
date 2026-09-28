@@ -53,9 +53,16 @@ for (let triangle = 0; triangle < triangleCount; triangle++) {
   cumulativeAreas[triangle] = areaSum;
 }
 
-const vertices = new Uint32Array(SAMPLES * 3);
-const barycentrics = new Float32Array(SAMPLES * 2);
-for (let sample = 0; sample < SAMPLES; sample++) {
+// Blue-noise surface sampling: many area-weighted candidates, then greedy
+// dart throwing with the largest spacing that still yields SAMPLES points.
+// Evenly spaced samples let the runtime grains cover the skin uniformly,
+// like packed foam, instead of clumping where random samples bunch up.
+const CANDIDATES = SAMPLES * 8;
+const candVertices = new Uint32Array(CANDIDATES * 3);
+const candBary = new Float32Array(CANDIDATES * 2);
+const candPoints = new Float32Array(CANDIDATES * 3);
+const restVertex = new THREE.Vector3();
+for (let sample = 0; sample < CANDIDATES; sample++) {
   const target = random() * areaSum;
   let low = 0;
   let high = triangleCount - 1;
@@ -64,18 +71,64 @@ for (let sample = 0; sample < SAMPLES; sample++) {
     if (cumulativeAreas[middle] < target) low = middle + 1;
     else high = middle;
   }
-  vertices[sample * 3] = index.getX(low * 3);
-  vertices[sample * 3 + 1] = index.getX(low * 3 + 1);
-  vertices[sample * 3 + 2] = index.getX(low * 3 + 2);
   let u = random();
   let v = random();
   if (u + v > 1) {
     u = 1 - u;
     v = 1 - v;
   }
-  barycentrics[sample * 2] = u;
-  barycentrics[sample * 2 + 1] = v;
+  const weights = [u, v, 1 - u - v];
+  let x = 0, y = 0, z = 0;
+  for (let corner = 0; corner < 3; corner++) {
+    const vertex = index.getX(low * 3 + corner);
+    candVertices[sample * 3 + corner] = vertex;
+    restVertex.fromBufferAttribute(position, vertex);
+    x += restVertex.x * weights[corner];
+    y += restVertex.y * weights[corner];
+    z += restVertex.z * weights[corner];
+  }
+  candBary[sample * 2] = u;
+  candBary[sample * 2 + 1] = v;
+  candPoints.set([x, y, z], sample * 3);
 }
+const dart = (radius) => {
+  const grid = new Map();
+  const cellKey = (x, y, z) => `${Math.floor(x / radius)},${Math.floor(y / radius)},${Math.floor(z / radius)}`;
+  const accepted = [];
+  for (let c = 0; c < CANDIDATES && accepted.length < SAMPLES; c++) {
+    const x = candPoints[c * 3], y = candPoints[c * 3 + 1], z = candPoints[c * 3 + 2];
+    const cx = Math.floor(x / radius), cy = Math.floor(y / radius), cz = Math.floor(z / radius);
+    let clear = true;
+    for (let dx = -1; dx <= 1 && clear; dx++) for (let dy = -1; dy <= 1 && clear; dy++) for (let dz = -1; dz <= 1 && clear; dz++) {
+      for (const j of grid.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) {
+        if (Math.hypot(candPoints[j * 3] - x, candPoints[j * 3 + 1] - y, candPoints[j * 3 + 2] - z) < radius) { clear = false; break; }
+      }
+    }
+    if (!clear) continue;
+    accepted.push(c);
+    const key = cellKey(x, y, z);
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(c);
+    else grid.set(key, [c]);
+  }
+  return accepted;
+};
+const restBounds = new THREE.Box3();
+for (let c = 0; c < CANDIDATES; c++) restBounds.expandByPoint(restVertex.set(candPoints[c * 3], candPoints[c * 3 + 1], candPoints[c * 3 + 2]));
+let lowR = 0, highR = restBounds.getSize(new THREE.Vector3()).length() / 20;
+for (let step = 0; step < 18; step++) {
+  const middle = (lowR + highR) / 2;
+  if (dart(middle).length >= SAMPLES) lowR = middle;
+  else highR = middle;
+}
+const chosen = dart(lowR);
+if (chosen.length < SAMPLES) throw new Error("bird bake: blue-noise sampling fell short");
+const vertices = new Uint32Array(SAMPLES * 3);
+const barycentrics = new Float32Array(SAMPLES * 2);
+chosen.forEach((c, sample) => {
+  vertices.set(candVertices.subarray(c * 3, c * 3 + 3), sample * 3);
+  barycentrics.set(candBary.subarray(c * 2, c * 2 + 2), sample * 2);
+});
 
 const positions = new Float32Array(TEX_W * TEX_H * 4);
 const mixer = new THREE.AnimationMixer(scene);
