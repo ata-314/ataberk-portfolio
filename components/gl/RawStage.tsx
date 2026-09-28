@@ -481,6 +481,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     };
     let bustElement: HTMLElement | null = null;
     let servicesElement: HTMLElement | null = null;
+    let workElement: HTMLElement | null = null;
+    let workHold = 0;
     let orbitElement: HTMLElement | null = null;
     let services = 0;
     const bustLoad = setTimeout(() => {
@@ -753,6 +755,15 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           * smoothstep(rect.bottom / stageH, .05, .65);
       }
       services = damp(services, servicesTarget, 7, delta);
+      // Work: while its section holds the screen the bird is the centre the
+      // project cards orbit.
+      workElement ??= document.querySelector<HTMLElement>("#work");
+      let workTarget = 0;
+      if (workElement?.dataset.helix === "true") {
+        const rect = workElement.getBoundingClientRect();
+        workTarget = smoothstep(rect.top / stageH, 0.6, 0.02) * smoothstep(rect.bottom / stageH, 0.4, 0.98);
+      }
+      workHold = damp(workHold, workTarget, 5, delta);
       // Morph follows the hologram's place in the viewport: the bird unravels
       // into the bust as it rises into view, holds while it is centred and
       // re-forms as the section leaves.
@@ -821,7 +832,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // climbs, flutters and loops over a noise wander, eased per action —
       // fast for reflexes, slow for glides — and only once the bird has
       // formed and is free on the page.
-      const freeFlight = smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale) * (1 - services);
+      const freeFlight = smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale) * (1 - services) * (1 - workHold);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
       const ease = motion.snappy ? 7 : 2.2;
@@ -837,7 +848,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       flight.position = [flight.position[0] + eased.x, flight.position[1] + eased.y, flight.position[2] + eased.z];
       // Services: the bird holds the centre of the screen while the cards
       // orbit it, then stays behind the bento as it opens.
-      const centreHold = services * smoothstep(hero, 0.95, 1);
+      const centreHold = Math.max(services, workHold) * smoothstep(hero, 0.95, 1);
       flight.position = [
         mix(flight.position[0], 0, centreHold),
         mix(flight.position[1], 0.45, centreHold),
@@ -983,7 +994,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         journey.render(canvas.width, canvas.height, time, js);
         // Title card: arrives once the bird has formed, holds, and leaves as
         // the services scene takes the screen.
-        const titleTarget = smoothstep(hero, 0.6, 0.7) * (1 - services);
+        const titleTarget = smoothstep(hero, 0.6, 0.7) * (1 - services) * (1 - smoothstep(j, 0, 0.03));
         titleAlpha = damp(titleAlpha, titleTarget, 5, delta);
         titleArrive = titleTarget > 0.5 ? Math.min(1, titleArrive + delta / 0.7) : Math.max(0, titleArrive - delta / 0.4);
         const tw = mobile ? 0.9 : 0.5;
