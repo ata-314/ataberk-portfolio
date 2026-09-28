@@ -87,7 +87,10 @@ export function WorkSection({ locale }: { locale: Locale }) {
         onRefresh: (self) => apply(self.progress),
       });
       apply(trigger.progress);
+      // The pin spacer lengthens the page: re-measure every trigger once.
+      const settle = requestAnimationFrame(() => ScrollTrigger.refresh());
       return () => {
+        cancelAnimationFrame(settle);
         delete section.dataset.helix;
         cards.forEach((card) => {
           card.style.transform = card.style.opacity = card.style.filter = card.style.zIndex = card.style.pointerEvents = "";

@@ -18,7 +18,8 @@ const copy = {
 
 // Bottom-left HUD, desktop only: a short "what are you looking for" index
 // into the services and a prompt pill that opens the contact scene. It
-// arrives once the opening has handed over to the journey.
+// arrives once the opening has handed over to the journey and leaves after
+// the work scene.
 export function HudDock({ locale }: { locale: Locale }) {
   const t = copy[locale];
   const [shown, setShown] = useState(false);
@@ -27,9 +28,11 @@ export function HudDock({ locale }: { locale: Locale }) {
     const check = () => {
       raf = 0;
       const services = document.querySelector("#services");
-      const contact = document.querySelector("#contact");
+      // Held from services through the work helix; later scenes set their
+      // own copy along the left edge.
+      const after = document.querySelector("#work")?.closest("[data-scene]")?.nextElementSibling;
       const past = services ? services.getBoundingClientRect().top < innerHeight * 0.6 : false;
-      const atEnd = contact ? contact.getBoundingClientRect().top < innerHeight * 0.55 : false;
+      const atEnd = after ? after.getBoundingClientRect().top < innerHeight * 0.7 : false;
       setShown(past && !atEnd);
     };
     const request = () => { if (!raf) raf = requestAnimationFrame(check); };

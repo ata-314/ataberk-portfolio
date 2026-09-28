@@ -58,7 +58,7 @@ export default async function Home({
         <div data-scene={scene.limb}><AboutPreview locale={locale} t={t.aboutPreview} about={t.about} /></div>
         <div data-scene={scene.galaxies}><WorkSection locale={locale} /></div>
         <div data-scene={scene.helix}><Manifesto line={t.manifesto.line} sub={t.manifesto.sub} /></div>
-        <div data-scene={scene.lab}><AISystems t={t.aiSystems} /></div>
+        <div data-scene={scene.lab}><AISystems t={t.aiSystems} locale={locale} /></div>
         <div data-scene={scene.signal}><ContactFinale t={t.contact} /></div>
         <Footer t={t.footer} name={t.name} />
       </main>
