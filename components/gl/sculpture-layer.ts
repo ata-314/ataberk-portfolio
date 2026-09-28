@@ -441,9 +441,10 @@ void renderGrain(float id) {
     vec2 arc=vec2(-travel.y,travel.x)/asp*sin(m*3.14159265)*.28*(seed-.5);
     position=mix(position,target,m)+arc;
     bustMix=m;
-    vec3 key=normalize(vec3(-.4,.55,.8));
-    vec3 fillLight=normalize(vec3(.6,-.1,.8));
-    float lit=.14+.9*max(dot(qn,key),0.0)+.22*max(dot(qn,fillLight),0.0);
+    // Mirrors the portrait canvas lighting (frontal key, fills both sides).
+    vec3 key=normalize(vec3(-.15,.35,1.0));
+    vec3 fillLight=normalize(vec3(.9,.1,.5));
+    float lit=.24+.72*max(dot(qn,key),0.0)+.22*max(dot(qn,fillLight),0.0)+.22*max(dot(qn,normalize(vec3(-.9,.1,.5))),0.0);
     float shade=clamp(lit*(1.0-clamp(bn.w,0.0,1.0)*.88)+clamp(-bn.w,0.0,1.0)*.18,0.0,1.0);
     // Same monochrome as the portrait canvas the grains hand over to.
     bustTint=mix(vec3(.01,.015,.03),vec3(.86,.91,1.0),shade);

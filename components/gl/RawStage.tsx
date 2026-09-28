@@ -799,9 +799,13 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       if (voyageElement) {
         const r = voyageElement.getBoundingClientRect();
         voyage = Math.max(0, Math.min(1, -r.top / Math.max(r.height - stageH, 1)));
-        voyageHold = damp(voyageHold, smoothstep(r.top / stageH, 0.7, 0) * smoothstep(r.bottom / stageH, 0.3, 1), 5, delta);
+        // Starts taking the bird as the section slides in, so it is centred
+        // by the time the words have risen.
+        voyageHold = damp(voyageHold, smoothstep(r.top / stageH, 1.0, 0.25) * smoothstep(r.bottom / stageH, 0.3, 1), 5, delta);
       }
-      tunnelIn = damp(tunnelIn, smoothstep(voyage, 0.42, 0.52) * (1 - smoothstep(voyage, 0.95, 1)) * voyageHold, 4, delta);
+      // The tunnel assembles behind the swelling word and hands over to the
+      // services scene with a stretch and a flare.
+      tunnelIn = damp(tunnelIn, smoothstep(voyage, 0.3, 0.4) * (1 - smoothstep(voyage, 0.975, 1)) * voyageHold, 5, delta);
       const freeFlight = (1 - voyageHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
@@ -944,7 +948,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       // The corridor streams toward us; its light shifts deeper in.
-      tunnel.render(view, projection, time, (voyage - 0.45) * 150, tunnelIn, smoothstep(voyage, 0.5, 0.95));
+      const tunnelExit = smoothstep(voyage, 0.86, 0.99);
+      tunnel.render(view, projection, time, (voyage - 0.34) * 150 + tunnelExit * tunnelExit * 140, tunnelIn,
+        smoothstep(voyage, 0.5, 0.95), smoothstep(voyage, 0.3, 0.5), tunnelExit);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);

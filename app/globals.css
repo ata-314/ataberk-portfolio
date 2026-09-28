@@ -508,15 +508,49 @@ html[data-stage-static="true"] .scroll-hint-intro {
   }
 }
 
-/* Voyage: the line that opens round the bird before the tunnel. Word gaps
-   are scrubbed through --gap. */
-.voyage-line {
-  --gap: 0.25em;
-  font-size: clamp(2.2rem, 5.6vw, 5.8rem);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+/* Voyage: light, widely set capitals that open round the bird. Word gaps
+   are scrubbed through --gap; letters rise out of per-letter masks; the key
+   word is drawn in outline and fills (--fill) as it swells. */
+.voyage-kicker {
+  margin-bottom: 2.2rem;
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgb(243 239 231 / 0.6);
 }
-.voyage-word { margin-inline: calc(var(--gap) / 2); transform-origin: 50% 55%; will-change: transform, opacity; }
+.voyage-line {
+  --gap: 0.28em;
+  font-family: var(--font-archivo), sans-serif;
+  font-weight: 300;
+  font-size: clamp(2.3rem, 6.2vw, 6.6rem);
+  line-height: 1.02;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #f4f1ea;
+}
+.voyage-word { display: inline-block; margin-inline: calc(var(--gap) / 2); transform-origin: 50% 55%; will-change: transform, opacity; }
+.voyage-mask { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: 0.06em; }
+.voyage-key {
+  --fill: 0;
+  font-weight: 500;
+  color: rgb(244 241 234 / var(--fill));
+  -webkit-text-stroke: 1px rgb(244 241 234 / 0.9);
+}
+.voyage-caption {
+  position: absolute;
+  bottom: 8svh;
+  left: 50%;
+  translate: -50% 0;
+  opacity: 0;
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgb(243 239 231 / 0.7);
+  white-space: nowrap;
+}
 
 /* Portrait (About): HUD ticks and markers round the point-cloud face. */
 .portrait-frame { -webkit-mask-image: radial-gradient(120% 100% at 50% 45%, #000 60%, transparent); mask-image: radial-gradient(120% 100% at 50% 45%, #000 60%, transparent); }

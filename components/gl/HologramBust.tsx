@@ -88,13 +88,16 @@ void main() {
   // the back of the head would print through the face: surfaces turned away
   // from the camera fade out, leaving only the visible shell.
   vFacing = smoothstep(-0.2, 0.3, viewNormal.z);
-  // One hard key from the left and a whisper of fill: the lit side of the
-  // face reads crisp, the far side falls into black. The baked cavity term
-  // darkens sockets, creases and the mouth line.
-  vec3 key = normalize(vec3(-0.85, 0.35, 0.45));
-  vec3 fill = normalize(vec3(0.6, -0.1, 0.8));
+  // Portrait lighting: a soft frontal key a little above the eyes, fills
+  // from both sides and a cool rim on each cheek, so the whole face reads
+  // clearly; the baked cavity term still carves sockets, creases and the
+  // mouth line for the likeness.
+  vec3 key = normalize(vec3(-0.15, 0.35, 1.0));
+  vec3 fillL = normalize(vec3(-0.9, 0.1, 0.5));
+  vec3 fillR = normalize(vec3(0.9, 0.1, 0.5));
   float k = max(dot(viewNormal, key), 0.0);
-  vLit = 0.03 + 1.25 * pow(k, 1.4) + 0.06 * max(dot(viewNormal, fill), 0.0);
+  float rim = pow(1.0 - abs(viewNormal.z), 2.5);
+  vLit = 0.16 + 0.85 * pow(k, 1.35) + 0.2 * max(dot(viewNormal, fillL), 0.0) + 0.2 * max(dot(viewNormal, fillR), 0.0) + rim * 0.3;
   vCav = aCav;
   // hologram slices locked to the model — fine, shallow bands
   vSlice = 0.9 + 0.1 * sin(aPos.y * 140.0 - uTime * 1.4);
@@ -105,7 +108,7 @@ void main() {
   vGlow = cutEdge;
   vRnd = aRnd;
   vTouch = touch;
-  gl_PointSize = uSize * (0.55 + aRnd * 0.3 + touch * 0.4 + cutEdge * 0.9) / -view.z;
+  gl_PointSize = uSize * (0.62 + aRnd * 0.14 + touch * 0.4 + cutEdge * 0.9) / -view.z;
 }`;
 
 const FRAGMENT = `#version 300 es
@@ -130,7 +133,7 @@ void main() {
   float disc = smoothstep(0.5, 0.2, r);
   // Monochrome: cold white where the key lands, down to black; the contour
   // lines and the pointer glow a brighter ice blue.
-  float occlusion = 1.0 - clamp(vCav * 1.15, 0.0, 1.0) * 0.9;
+  float occlusion = 1.0 - clamp(vCav * 1.15, 0.0, 1.0) * 0.86;
   float light = clamp(vLit * occlusion, 0.0, 1.3);
   vec3 ice = vec3(0.86, 0.91, 1.0);
   vec3 color = ice * light;
@@ -303,7 +306,7 @@ export function HologramBust() {
         // small viewports get bigger, brighter points: fewer pixels per point
         // would otherwise leave the bust too faint on phones
         const compact = Math.max(canvas.clientHeight / 640, 0.95);
-        gl.uniform1f(u("uSize"), (mobile ? 10 : 8) * pixelRatio * compact);
+        gl.uniform1f(u("uSize"), (mobile ? 11 : 9) * pixelRatio * compact);
         gl.uniform1f(u("uGain"), (mobile ? 1.35 : 1) * fade);
         gl.clear(gl.COLOR_BUFFER_BIT);
         // samples are area-weighted random, so a prefix is a uniform subset
