@@ -170,9 +170,10 @@ function flightAt(hero: number, page: number, pointer: Vec3, pointerActive: numb
   }
   const follow = smoothstep(hero, 0.54, 0.72) * pointerActive * (1 - smoothstep(page, 0.86, 0.97));
   if (follow > 0.001) {
-    const strength = (hero < 0.999 ? 0.42 : 0.68) * follow;
-    const target: Vec3 = [pointer[0] + (pointer[0] >= 0 ? -0.65 : 0.65), pointer[1] + 0.28, position[2]];
-    direction = [target[0] - position[0], target[1] - position[1], 0];
+    // A gentle pull toward the cursor, never away from it, so the cursor
+    // can reach the bird and stir its grains.
+    const strength = (hero < 0.999 ? 0.14 : 0.2) * follow;
+    const target: Vec3 = [pointer[0], pointer[1], position[2]];
     position = [mix(position[0], target[0], strength), mix(position[1], target[1], strength), position[2]];
   }
   return { position, scale, direction };
@@ -412,8 +413,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, TEX_W, ROWS_PER_FRAME, 0, gl.RGBA, gl.HALF_FLOAT, new Uint16Array(buffer, POSITION_ELEMENTS * 2, NORMAL_ELEMENTS));
       birdReady = 1;
       await yieldTask();
-      // Surface neighbours: the grains fill the triangles between samples
-      // and the plexus cage runs along the same edges.
+      // Surface neighbours: the grains fill the patches between samples.
       const links = buildBirdLinks(new Uint16Array(buffer, 0, BIRD_SAMPLES * 4), BIRD_SAMPLES, TEX_W);
       gl.activeTexture(gl.TEXTURE6);
       gl.bindTexture(gl.TEXTURE_2D, linkTexture);
@@ -655,7 +655,25 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let finale = 0;
     let flap = 0;
     let flapPhase = 0;
+    let flapRate = 1;
     let glideClock = 0;
+    // Sudden manoeuvres between glides (see the render loop).
+    let maneuver: { kind: number; start: number; length: number; side: number } | null = null;
+    let nextManeuver = 5;
+    let maneuverBank = 0;
+    let stoop = 0;
+    // Grain simulation inputs: last frame's body and the cursor as a 3D ray.
+    const prevBird = new Float32Array(16);
+    const rayOrigin = new Float32Array(3);
+    const rayDir = new Float32Array(3);
+    const cursorVel = new Float32Array(3);
+    const cursorPoint = new Float32Array(3);
+    let cursorPrimed = false;
+    let simPrimed = false;
+    const simInput = {
+      reset: true, dt: 1 / 60, prevMatrix: prevBird,
+      rayOrigin, rayDir, cursorVel, hover: 0, radius: 0.4,
+    };
     let yaw = -1.07;
     // Manifesto helix: envelope and the ring in NDC (centre xy, radii zw)
     // around the manifesto copy.
@@ -779,6 +797,43 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         flight.position[1] - descent * 0.95 * freeFlight,
         flight.position[2],
       ];
+      // Between glides the bird breaks its line every few seconds: a sideways
+      // dart, a stoop with wings folded, a snap U-turn or a hard climb on
+      // rapid beats. Fast attack, slow release, so each reads as a reflex.
+      if (!maneuver && time > nextManeuver && glide < 0.05 && freeFlight > 0.5) {
+        const kind = Math.floor(Math.random() * 4);
+        maneuver = { kind, start: time, length: [0.9, 1.25, 1.4, 1.3][kind], side: Math.random() < 0.5 ? -1 : 1 };
+      }
+      let offsetX = 0, offsetY = 0, offsetZ = 0, bankTarget = 0, beat = 1, hold = 0, turning = false;
+      if (maneuver) {
+        const m = (time - maneuver.start) / maneuver.length;
+        if (m >= 1) {
+          maneuver = null;
+          nextManeuver = time + 3 + Math.random() * 4;
+        } else {
+          const attack = 0.22;
+          const envelope = m < attack ? 1 - Math.pow(1 - m / attack, 3) : 1 - smoothstep(m, attack, 1);
+          const pulse = Math.sin(m * Math.PI);
+          const side = maneuver.side;
+          if (maneuver.kind === 0) {
+            offsetX = side * 1.1 * envelope; offsetZ = 0.35 * envelope; bankTarget = side * 0.4 * envelope; beat = 1.8;
+          } else if (maneuver.kind === 1) {
+            offsetY = -1.25 * envelope; offsetX = travel * 0.45 * envelope; hold = envelope;
+          } else if (maneuver.kind === 2) {
+            turning = m < 0.7; offsetX = -travel * 0.9 * pulse; offsetY = 0.3 * pulse; bankTarget = side * 0.45 * pulse; beat = 1.4;
+          } else {
+            offsetY = 1.0 * envelope; bankTarget = -side * 0.15 * pulse; beat = 2.4;
+          }
+        }
+      }
+      flight.position = [
+        flight.position[0] + offsetX * freeFlight,
+        flight.position[1] + offsetY * freeFlight,
+        flight.position[2] + offsetZ * freeFlight,
+      ];
+      maneuverBank = damp(maneuverBank, bankTarget * freeFlight, 8, delta);
+      flapRate = damp(flapRate, beat, 6, delta);
+      stoop = damp(stoop, hold * freeFlight, 7, delta);
       // Manifesto: the bird comes apart and its grains wind a helix ring
       // around the copy (see the sculpture shader). The stage only measures
       // the copy block and eases the envelope in and out.
@@ -796,17 +851,19 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       orbit = damp(orbit, orbitTarget, 2.2, delta);
       const directionLength = Math.hypot(...flight.direction) || 1;
       const direction: Vec3 = [flight.direction[0] / directionLength, flight.direction[1] / directionLength, flight.direction[2] / directionLength];
-      const yawTarget = (direction[0] >= 0 ? 1 : -1) * 1.07;
-      yaw = damp(yaw, yawTarget, 2.5, delta);
+      const yawTarget = (direction[0] >= 0 ? 1 : -1) * 1.07 * (turning ? -1 : 1);
+      yaw = damp(yaw, yawTarget, maneuver ? 7 : 2.5, delta);
       // Nose dips while gliding down.
       const glidePitch = glide * 0.22 * (yaw >= 0 ? -1 : 1) * GLIDE_PITCH_SIGN;
-      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + glidePitch);
+      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + glidePitch + maneuverBank);
       // Wing beat slows to a hold on the level frame while gliding, with a
       // slight sway so the wings stay alive.
-      flapPhase = (flapPhase + delta * (1 - glide * 0.97)) % 1;
+      // A stoop folds the wings down (bake frames 8–10).
+      flapPhase = (flapPhase + delta * flapRate * (1 - glide * 0.97) * (1 - stoop * 0.95)) % 1;
       const glideFrame = 14.2 / 16 + Math.sin(time * 1.3) * 0.012;
       const toGlide = ((glideFrame - flapPhase + 1.5) % 1) - 0.5;
-      flap = (flapPhase + toGlide * glide + 1) % 1;
+      const toStoop = ((9.5 / 16 - flapPhase + 1.5) % 1) - 0.5;
+      flap = (flapPhase + toGlide * glide + toStoop * stoop + 1) % 1;
 
       // A short dolly-in settles the camera as the field assembles.
       const camera: Vec3 = [
@@ -815,6 +872,39 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         mix(10.4, 8.2 - hero * 1.5 * (1 - finale), introEase),
       ];
       lookAt(view, camera, [0, 0.08, 0]);
+      // Cursor as a ray from the camera, and its velocity where it crosses
+      // the bird's depth: the simulation parts and carries grains with it.
+      {
+        let fx = -camera[0], fy = 0.08 - camera[1], fz = -camera[2];
+        const fl = Math.hypot(fx, fy, fz) || 1;
+        fx /= fl; fy /= fl; fz /= fl;
+        const rl = Math.hypot(fz, fx) || 1;
+        const rx = -fz / rl, rz = fx / rl;
+        const ux = -rz * fy, uy = rz * fx - rx * fz, uz = rx * fy;
+        const tanHalf = Math.tan(Math.PI / 8);
+        const aspect = stageW / Math.max(stageH, 1);
+        const sx = hover[0] * tanHalf * aspect, sy = hover[1] * tanHalf;
+        let dx = fx + rx * sx + ux * sy, dy = fy + uy * sy, dz = fz + rz * sx + uz * sy;
+        const dl = Math.hypot(dx, dy, dz) || 1;
+        dx /= dl; dy /= dl; dz /= dl;
+        rayOrigin.set(camera);
+        rayDir.set([dx, dy, dz]);
+        const depth = (birdMatrix[12] - camera[0]) * fx + (birdMatrix[13] - camera[1]) * fy + (birdMatrix[14] - camera[2]) * fz;
+        const along = depth / Math.max(dx * fx + dy * fy + dz * fz, 0.1);
+        const px = camera[0] + dx * along, py = camera[1] + dy * along, pz = camera[2] + dz * along;
+        const step = Math.max(delta, 1 / 240);
+        for (let i = 0; i < 3; i++) {
+          const moved = cursorPrimed && hover[2] > 0.5 ? ([px, py, pz][i] - cursorPoint[i]) / step : 0;
+          cursorVel[i] = damp(cursorVel[i], Math.max(-14, Math.min(14, moved)), 14, delta);
+        }
+        cursorPoint.set([px, py, pz]);
+        cursorPrimed = hover[2] > 0.5;
+      }
+      const birdVisible = hero > 0.06 && readyMix > 0.5 && finale < 0.98 && services < 0.98;
+      simInput.reset = !birdVisible || !simPrimed;
+      simInput.dt = Math.max(1 / 240, Math.min(delta, 1 / 30));
+      simInput.hover = hover[2];
+      simInput.radius = 0.3 * flight.scale * (mobile ? 0.6 : 1);
       gl.useProgram(program);
       gl.bindVertexArray(vao);
       gl.uniformMatrix4fv(u("projectionMatrix"), false, projection);
@@ -867,9 +957,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           trail: wake, burst, intro, bust,
           orbit, orbitRing,
           links: linksReady ? linkTexture : null,
-          wind: direction,
-          hover,
+          sim: simInput,
         });
+      prevBird.set(birdMatrix);
+      simPrimed = birdVisible;
       if (firstFrame) {
         firstFrame = false;
         onReady?.();

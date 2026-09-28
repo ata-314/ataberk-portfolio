@@ -1,7 +1,7 @@
 // Surface neighbourhood for the baked bird samples. Each sample stores its
 // three nearest neighbours (rest pose), so the shader can fill the surface
-// with grains on the small triangles between samples and draw the plexus
-// cage along the same edges. Built once at load from the bake itself.
+// with grains on the small patches between samples. Built once at load from
+// the bake itself.
 
 function halfToFloat(h: number) {
   const sign = h & 0x8000 ? -1 : 1;

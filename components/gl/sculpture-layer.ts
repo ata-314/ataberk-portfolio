@@ -63,6 +63,47 @@ vec4 birdNeighbours(float index) {
 }
 `;
 
+// Per-grain identity and the bird skin point a grain belongs to. Shared by
+// the render and the simulation so both agree on every grain's home.
+const grainCore = /* glsl */ `float grainRandom(uint value) {
+  value ^= value >> 16u;
+  value *= 0x7feb352du;
+  value ^= value >> 15u;
+  value *= 0x846ca68bu;
+  value ^= value >> 16u;
+  return float(value >> 8u) / 16777216.0;
+}
+// Every grain lands on a small patch spanned by a baked sample and two of its
+// surface neighbours, so ~24 grains per sample pack the skin edge to edge;
+// most sit just under the surface, and all ride a slow breathing current.
+vec3 birdAnatomy(float id,float frame,float t,out vec3 normal,out float shellDepth) {
+  float index=mod(id*37.0,9000.0);
+  vec3 anatomy=birdSample(index,frame);
+  normal=birdNormalAt(index);
+  shellDepth=0.0;
+  if(linksReady>.5) {
+    vec4 nb=birdNeighbours(index);
+    float pick=floor(grainRandom(uint(id)+4441u)*3.0);
+    float ia=pick<.5?nb.x:pick<1.5?nb.y:nb.z;
+    float ib=pick<.5?nb.y:pick<1.5?nb.z:nb.x;
+    float u=(grainRandom(uint(id)+5003u)-.5)*1.25,v=(grainRandom(uint(id)+6007u)-.5)*1.25;
+    vec3 centre=anatomy;
+    anatomy=centre+(birdSample(ia,frame)-centre)*u+(birdSample(ib,frame)-centre)*v;
+    vec3 blended=normal+birdNormalAt(ia)*abs(u)+birdNormalAt(ib)*abs(v);
+    normal=dot(blended,blended)>1e-4?normalize(blended):normal;
+    shellDepth=grainRandom(uint(id)+7727u);
+    shellDepth*=shellDepth;
+    anatomy-=normal*shellDepth*.03;
+  } else {
+    anatomy+=normal*(grainRandom(uint(id)+41u)-.5)*.028;
+  }
+  vec3 flowP=anatomy*2.4+vec3(0.0,t*.32,t*.21);
+  anatomy+=(vec3(noise(flowP),noise(flowP+17.3),noise(flowP+31.7))-.5)*.04;
+  return anatomy;
+}
+`;
+const SIM_W = 1024;
+
 // One persistent population: fluid grains, boundary waves and bird anatomy.
 // Scroll changes each grain's position, never its membership or visibility.
 const vertex = `#version 300 es
@@ -114,24 +155,17 @@ uniform float orbitMix;
 // Three nearest surface neighbours per bird sample (see bird-links.ts).
 uniform sampler2D birdLinks;
 uniform float linksReady;
-// Flight heading in world space: shed grains trail against it.
-uniform vec3 birdWind;
-// Live cursor over the stage in NDC (xy) and its presence (z, 0..1).
-uniform vec3 hover;
+// Simulated displacement of each bird grain from its skin point (xyz),
+// one texel per grain id, SIM_W wide. See the simulation pass below.
+uniform sampler2D simState;
+uniform float simReady;
 out vec3 tint;
 out float alpha;
 // 1 for grains packed into the formed bird: opaque, depth-tested beads.
 out float solid;
 ${field}
 ${birdSampling}
-float grainRandom(uint value) {
-  value ^= value >> 16u;
-  value *= 0x7feb352du;
-  value ^= value >> 15u;
-  value *= 0x846ca68bu;
-  value ^= value >> 16u;
-  return float(value >> 8u) / 16777216.0;
-}
+${grainCore}
 
 // Surface point for a screen position, read from the raymarched depth map with
 // texelFetch (the depth is packed in two bytes, so filtering would corrupt it).
@@ -248,83 +282,21 @@ void renderGrain(float id) {
   float birdAO=1.0;
   float shellDepth=0.0;
   float birdZ=.999;
-  float shedFade=1.0;
   float birdDisturb=0.0;
   float electric=0.0;
   vec3 electricColor=vec3(.6,.97,1.0);
   if(assembly>0.0) {
-    // Every source ID lands on a small triangle between a baked sample and
-    // two of its surface neighbours, so ~24 grains per sample pack the skin
-    // edge to edge. Most sit just under the surface: a dense, bead-packed
-    // shell with volume rather than a scatter of points.
-    float index=mod(id*37.0,9000.0);
-    float frame=flap*16.0;
-    vec3 anatomy=birdSample(index,frame);
-    vec3 normal=birdNormalAt(index);
-    if(linksReady>.5) {
-      vec4 nb=birdNeighbours(index);
-      float pick=floor(grainRandom(uint(id)+4441u)*3.0);
-      float ia=pick<.5?nb.x:pick<1.5?nb.y:nb.z;
-      float ib=pick<.5?nb.y:pick<1.5?nb.z:nb.x;
-      // A patch centred on the sample and spanned by the two neighbour
-      // edges, so neighbouring patches overlap instead of leaving gaps.
-      float u=(grainRandom(uint(id)+5003u)-.5)*1.25,v=(grainRandom(uint(id)+6007u)-.5)*1.25;
-      vec3 centre=anatomy;
-      anatomy=centre+(birdSample(ia,frame)-centre)*u+(birdSample(ib,frame)-centre)*v;
-      vec3 blended=normal+birdNormalAt(ia)*abs(u)+birdNormalAt(ib)*abs(v);
-      normal=dot(blended,blended)>1e-4?normalize(blended):normal;
-      shellDepth=grainRandom(uint(id)+7727u);
-      shellDepth*=shellDepth;
-      anatomy-=normal*shellDepth*.03;
-    } else {
-      anatomy+=normal*(seed-.5)*.028;
-    }
+    vec3 normal;
+    vec3 anatomy=birdAnatomy(id,flap*16.0,time,normal,shellDepth);
     vec3 worldNormal=normalize(mat3(birdMatrix)*normal);
-    // Living skin: every grain rides a slow noise current over the surface,
-    // so the mass breathes and shimmers like packed foam rather than a rigid
-    // shell.
-    vec3 flowP=anatomy*2.4+vec3(0.0,time*.32,time*.21);
-    vec3 current=vec3(noise(flowP),noise(flowP+17.3),noise(flowP+31.7))-.5;
-    anatomy+=current*.04;
     vec3 world=(birdMatrix*vec4(anatomy,1.0)).xyz;
-    // Shedding: a share of grains, mostly along the silhouette, loosen from
-    // the skin on their own cycle, drift off on the air behind the flight in
-    // a soft plume, fade, and re-settle into place.
-    float silhouette=smoothstep(.35,.9,1.0-abs(worldNormal.z));
-    float shedder=step(1.0-(.02+silhouette*.08),grainRandom(uint(id)+1733u));
-    if(shedder>.5) {
-      float life=fract(time*(.1+seed*.09)+grainRandom(uint(id)+911u));
-      float away=smoothstep(0.0,.62,life)*(1.0-smoothstep(.62,.72,life));
-      float reach=pow(smoothstep(0.0,.62,life),1.4);
-      vec3 plume=normalize(-birdWind+vec3(0.0,.3,0.0)+current*.6)*(.28+seed*.3)+worldNormal*.12;
-      world+=plume*reach*away;
-      shedFade=1.0-smoothstep(.25,.62,life)*away*.9;
-    }
-    // Cursor response: the skin under the pointer gives way as one soft,
-    // coherent mass — like pressing into sand — and eases back as the wake
-    // stamps fade. No per-grain randomness, so the texture stays even.
-    vec4 rest=birdProjection*birdView*vec4(world,1.0);
-    vec2 restNdc=rest.xy/rest.w;
-    vec2 hoverAsp=vec2(aspect,1.0);
-    vec2 away=vec2(0.0);
-    for(int k=0;k<16;k++) {
-      vec4 tk=trail[k];
-      if(tk.z<.005) continue;
-      vec2 d=(restNdc-tk.xy)*hoverAsp;
-      float f=tk.z*exp(-dot(d,d)/.011);
-      birdDisturb+=f;
-      away+=d/(length(d)+.02)*f;
-    }
-    if(hover.z>.001) {
-      vec2 d=(restNdc-hover.xy)*hoverAsp;
-      float f=hover.z*.4*exp(-dot(d,d)/.007);
-      birdDisturb+=f;
-      away+=d/(length(d)+.02)*f;
-    }
-    birdDisturb=min(birdDisturb*1.4,1.0);
-    if(birdDisturb>.001) {
-      vec2 flee=away/(length(away)+1e-5);
-      world+=(vec3(flee*.8,0.0)+worldNormal*.5+current*.3)*birdDisturb*.13;
+    // The simulation carries each grain off its skin point — cursor wakes,
+    // inertia on sudden moves, loose grains on the air — and springs it home.
+    if(simReady>.5) {
+      vec4 state=texelFetch(simState,ivec2(int(mod(id,${SIM_W}.0)),int(floor(id/${SIM_W}.0))),0);
+      world+=state.xyz;
+      // Only grains the cursor has stirred light up; inertia alone does not.
+      birdDisturb=clamp(state.w,0.0,1.0);
     }
     vec4 target=birdProjection*birdView*vec4(world,1.0);
     destination=target.xy/target.w;
@@ -474,12 +446,12 @@ void renderGrain(float id) {
   gl_Position=vec4(position,depth,1.0);
   solid=assembly*(1.0-bustMix)*(1.0-helixMix);
   float fluidSize=(2.2+seed*1.1)*pixelScale*7.0/(-view.z);
-  gl_PointSize=max(1.0,mix(fluidSize*introSize,(2.5+seed*.2)*pixelScale*mix(1.0,.9,shellDepth)*mix(.7,1.0,shedFade),assembly));
+  gl_PointSize=max(1.0,mix(fluidSize*introSize,(2.5+seed*.2)*pixelScale*mix(1.0,.9,shellDepth)*mix(1.0,.8,birdDisturb),assembly));
   // Kept below 1 so the body keeps its hue and lighting; the veins and the
   // halo pass carry the brightness.
   // Frosted silver with a faint lime cast; the brand colour lives in the
   // veins and the halo.
-  vec3 birdBody=min(mix(vec3(.84,.9,.92),lime,.14)*birdLight*birdAO,vec3(.97));
+  vec3 birdBody=min(mix(vec3(.64,.7,.77),lime,.08)*birdLight*birdAO,vec3(.97));
   tint=mix(tint,birdBody,assembly*.92);
   // Veins burn white-hot at the core and fringe into the electric hue.
   vec3 hot=mix(electricColor,vec3(1.0),.25)*1.25;
@@ -500,10 +472,9 @@ void renderGrain(float id) {
   gl_PointSize*=1.0+shoulder*.6*(1.0-assembly);
   alpha=mix(.8+light*.18,.95,assembly)*opacity*introAlpha;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
-  alpha*=mix(1.0,shedFade,assembly);
-  // Pressed grains catch a touch more light.
-  float airborne=smoothstep(0.0,1.0,birdDisturb)*assembly;
-  tint=mix(tint,min(tint*1.12,vec3(1.0)),airborne);
+  // Grains swept off the skin catch the light and turn a pale, icy white.
+  float airborne=birdDisturb*assembly;
+  tint=mix(tint,vec3(.95,.99,1.0)*1.25,airborne*.9);
   // Services: grain by grain (staggered by seed, like the intro) the sea
   // takes on the section's violet / blue / magenta light, so the glass
   // cards read as lit by the same matter behind them.
@@ -572,40 +543,88 @@ void main() {
   vec3 sheen=mix(vec3(.87,1.0,.58),vec3(.9,.97,1.0),solid);
   color=vec4(tint*light+sheen*spec*mix(.35,.5,solid)*max(tint.r,max(tint.g,tint.b)),edge*mix(alpha,min(1.0,alpha*1.06),solid));
 }`;
-// Plexus cage: the neighbour edges of every third sample, lifted just off
-// the skin and swept by a scan band. Faint, thin and technical.
-const cageVertex = `#version 300 es
+// Bird grain simulation (GPGPU, ping-pong RGBA32F): each grain keeps a
+// displacement from its skin point and a velocity. A damped spring pulls it
+// home; part of the body's own motion is left behind every frame so sudden
+// moves stream the grains out and they flow back; a slow air current keeps
+// loose grains wandering; the cursor is a ray through the volume that
+// carries grains along its motion, parts them and curls them into a wake.
+const simFragment = `#version 300 es
 precision highp float;
+uniform vec2 resolution;
+uniform vec2 pointer;
+uniform float fieldTime;
+uniform float activity;
 uniform sampler2D birdPositions;
 uniform sampler2D birdNormals;
 uniform sampler2D birdLinks;
+uniform float linksReady;
+uniform sampler2D dispTex;
+uniform sampler2D velTex;
 uniform mat4 birdMatrix;
-uniform mat4 birdView;
-uniform mat4 birdProjection;
+uniform mat4 prevMatrix;
 uniform float flap;
 uniform float time;
-uniform float cage;
-out float lineAlpha;
-out float lineScan;
+uniform float dt;
+uniform float reset;
+uniform vec3 rayOrigin;
+uniform vec3 rayDir;
+uniform vec3 cursorVel;
+uniform float hoverAmt;
+uniform float cursorRadius;
+layout(location=0) out vec4 outDisp;
+layout(location=1) out vec4 outVel;
+${field}
 ${birdSampling}
+${grainCore}
 void main() {
-  int link=gl_VertexID/2;
-  float base=float(link/2)*3.0;
-  vec4 nb=birdNeighbours(base);
-  float index=gl_VertexID%2==0?base:(link%2==0?nb.x:nb.y);
-  vec3 p=birdSample(index,flap*16.0)+birdNormalAt(index)*.06;
-  gl_Position=birdProjection*birdView*birdMatrix*vec4(p,1.0);
-  lineScan=pow(.5+.5*sin(p.y*3.2+p.x*.8-time*2.4),10.0);
-  lineAlpha=cage*(.05+lineScan*.22);
+  ivec2 px=ivec2(gl_FragCoord.xy);
+  if(reset>.5) {outDisp=vec4(0);outVel=vec4(0);return;}
+  float id=float(px.y)*${SIM_W}.0+float(px.x);
+  vec4 state=texelFetch(dispTex,px,0);
+  vec3 d=state.xyz;
+  float stir=state.w*exp(-1.4*dt);
+  vec3 v=texelFetch(velTex,px,0).xyz;
+  vec3 n;float s;
+  vec3 local=birdAnatomy(id,flap*16.0,time,n,s);
+  vec3 home=(birdMatrix*vec4(local,1.0)).xyz;
+  // Inertia from the body's travel only (same pose under last frame's
+  // transform): wing beats stay crisp, sudden moves leave grains behind.
+  vec3 before=(prevMatrix*vec4(local,1.0)).xyz;
+  float loose=pow(grainRandom(uint(id)+2113u),5.0);
+  d-=(home-before)*mix(.12,.35,loose);
+  vec3 p=home+d;
+  // Stirred grains are held more loosely, so a wake lingers as a drifting
+  // plume before it is drawn home.
+  v-=d*mix(30.0,10.0,loose)*mix(1.0,.3,stir)*dt;
+  vec3 q=p*1.15+vec3(0.0,time*.23,time*.15);
+  vec3 air=vec3(noise(q),noise(q+19.1),noise(q+37.3))-.5;
+  v+=air*(.5+loose*2.8)*dt;
+  if(hoverAmt>.001) {
+    vec3 w=p-rayOrigin;
+    vec3 off=w-rayDir*max(dot(w,rayDir),0.0);
+    float r2=dot(off,off);
+    float f=exp(-r2/(cursorRadius*cursorRadius))*hoverAmt;
+    vec3 side=off/(sqrt(r2)+1e-4);
+    float speed=length(cursorVel);
+    // Each grain takes the cursor's motion to its own degree, and stirred
+    // grains are thrown into turbulence, so the wake spreads into a loose,
+    // sandy plume instead of dragging the form along as a ribbon.
+    float grip=.5+grainRandom(uint(id)+8111u)*.9;
+    v+=(cursorVel*grip-v)*f*min(1.0,6.0*dt);
+    v+=side*f*(1.0+speed*.25)*dt;
+    v+=cross(rayDir,side)*f*speed*.7*dt;
+    v+=air*f*(1.0+speed*3.2)*dt;
+    stir=max(stir,f*smoothstep(.2,2.5,speed));
+  }
+  v*=exp(-mix(4.6,2.4,stir)*dt);
+  d+=v*dt;
+  float reach=length(d);
+  if(reach>2.6) d*=2.6/reach;
+  outDisp=vec4(d,stir);
+  outVel=vec4(v,0.0);
 }`;
-const cageFragment = `#version 300 es
-precision highp float;
-in float lineAlpha;
-in float lineScan;
-out vec4 color;
-void main() {
-  color=vec4(mix(vec3(.72,.86,.9),vec3(.84,1.0,.45),lineScan),lineAlpha);
-}`;
+
 const canvasVertex = `#version 300 es
 precision highp float;
 out vec2 uv;
@@ -652,8 +671,10 @@ export type SculptureFlight = {
   intro: number;
   orbit: number; orbitRing: Float32Array;
   links: WebGLTexture | null;
-  wind: [number, number, number];
-  hover: Float32Array;
+  sim: {
+    reset: boolean; dt: number; prevMatrix: Float32Array;
+    rayOrigin: Float32Array; rayDir: Float32Array; cursorVel: Float32Array; hover: number; radius: number;
+  };
   bust: {
     texture: WebGLTexture | null; ready: boolean; rows: number; count: number;
     rect: Float32Array; aspect: number; yaw: number; pitch: number; lift: number; morph: number;
@@ -681,8 +702,40 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   };
   const program=makeProgram(vertex,fragment);
   const surfaceProgram=makeProgram(canvasVertex,surfaceFragment);
-  const cageProgram=makeProgram(cageVertex,cageFragment);
-  const cageUniforms=Object.fromEntries(["birdPositions","birdNormals","birdLinks","birdMatrix","birdView","birdProjection","flap","time","cage"].map(name=>[name,gl.getUniformLocation(cageProgram,name)]));
+  // Simulation targets: two ping-pong framebuffers, each with displacement
+  // and velocity attachments. Without float render targets the bird simply
+  // renders unsimulated.
+  const simRows=Math.ceil((mobile?74000:226000)/SIM_W);
+  const simOk=!!gl.getExtension("EXT_color_buffer_float");
+  let simProgram: WebGLProgram|null=null;
+  let simUniforms: Record<string,WebGLUniformLocation|null>={};
+  const simTargets: {fbo: WebGLFramebuffer|null; disp: WebGLTexture|null; vel: WebGLTexture|null}[]=[];
+  let simRead=0,simLive=false;
+  if(simOk) {
+    const sp=makeProgram(canvasVertex,simFragment);
+    simProgram=sp;
+    simUniforms=Object.fromEntries(["resolution","pointer","fieldTime","activity","birdPositions","birdNormals","birdLinks","linksReady","dispTex","velTex","birdMatrix","prevMatrix","flap","time","dt","reset","rayOrigin","rayDir","cursorVel","hoverAmt","cursorRadius"].map(name=>[name,gl.getUniformLocation(sp,name)]));
+    const makeTex=()=>{
+      const t=gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D,t);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,SIM_W,simRows,0,gl.RGBA,gl.FLOAT,null);
+      return t;
+    };
+    gl.activeTexture(gl.TEXTURE7);
+    simLive=true;
+    for(let i=0;i<2;i++) {
+      const disp=makeTex(),vel=makeTex(),fbo=gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,disp,0);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,vel,0);
+      gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1]);
+      simLive&&=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
+      simTargets.push({fbo,disp,vel});
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  }
   const surfaceUniforms=Object.fromEntries(["resolution","pointer","time","fieldTime","activity"].map(name=>[name,gl.getUniformLocation(surfaceProgram,name)]));
   const surfaceMap=gl.getUniformLocation(program,"surfaceMap");
   const texture=gl.createTexture();
@@ -694,7 +747,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph","orbitRing","orbitMix","birdLinks","linksReady","birdWind","hover"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph","orbitRing","orbitMix","birdLinks","linksReady","simState","simReady"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -808,8 +861,40 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       gl.uniform4fv(uniforms.orbitRing,flight.orbitRing);
       gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,flight.links);
       gl.uniform1i(uniforms.birdLinks,6);gl.uniform1f(uniforms.linksReady,flight.links?1:0);
-      gl.uniform3f(uniforms.birdWind,flight.wind[0],flight.wind[1],flight.wind[2]);
-      gl.uniform3fv(uniforms.hover,flight.hover);
+      // Step the bird grain simulation, then expose its latest state.
+      let simReady=0;
+      if(simLive && simProgram && flight.links) {
+        const sim=flight.sim;
+        const write=1-simRead;
+        gl.disable(gl.BLEND);
+        gl.bindFramebuffer(gl.FRAMEBUFFER,simTargets[write].fbo);
+        gl.viewport(0,0,SIM_W,simRows);
+        gl.useProgram(simProgram);
+        gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,simTargets[simRead].disp);
+        gl.activeTexture(gl.TEXTURE8);gl.bindTexture(gl.TEXTURE_2D,simTargets[simRead].vel);
+        const su=simUniforms;
+        gl.uniform1i(su.dispTex,7);gl.uniform1i(su.velTex,8);
+        gl.uniform1i(su.birdPositions,0);gl.uniform1i(su.birdNormals,1);gl.uniform1i(su.birdLinks,6);
+        gl.uniform1f(su.linksReady,1);
+        gl.uniform2f(su.resolution,w,h);gl.uniform2f(su.pointer,sourceX,sourceY);
+        gl.uniform1f(su.fieldTime,flowTime);gl.uniform1f(su.activity,sourceActivity);
+        gl.uniformMatrix4fv(su.birdMatrix,false,flight.matrix);
+        gl.uniformMatrix4fv(su.prevMatrix,false,sim.prevMatrix);
+        gl.uniform1f(su.flap,flight.flap);gl.uniform1f(su.time,time);
+        gl.uniform1f(su.dt,sim.dt);gl.uniform1f(su.reset,sim.reset?1:0);
+        gl.uniform3fv(su.rayOrigin,sim.rayOrigin);gl.uniform3fv(su.rayDir,sim.rayDir);
+        gl.uniform3fv(su.cursorVel,sim.cursorVel);
+        gl.uniform1f(su.hoverAmt,sim.hover);gl.uniform1f(su.cursorRadius,sim.radius);
+        gl.drawArrays(gl.TRIANGLES,0,3);
+        simRead=write;
+        gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+        gl.viewport(0,0,w,h);
+        gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+        gl.useProgram(program);
+        simReady=sim.reset?0:1;
+      }
+      gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,simLive?simTargets[simRead].disp:null);
+      gl.uniform1i(uniforms.simState,7);gl.uniform1f(uniforms.simReady,simReady);
       const bust=flight.bust;
       const morph=bust.ready?bust.morph:0;
       gl.uniform1f(uniforms.morph,morph);
@@ -827,20 +912,6 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
       gl.drawArrays(gl.POINTS,0,columns*rows);
       gl.disable(gl.DEPTH_TEST);
-      const formed=Math.min(1,Math.max(0,(flight.hero-.35)/.35));
-      const cage=formed*formed*(3-2*formed)*flight.ready*(1-flight.finale)*(1-flight.services)*(1-morph)*(1-flight.orbit);
-      if(flight.links && cage>.01) {
-        gl.useProgram(cageProgram);
-        gl.uniform1i(cageUniforms.birdPositions,0);gl.uniform1i(cageUniforms.birdNormals,1);gl.uniform1i(cageUniforms.birdLinks,6);
-        gl.uniformMatrix4fv(cageUniforms.birdMatrix,false,flight.matrix);
-        gl.uniformMatrix4fv(cageUniforms.birdView,false,flight.view);
-        gl.uniformMatrix4fv(cageUniforms.birdProjection,false,flight.projection);
-        gl.uniform1f(cageUniforms.flap,flight.flap);gl.uniform1f(cageUniforms.time,time);
-        gl.uniform1f(cageUniforms.cage,cage);
-        gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ZERO,gl.ONE);
-        gl.drawArrays(gl.LINES,0,6000*2);
-        gl.useProgram(program);
-      }
       gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
       // Additive halo over the forming bird. A subset of IDs still covers
       // every anatomy sample (index = id*37 mod 9000).
@@ -854,6 +925,6 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         gl.uniform1f(uniforms.glowPass,0);
       }
     },
-    dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);gl.deleteProgram(cageProgram);gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteBuffer(probeBuffer);if(probeFence) gl.deleteSync(probeFence);gl.deleteVertexArray(vao);},
+    dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);if(simProgram) gl.deleteProgram(simProgram);simTargets.forEach(t=>{gl.deleteFramebuffer(t.fbo);gl.deleteTexture(t.disp);gl.deleteTexture(t.vel);});gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteBuffer(probeBuffer);if(probeFence) gl.deleteSync(probeFence);gl.deleteVertexArray(vao);},
   };
 }
