@@ -8,6 +8,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { WorkSection } from "@/components/sections/WorkSection";
 import { Services } from "@/components/sections/Services";
+import { Voyage } from "@/components/sections/Voyage";
 import {
   AISystems,
   AboutPreview,
@@ -39,6 +40,7 @@ export default async function Home({
             locale,
           }}
         />
+        <Voyage locale={locale} />
         <Services locale={locale} />
         <AboutPreview locale={locale} t={t.aboutPreview} about={t.about} />
         <WorkSection locale={locale} />

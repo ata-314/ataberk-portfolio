@@ -507,3 +507,13 @@ html[data-stage-static="true"] .scroll-hint-intro {
     background: linear-gradient(180deg, rgba(26, 26, 30, 0.93), rgba(15, 15, 17, 0.9));
   }
 }
+
+/* Voyage: the line that opens round the bird before the tunnel. Word gaps
+   are scrubbed through --gap. */
+.voyage-line {
+  --gap: 0.25em;
+  font-size: clamp(2.2rem, 5.6vw, 5.8rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.voyage-word { margin-inline: calc(var(--gap) / 2); transform-origin: 50% 55%; will-change: transform, opacity; }

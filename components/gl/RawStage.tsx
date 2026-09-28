@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
+import { createTunnelLayer } from "./tunnel-layer";
+import { createPost } from "./post";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour } from "./bird-behaviour";
 import { bustState, scrollState } from "../three/scroll-state";
@@ -268,6 +270,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let stageW = innerWidth;
     let stageH = innerHeight;
     const sculpture = createSculptureLayer(gl, mobile);
+    // Voyage: after the opening, the bird on black, then the voxel tunnel.
+    const tunnel = createTunnelLayer(gl, mobile);
+    // Film look (bloom, lens ring, grade); blended in only for the tunnel.
+    const post = createPost(gl);
+    let voyageElement: HTMLElement | null = null;
+    let voyageHold = 0;
+    let voyage = 0;
+    let tunnelIn = 0;
     gl.bindVertexArray(vao);
     gl.useProgram(program);
     // Sparse grains supply the handoff; the particle sculpture carries entry.
@@ -784,7 +794,15 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // climbs, flutters and loops over a noise wander, eased per action —
       // fast for reflexes, slow for glides — and only once the bird has
       // formed and is free on the page.
-      const freeFlight = smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
+      // Voyage section: its local progress and how much it holds the screen.
+      voyageElement ??= document.querySelector<HTMLElement>("[data-voyage]");
+      if (voyageElement) {
+        const r = voyageElement.getBoundingClientRect();
+        voyage = Math.max(0, Math.min(1, -r.top / Math.max(r.height - stageH, 1)));
+        voyageHold = damp(voyageHold, smoothstep(r.top / stageH, 0.7, 0) * smoothstep(r.bottom / stageH, 0.3, 1), 5, delta);
+      }
+      tunnelIn = damp(tunnelIn, smoothstep(voyage, 0.42, 0.52) * (1 - smoothstep(voyage, 0.95, 1)) * voyageHold, 4, delta);
+      const freeFlight = (1 - voyageHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
       const ease = motion.snappy ? 7 : 2.2;
@@ -825,6 +843,18 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // Positive pitch dips the nose; loops and barrel rolls add whole turns.
       const pitch = eased.pitch + motion.spinPitch * freeFlight;
       const roll = Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + eased.bank + motion.spinRoll * freeFlight;
+      // Voyage: the bird floats at the centre of the black, then turns to fly
+      // away from us down the tunnel, weaving gently.
+      if (voyageHold > 0.001) {
+        const sway = Math.sin(time * 0.6) * 0.18 * tunnelIn;
+        flight.position = [
+          mix(flight.position[0], sway, voyageHold),
+          mix(flight.position[1], 0.12 - tunnelIn * 0.15 + Math.sin(time * 0.8) * 0.05, voyageHold),
+          mix(flight.position[2], -tunnelIn * 0.8, voyageHold),
+        ];
+        flight.scale = mix(flight.scale, 0.95 - tunnelIn * 0.25, voyageHold);
+        yaw = mix(yaw, Math.PI + Math.sin(time * 0.4) * 0.2, tunnelIn * voyageHold);
+      }
       compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, roll, pitch);
       // The wing beat runs at the behaviour's rate and eases onto a held
       // frame (wings level to glide, folded to stoop) with a slight sway.
@@ -911,7 +941,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uBirdReady"), readyMix);
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
+      const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      // The corridor streams toward us; its light shifts deeper in.
+      tunnel.render(view, projection, time, (voyage - 0.45) * 150, tunnelIn, smoothstep(voyage, 0.5, 0.95));
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -926,7 +959,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           orbit, orbitRing,
           links: linksReady ? linkTexture : null,
           sim: simInput,
-        });
+        }, sceneTarget);
+      post?.finish(time, {
+        bloom: 0.8,
+        threshold: 0.72,
+        aberration: 0.02,
+        grain: 0.04,
+        grade: [0.0, 0.25, 0.3],
+        amount: tunnelIn,
+        ring: tunnelIn,
+      });
       prevBird.set(birdMatrix);
       simPrimed = birdVisible;
       if (firstFrame) {
@@ -947,6 +989,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       removeEventListener("pointerup", onPointerUp);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
+      tunnel.dispose();
+      post?.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
       gl.deleteTexture(normalTexture);

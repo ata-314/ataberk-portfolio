@@ -917,7 +917,9 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
     });
   };
   return {
-    render(w: number,h: number,time: number,opacity: number,px: number,py: number,activity: number,flight: SculptureFlight) {
+    // output: the framebuffer the grains draw into (the stage's HDR scene
+    // when post-processing is on, else the canvas).
+    render(w: number,h: number,time: number,opacity: number,px: number,py: number,activity: number,flight: SculptureFlight,output: WebGLFramebuffer|null=null) {
       collectProbe();
       if(opacity<.002) return;
       const delta=Math.max(0,Math.min(time-lastTime,.05)); lastTime=time;
@@ -973,7 +975,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
           probeFence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);
         }
       }
-      gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.enable(gl.BLEND);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,output);gl.viewport(0,0,w,h);gl.enable(gl.BLEND);
       gl.useProgram(program);gl.uniform1i(surfaceMap,4);
       gl.uniform2f(uniforms.resolution,w,h); gl.uniform2f(uniforms.grid,columns,rows);
       gl.uniform2f(uniforms.pointer,sourceX,sourceY); gl.uniform1f(uniforms.time,time);
@@ -1040,7 +1042,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         gl.uniformMatrix4fv(su.birdProjection,false,flight.projection);
         gl.drawArrays(gl.TRIANGLES,0,3);
         simRead=write;
-        gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER,output);
         gl.viewport(0,0,w,h);
         gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
         gl.useProgram(program);
