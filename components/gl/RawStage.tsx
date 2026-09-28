@@ -1019,8 +1019,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           sim: simInput,
         }, sceneTarget);
       post?.finish(time, {
-        bloom: 0.7,
-        threshold: 0.72,
+        // The data sea is dense and bright: bloom eases off while it fills
+        // the frame (opening and finale) so it never flares to white.
+        bloom: 0.7 * (1 - 0.55 * Math.max(finale, videoMix)),
+        threshold: 0.72 + 0.2 * Math.max(finale, videoMix),
         aberration: 0.015,
         grain: 0.035,
         grade: [0.0, 0.32, 0.38],

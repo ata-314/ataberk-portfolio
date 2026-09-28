@@ -504,8 +504,8 @@ void renderGrain(float id) {
   // The sweep waits until the sea has fully surfaced.
   float scan=(core+shoulder*.6+trail*.38)*(1.0-assembly)*smoothstep(.85,1.0,intro)*(1.0-services);
   vec3 scanColor=mix(vec3(.18,1.0,.65),vec3(.62,.94,1.0),shoulder);
-  tint+=scanColor*scan*1.55;
-  tint=mix(tint,vec3(.86,1.0,1.0)*2.0,core*.8*(1.0-assembly)*smoothstep(.85,1.0,intro)*(1.0-services));
+  tint+=scanColor*scan*.95;
+  tint=mix(tint,vec3(.86,1.0,1.0)*1.1,core*.6*(1.0-assembly)*smoothstep(.85,1.0,intro)*(1.0-services));
   gl_PointSize*=1.0+shoulder*.6*(1.0-assembly);
   alpha=mix(.8+light*.18,.95,assembly)*opacity*introAlpha;
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);

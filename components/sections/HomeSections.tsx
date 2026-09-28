@@ -75,7 +75,7 @@ export function AboutPreview({
         <div data-reveal className="hero-copy order-2 md:order-1 md:col-span-6">
           <p
             className="font-display leading-[1.02] font-semibold tracking-[-0.04em] text-balance"
-            style={{ fontSize: "clamp(2.2rem, 4.4vw, 4.4rem)" }}
+            style={{ fontSize: "clamp(1.8rem, 3.1vw, 3.2rem)" }}
           >
             {t.line}
           </p>
