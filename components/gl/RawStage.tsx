@@ -6,6 +6,7 @@ import { createSculptureLayer } from "./sculpture-layer";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour } from "./bird-behaviour";
 import { createJourneyLayer, type JourneyState } from "./journey-layer";
+import { createPost } from "./post";
 import { bustState, scrollState } from "../three/scroll-state";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
@@ -354,6 +355,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const normalTexture = gl.createTexture();
     const atlasTexture = createAtlas(gl);
     const journey = createJourneyLayer(gl, atlasTexture, mobile);
+    // Film look over the whole world (bloom, grade, grain); null where float
+    // render targets are unavailable, in which case the canvas is drawn to.
+    const post = createPost(gl);
     // Journey chapters, eased: the climb and the flight follow the page from
     // the services section to the contact finale.
     const journeyState: JourneyState = { reveal: 0, rise: 0, space: 0, travel: 0, galaxies: 0, parallax: [0, 0] };
@@ -927,6 +931,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uBirdReady"), readyMix);
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
+      const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       {
         // Measured from the services pin spacer when pinned, so the climb
@@ -965,7 +970,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           orbit, orbitRing,
           links: linksReady ? linkTexture : null,
           sim: simInput,
-        });
+        }, sceneTarget);
+      post?.finish(time, {
+        bloom: 0.9,
+        threshold: 0.55,
+        aberration: 0.015,
+        grain: 0.035,
+        grade: [0.0, 0.32, 0.38],
+      });
       prevBird.set(birdMatrix);
       simPrimed = birdVisible;
       if (firstFrame) {
@@ -987,6 +999,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
       journey.dispose();
+      post?.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
       gl.deleteTexture(normalTexture);
