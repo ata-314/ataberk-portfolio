@@ -661,15 +661,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const eased = { x: 0, y: 0, z: 0, bank: 0, pitch: 0, beat: 1, hold: 0, holdFrame: 0 };
     // Grain simulation inputs: last frame's body and the cursor as a 3D ray.
     const prevBird = new Float32Array(16);
-    const rayOrigin = new Float32Array(3);
-    const rayDir = new Float32Array(3);
     const cursorVel = new Float32Array(3);
+    const worldSpan = new Float32Array(2);
     const cursorPoint = new Float32Array(3);
     let cursorPrimed = false;
     let simPrimed = false;
     const simInput = {
       reset: true, dt: 1 / 60, prevMatrix: prevBird,
-      rayOrigin, rayDir, cursorVel, hover: 0, radius: 0.4,
+      cursorVel, splat: hover, hover: 0, worldSpan,
     };
     let yaw = -1.07;
     // Manifesto helix: envelope and the ring in NDC (centre xy, radii zw)
@@ -830,8 +829,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         mix(10.4, 8.2 - hero * 1.5 * (1 - finale), introEase),
       ];
       lookAt(view, camera, [0, 0.08, 0]);
-      // Cursor as a ray from the camera, and its velocity where it crosses
-      // the bird's depth: the simulation parts and carries grains with it.
+      // Cursor velocity where its ray crosses the bird's depth, and the
+      // world size of the picture plane there: the flow field is stamped
+      // with it in world units.
       {
         let fx = -camera[0], fy = 0.08 - camera[1], fz = -camera[2];
         const fl = Math.hypot(fx, fy, fz) || 1;
@@ -845,24 +845,23 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         let dx = fx + rx * sx + ux * sy, dy = fy + uy * sy, dz = fz + rz * sx + uz * sy;
         const dl = Math.hypot(dx, dy, dz) || 1;
         dx /= dl; dy /= dl; dz /= dl;
-        rayOrigin.set(camera);
-        rayDir.set([dx, dy, dz]);
         const depth = (birdMatrix[12] - camera[0]) * fx + (birdMatrix[13] - camera[1]) * fy + (birdMatrix[14] - camera[2]) * fz;
         const along = depth / Math.max(dx * fx + dy * fy + dz * fz, 0.1);
         const px = camera[0] + dx * along, py = camera[1] + dy * along, pz = camera[2] + dz * along;
         const step = Math.max(delta, 1 / 240);
         for (let i = 0; i < 3; i++) {
           const moved = cursorPrimed && hover[2] > 0.5 ? ([px, py, pz][i] - cursorPoint[i]) / step : 0;
-          cursorVel[i] = damp(cursorVel[i], Math.max(-14, Math.min(14, moved)), 14, delta);
+          cursorVel[i] = damp(cursorVel[i], Math.max(-8, Math.min(8, moved)), 14, delta);
         }
         cursorPoint.set([px, py, pz]);
         cursorPrimed = hover[2] > 0.5;
+        worldSpan[1] = 2 * Math.max(depth, 0.5) * tanHalf;
+        worldSpan[0] = worldSpan[1] * aspect;
       }
       const birdVisible = hero > 0.06 && readyMix > 0.5 && finale < 0.98 && services < 0.98;
       simInput.reset = !birdVisible || !simPrimed;
       simInput.dt = Math.max(1 / 240, Math.min(delta, 1 / 30));
       simInput.hover = hover[2];
-      simInput.radius = 0.3 * flight.scale * (mobile ? 0.6 : 1);
       gl.useProgram(program);
       gl.bindVertexArray(vao);
       gl.uniformMatrix4fv(u("projectionMatrix"), false, projection);

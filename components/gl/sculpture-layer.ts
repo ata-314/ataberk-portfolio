@@ -300,8 +300,9 @@ void renderGrain(float id) {
     if(simReady>.5) {
       vec4 state=texelFetch(simState,ivec2(int(mod(id,${SIM_W}.0)),int(floor(id/${SIM_W}.0))),0);
       world+=state.xyz;
-      // Only grains the cursor has stirred light up; inertia alone does not.
-      birdDisturb=clamp(state.w,0.0,1.0);
+      // Grains light up as they leave the body on the cursor's current;
+      // resting grains, and grains only lagging a sudden move, stay dark.
+      birdDisturb=smoothstep(.25,1.1,length(state.xyz))*smoothstep(0.0,.3,state.w);
     }
     vec4 target=birdProjection*birdView*vec4(world,1.0);
     destination=target.xy/target.w;
@@ -461,7 +462,7 @@ void renderGrain(float id) {
   // halo pass carry the brightness.
   // Frosted silver with a faint lime cast; the brand colour lives in the
   // veins and the halo.
-  vec3 birdBody=min(mix(vec3(.64,.7,.77),lime,.08)*birdLight*birdAO,vec3(.97));
+  vec3 birdBody=min(mix(vec3(.56,.61,.68),lime,.06)*birdLight*birdAO,vec3(.97));
   tint=mix(tint,birdBody,assembly*.92);
   tint+=vec3(.7,.93,1.0)*birdGlint*.4*assembly;
   // Veins burn white-hot at the core and fringe into the electric hue.
@@ -485,7 +486,7 @@ void renderGrain(float id) {
   alpha*=mix(mix(.6,1.0,smoothstep(-.95,.4,screen.y)),1.0,assembly);
   // Grains swept off the skin catch the light and turn a pale, icy white.
   float airborne=birdDisturb*assembly;
-  tint=mix(tint,vec3(.95,.99,1.0)*1.25,airborne*.9);
+  tint=mix(tint,vec3(.95,.99,1.0)*1.45,airborne*.95);
   // Services: grain by grain (staggered by seed, like the intro) the sea
   // takes on the section's violet / blue / magenta light, so the glass
   // cards read as lit by the same matter behind them.
@@ -523,7 +524,8 @@ void renderGrain(float id) {
     // Halo mostly around live veins and sparks; the body keeps only a faint
     // lime aura (no red/blue, which washed the green body out to grey).
     tint=mix(vec3(.3,.85,.05),electricColor*1.4,clamp(electric,0.0,1.0));
-    alpha=(.006+electric*.18)*assembly*opacity*(1.0-morph)*(1.0-orbitMix);
+    alpha=(.006+electric*.18+birdDisturb*.07)*assembly*opacity*(1.0-morph)*(1.0-orbitMix);
+    tint=mix(tint,vec3(.85,.95,1.0),birdDisturb);
     gl_PointSize*=3.2;
   }
 }
@@ -554,12 +556,46 @@ void main() {
   vec3 sheen=mix(vec3(.87,1.0,.58),vec3(.9,.97,1.0),solid);
   color=vec4(tint*light+sheen*spec*mix(.35,.5,solid)*max(tint.r,max(tint.g,tint.b)),edge*mix(alpha,min(1.0,alpha*1.06),solid));
 }`;
+// Cursor flow field: a coarse screen-space velocity field (world units/s in
+// the picture plane) that carries itself along, swirls and fades over ~2 s.
+// The cursor stamps its own velocity into it, so a sweep leaves a moving
+// current behind that keeps going after the cursor has passed — the grains
+// ride that current as one body of water rather than being pushed one by one.
+const flowFragment = `#version 300 es
+precision highp float;
+uniform sampler2D flowTex;
+uniform vec2 flowSize;
+uniform vec2 worldSpan;
+uniform float dt;
+uniform float time;
+uniform vec2 splatPos;
+uniform vec2 splatVel;
+uniform float splatAmt;
+uniform float aspect;
+out vec4 outFlow;
+void main() {
+  vec2 uv=gl_FragCoord.xy/flowSize;
+  vec2 vel=texture(flowTex,uv).xy;
+  vec2 carried=texture(flowTex,uv-vel*dt/worldSpan).xy;
+  // A slow rotation keyed to position turns straight strokes into curls.
+  float turn=sin(uv.x*9.0+time*.7)*cos(uv.y*7.0-time*.5)*1.4*dt;
+  carried=mat2(cos(turn),sin(turn),-sin(turn),cos(turn))*carried;
+  carried*=exp(-1.1*dt);
+  vec2 d=(uv-splatPos)*vec2(aspect,1.0);
+  // Only a moving cursor stamps; a resting one leaves the current alone.
+  float g=exp(-dot(d,d)/.008)*splatAmt*smoothstep(.1,.8,length(splatVel));
+  carried=mix(carried,splatVel*.9,clamp(g*dt*14.0,0.0,1.0));
+  outFlow=vec4(carried,0.0,1.0);
+}`;
+
 // Bird grain simulation (GPGPU, ping-pong RGBA32F): each grain keeps a
 // displacement from its skin point and a velocity. A damped spring pulls it
-// home; part of the body's own motion is left behind every frame so sudden
-// moves stream the grains out and they flow back; a slow air current keeps
-// loose grains wandering; the cursor is a ray through the volume that
-// carries grains along its motion, parts them and curls them into a wake.
+// home; part of the body's own travel is left behind every frame, so sudden
+// moves stream grains out; a slow air current keeps loose grains wandering.
+// Grains inside the cursor's flow field are caught by it — each to its own
+// degree, thrown into turbulence and held far more loosely while stirred —
+// so a sweep blows whole regions off the body in billowing clouds that
+// drift, curl and pour back.
 const simFragment = `#version 300 es
 precision highp float;
 uniform vec2 resolution;
@@ -572,17 +608,15 @@ uniform sampler2D birdLinks;
 uniform float linksReady;
 uniform sampler2D dispTex;
 uniform sampler2D velTex;
+uniform sampler2D flowTex;
 uniform mat4 birdMatrix;
 uniform mat4 prevMatrix;
+uniform mat4 birdView;
+uniform mat4 birdProjection;
 uniform float flap;
 uniform float time;
 uniform float dt;
 uniform float reset;
-uniform vec3 rayOrigin;
-uniform vec3 rayDir;
-uniform vec3 cursorVel;
-uniform float hoverAmt;
-uniform float cursorRadius;
 layout(location=0) out vec4 outDisp;
 layout(location=1) out vec4 outVel;
 ${field}
@@ -594,7 +628,7 @@ void main() {
   float id=float(px.y)*${SIM_W}.0+float(px.x);
   vec4 state=texelFetch(dispTex,px,0);
   vec3 d=state.xyz;
-  float stir=state.w*exp(-1.4*dt);
+  float stir=state.w*exp(-.7*dt);
   vec3 v=texelFetch(velTex,px,0).xyz;
   vec3 n;float s;
   vec3 local=birdAnatomy(id,flap*16.0,time,n,s);
@@ -605,33 +639,29 @@ void main() {
   float loose=pow(grainRandom(uint(id)+2113u),3.5);
   d-=(home-before)*mix(.12,.35,loose);
   vec3 p=home+d;
-  // Stirred grains are held more loosely, so a wake lingers as a drifting
-  // plume before it is drawn home.
-  v-=d*mix(30.0,10.0,loose)*mix(1.0,.3,stir)*dt;
   vec3 q=p*1.15+vec3(0.0,time*.23,time*.15);
   vec3 air=vec3(noise(q),noise(q+19.1),noise(q+37.3))-.5;
-  v+=air*(.6+loose*3.6)*dt;
-  if(hoverAmt>.001) {
-    vec3 w=p-rayOrigin;
-    vec3 off=w-rayDir*max(dot(w,rayDir),0.0);
-    float r2=dot(off,off);
-    float f=exp(-r2/(cursorRadius*cursorRadius))*hoverAmt;
-    vec3 side=off/(sqrt(r2)+1e-4);
-    float speed=length(cursorVel);
-    // Each grain takes the cursor's motion to its own degree, and stirred
-    // grains are thrown into turbulence, so the wake spreads into a loose,
-    // sandy plume instead of dragging the form along as a ribbon.
-    float grip=.5+grainRandom(uint(id)+8111u)*.9;
-    v+=(cursorVel*grip-v)*f*min(1.0,6.0*dt);
-    v+=side*f*(1.0+speed*.25)*dt;
-    v+=cross(rayDir,side)*f*speed*.7*dt;
-    v+=air*f*(1.0+speed*3.2)*dt;
-    stir=max(stir,f*smoothstep(.2,2.5,speed));
+  vec4 clip=birdProjection*birdView*vec4(p,1.0);
+  vec2 flow=texture(flowTex,clip.xy/clip.w*.5+.5).xy;
+  float strength=length(flow);
+  float caught=smoothstep(.25,1.8,strength);
+  if(caught>0.0) {
+    float grip=.55+grainRandom(uint(id)+8111u)*.9;
+    vec3 stream=vec3(flow*grip,(air.z*2.0+air.x)*strength*.7);
+    v+=(stream-v)*caught*min(1.0,4.5*dt);
+    v+=air*strength*(2.0+loose*3.0)*dt;
+    stir=max(stir,smoothstep(.4,2.0,strength));
   }
-  v*=exp(-mix(4.6,2.4,stir)*dt);
+  // Home pull: firm at rest, very loose while stirred, so a blown cloud
+  // hangs and drifts before it pours back into the form.
+  v-=d*mix(30.0,10.0,loose)*mix(1.0,.05,stir)*dt;
+  v+=air*(.6+loose*3.6)*dt;
+  v*=exp(-mix(4.6,1.8,stir)*dt);
   d+=v*dt;
   float reach=length(d);
-  if(reach>2.6) d*=2.6/reach;
+  if(reach>4.0) d*=4.0/reach;
+  // w: the grain's own stir, which the render turns into light only as far
+  // as the grain has actually left the body.
   outDisp=vec4(d,stir);
   outVel=vec4(v,0.0);
 }`;
@@ -684,7 +714,7 @@ export type SculptureFlight = {
   links: WebGLTexture | null;
   sim: {
     reset: boolean; dt: number; prevMatrix: Float32Array;
-    rayOrigin: Float32Array; rayDir: Float32Array; cursorVel: Float32Array; hover: number; radius: number;
+    cursorVel: Float32Array; splat: Float32Array; hover: number; worldSpan: Float32Array;
   };
   bust: {
     texture: WebGLTexture | null; ready: boolean; rows: number; count: number;
@@ -725,7 +755,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   if(simOk) {
     const sp=makeProgram(canvasVertex,simFragment);
     simProgram=sp;
-    simUniforms=Object.fromEntries(["resolution","pointer","fieldTime","activity","birdPositions","birdNormals","birdLinks","linksReady","dispTex","velTex","birdMatrix","prevMatrix","flap","time","dt","reset","rayOrigin","rayDir","cursorVel","hoverAmt","cursorRadius"].map(name=>[name,gl.getUniformLocation(sp,name)]));
+    simUniforms=Object.fromEntries(["resolution","pointer","fieldTime","activity","birdPositions","birdNormals","birdLinks","linksReady","dispTex","velTex","flowTex","birdMatrix","prevMatrix","birdView","birdProjection","flap","time","dt","reset"].map(name=>[name,gl.getUniformLocation(sp,name)]));
     const makeTex=()=>{
       const t=gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D,t);
@@ -744,6 +774,35 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1]);
       simLive&&=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
       simTargets.push({fbo,disp,vel});
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  }
+  // Flow field targets: half floats filter in core WebGL2, so the field
+  // samples smoothly.
+  const FLOW_W=160,FLOW_H=96;
+  let flowProgram: WebGLProgram|null=null;
+  let flowUniforms: Record<string,WebGLUniformLocation|null>={};
+  const flowTargets: {fbo: WebGLFramebuffer|null; tex: WebGLTexture|null}[]=[];
+  let flowRead=0;
+  if(simLive) {
+    const fp=makeProgram(canvasVertex,flowFragment);
+    flowProgram=fp;
+    flowUniforms=Object.fromEntries(["flowTex","flowSize","worldSpan","dt","time","splatPos","splatVel","splatAmt","aspect"].map(name=>[name,gl.getUniformLocation(fp,name)]));
+    gl.activeTexture(gl.TEXTURE9);
+    for(let i=0;i<2;i++) {
+      const tex=gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D,tex);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,FLOW_W,FLOW_H,0,gl.RGBA,gl.HALF_FLOAT,null);
+      const fbo=gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
+      simLive&&=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
+      gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+      flowTargets.push({fbo,tex});
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   }
@@ -878,6 +937,21 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         const sim=flight.sim;
         const write=1-simRead;
         gl.disable(gl.BLEND);
+        // Flow field step: carry, swirl, fade, then stamp the cursor.
+        const flowWrite=1-flowRead;
+        gl.bindFramebuffer(gl.FRAMEBUFFER,flowTargets[flowWrite].fbo);
+        gl.viewport(0,0,FLOW_W,FLOW_H);
+        gl.useProgram(flowProgram);
+        gl.activeTexture(gl.TEXTURE9);gl.bindTexture(gl.TEXTURE_2D,flowTargets[flowRead].tex);
+        const fu=flowUniforms;
+        gl.uniform1i(fu.flowTex,9);gl.uniform2f(fu.flowSize,FLOW_W,FLOW_H);
+        gl.uniform2fv(fu.worldSpan,sim.worldSpan);gl.uniform1f(fu.dt,sim.dt);gl.uniform1f(fu.time,time);
+        gl.uniform2f(fu.splatPos,sim.splat[0]*.5+.5,sim.splat[1]*.5+.5);
+        gl.uniform2f(fu.splatVel,sim.cursorVel[0],sim.cursorVel[1]);
+        gl.uniform1f(fu.splatAmt,sim.hover);gl.uniform1f(fu.aspect,w/h);
+        gl.drawArrays(gl.TRIANGLES,0,3);
+        flowRead=flowWrite;
+        gl.activeTexture(gl.TEXTURE9);gl.bindTexture(gl.TEXTURE_2D,flowTargets[flowRead].tex);
         gl.bindFramebuffer(gl.FRAMEBUFFER,simTargets[write].fbo);
         gl.viewport(0,0,SIM_W,simRows);
         gl.useProgram(simProgram);
@@ -893,9 +967,9 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         gl.uniformMatrix4fv(su.prevMatrix,false,sim.prevMatrix);
         gl.uniform1f(su.flap,flight.flap);gl.uniform1f(su.time,time);
         gl.uniform1f(su.dt,sim.dt);gl.uniform1f(su.reset,sim.reset?1:0);
-        gl.uniform3fv(su.rayOrigin,sim.rayOrigin);gl.uniform3fv(su.rayDir,sim.rayDir);
-        gl.uniform3fv(su.cursorVel,sim.cursorVel);
-        gl.uniform1f(su.hoverAmt,sim.hover);gl.uniform1f(su.cursorRadius,sim.radius);
+        gl.uniform1i(su.flowTex,9);
+        gl.uniformMatrix4fv(su.birdView,false,flight.view);
+        gl.uniformMatrix4fv(su.birdProjection,false,flight.projection);
         gl.drawArrays(gl.TRIANGLES,0,3);
         simRead=write;
         gl.bindFramebuffer(gl.FRAMEBUFFER,null);
@@ -936,6 +1010,6 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         gl.uniform1f(uniforms.glowPass,0);
       }
     },
-    dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);if(simProgram) gl.deleteProgram(simProgram);simTargets.forEach(t=>{gl.deleteFramebuffer(t.fbo);gl.deleteTexture(t.disp);gl.deleteTexture(t.vel);});gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteBuffer(probeBuffer);if(probeFence) gl.deleteSync(probeFence);gl.deleteVertexArray(vao);},
+    dispose() {gl.deleteProgram(program);gl.deleteProgram(surfaceProgram);if(simProgram) gl.deleteProgram(simProgram);simTargets.forEach(t=>{gl.deleteFramebuffer(t.fbo);gl.deleteTexture(t.disp);gl.deleteTexture(t.vel);});if(flowProgram) gl.deleteProgram(flowProgram);flowTargets.forEach(t=>{gl.deleteFramebuffer(t.fbo);gl.deleteTexture(t.tex);});gl.deleteTexture(texture);gl.deleteFramebuffer(target);gl.deleteBuffer(probeBuffer);if(probeFence) gl.deleteSync(probeFence);gl.deleteVertexArray(vao);},
   };
 }
