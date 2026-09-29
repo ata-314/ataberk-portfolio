@@ -1,15 +1,71 @@
 /* Selected work — HUD over the stage's card helix. */
 
-.work-mono {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+/* Type follows the site's section system (services.css): accent label,
+   large Archivo heading with the soft white gradient, quiet lead. */
+.work-label {
+  color: var(--lime);
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+.work-title {
+  margin-top: 0.8rem;
+  font-family: var(--font-archivo), sans-serif;
+  font-size: clamp(2.4rem, 4.4vw, 4.4rem);
+  font-weight: 550;
+  letter-spacing: -0.055em;
+  line-height: 1.02;
+  background: linear-gradient(180deg, #fff 30%, #cfe3c4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.work-lead {
+  max-width: 24rem;
+  margin-top: 1rem;
+  color: var(--bone-dim);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.work-count {
+  font-family: var(--font-archivo), sans-serif;
+  font-size: 0.85rem;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bone);
+}
+.work-count span,
+.work-hint {
+  color: var(--bone-dim);
+}
+.work-hint {
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+.work-panel-title {
+  margin-top: 0.5rem;
+  font-family: var(--font-archivo), sans-serif;
+  font-size: clamp(1.6rem, 2.4vw, 2.4rem);
+  font-weight: 550;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  color: #fff;
+}
+.work-close {
+  color: var(--bone-dim);
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  transition: color 0.2s;
+}
+.work-close:hover,
+.work-close:focus-visible {
+  color: var(--bone);
 }
 
 .work-head,
 .work-dock,
 .work-rail {
+  position: absolute;
   transition: opacity 0.6s cubic-bezier(0.19, 1, 0.22, 1), transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
 }
 .work-helix[data-open] .work-head,
@@ -18,11 +74,13 @@
   opacity: 0;
   pointer-events: none;
 }
-.work-helix[data-travel] .work-head h2 {
+.work-helix[data-travel] .work-head .work-title,
+.work-helix[data-travel] .work-head .work-lead {
   opacity: 0;
   transform: translateY(-10px);
 }
-.work-head h2 {
+.work-head .work-title,
+.work-head .work-lead {
   transition: opacity 0.6s, transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
 }
 .work-helix[data-open] .work-dock {
@@ -41,14 +99,40 @@
 }
 
 .work-slot {
-  color: color-mix(in oklab, var(--slot) 55%, var(--bone-dim));
-  transition: color 0.25s, text-shadow 0.25s;
+  position: relative;
+  padding-left: 1.1rem;
+  font-family: var(--font-archivo), sans-serif;
+  font-size: 1.02rem;
+  font-weight: 550;
+  letter-spacing: -0.02em;
+  line-height: 1.5;
+  color: var(--bone-dim);
+  transition: color 0.3s, transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.work-slot::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: -0.225rem;
+  border-radius: 50%;
+  background: var(--slot);
+  opacity: 0.45;
+  transition: opacity 0.3s, box-shadow 0.3s;
 }
 .work-slot:hover,
 .work-slot:focus-visible,
 .work-slot[data-active] {
-  color: var(--slot);
-  text-shadow: 0 0 12px color-mix(in oklab, var(--slot) 60%, transparent);
+  color: #fff;
+  transform: translateX(3px);
+}
+.work-slot:hover::before,
+.work-slot:focus-visible::before,
+.work-slot[data-active]::before {
+  opacity: 1;
+  box-shadow: 0 0 10px var(--slot);
 }
 .work-slot:focus-visible {
   outline: 1px solid var(--slot);

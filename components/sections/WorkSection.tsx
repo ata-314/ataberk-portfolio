@@ -117,18 +117,23 @@ export function WorkSection({ locale }: { locale: Locale }) {
 
   const copy = tr
     ? {
-        kicker: "Seçili işler",
-        hint: "Bir karta dokun, içine gir",
+        label: "Seçili işler",
+        lead: "Gerçek sistemler, çalışan ürünler ve hareketli kimlikler. Fikirden yayına.",
+        hint: "Bir karta dokun, içine gir.",
         close: "Kapat",
         scroll: "Kapatmak için kaydır",
       }
     : {
-        kicker: "Selected work",
-        hint: "Touch a card to step inside",
+        label: "Selected work",
+        lead: "Real systems, working products and moving identities. From idea to release.",
+        hint: "Touch a card to step inside.",
         close: "Close",
         scroll: "Scroll to close",
       };
 
+  // Typography follows the site's section system (see services.css): a
+  // small accent label, a large Archivo heading with the soft white
+  // gradient, a quiet lead; project names set like card titles.
   return (
     <section
       id="work"
@@ -137,7 +142,7 @@ export function WorkSection({ locale }: { locale: Locale }) {
       data-open={open >= 0 ? "true" : undefined}
       className="work-helix relative z-20"
       style={{ height: `${100 + (count - 1) * 42}svh` }}
-      aria-label={t.heading}
+      aria-labelledby="work-heading"
     >
       <div
         ref={layer}
@@ -147,26 +152,23 @@ export function WorkSection({ locale }: { locale: Locale }) {
         onClick={onClick}
       >
         <header className="work-head pointer-events-none absolute top-24 left-5 md:top-28 md:left-10">
-          <p className="work-mono text-lime">[ 04 ] — {copy.kicker}</p>
-          <h2
-            className="font-display mt-3 leading-[0.9] font-semibold tracking-[-0.05em]"
-            style={{ fontSize: "clamp(2.4rem, 5.4vw, 5.2rem)" }}
-          >
+          <p className="work-label">{copy.label}</p>
+          <h2 id="work-heading" className="work-title">
             {t.heading}
           </h2>
+          <p className="work-lead">{copy.lead}</p>
         </header>
 
         <nav className="work-dock absolute bottom-8 left-5 md:bottom-10 md:left-10" aria-label={t.heading}>
-          <p className="work-mono text-bone">
-            {pad(focus + 1)} <span className="text-bone-dim">/ {pad(count)}</span>
+          <p className="work-count">
+            {pad(focus + 1)} <span>/ {pad(count)}</span>
           </p>
-          <p className="work-mono mt-2 text-bone-dim">{copy.hint}</p>
-          <ul className="mt-4 grid gap-y-1.5">
+          <ul className="mt-4 grid gap-y-1">
             {items.map((item, i) => (
-              <li key={i}>
+              <li key={item.slug}>
                 <button
                   type="button"
-                  className="work-slot work-mono"
+                  className="work-slot"
                   data-active={i === focus ? "true" : undefined}
                   style={{ "--slot": workSlots[i].colors[1] } as React.CSSProperties}
                   onClick={(e) => {
@@ -174,11 +176,12 @@ export function WorkSection({ locale }: { locale: Locale }) {
                     openSlot(i);
                   }}
                 >
-                  -&gt; {item.title}
+                  {item.title}
                 </button>
               </li>
             ))}
           </ul>
+          <p className="work-hint mt-4">{copy.hint}</p>
         </nav>
 
         <div
@@ -190,29 +193,33 @@ export function WorkSection({ locale }: { locale: Locale }) {
 
         {open >= 0 && (
           <>
-            <p className="work-mono work-scroll pointer-events-none absolute top-24 left-1/2 -translate-x-1/2 text-bone-dim md:top-28">
+            <p className="work-hint work-scroll pointer-events-none absolute top-24 left-1/2 -translate-x-1/2 md:top-28">
               {copy.scroll}
             </p>
             <aside
-              className="work-panel absolute bottom-8 left-5 max-w-[22rem] md:bottom-10 md:left-10"
+              className="work-panel absolute bottom-8 left-5 max-w-[24rem] outline-none md:bottom-10 md:left-10"
               onClick={(e) => e.stopPropagation()}
               aria-live="polite"
+              tabIndex={-1}
+              autoFocus
             >
-              <p className="work-mono text-bone">{items[open].title}</p>
-              <p className="work-mono mt-1 text-bone-dim">
-                {items[open].year} / {items[open].category}
+              <p className="work-label">
+                {items[open].category} · {items[open].year}
               </p>
-              <p className="work-mono mt-4 leading-relaxed text-bone-dim">{items[open].idea}</p>
+              <h3 className="work-panel-title">{items[open].title}</h3>
+              <p className="work-lead mt-3">{items[open].idea}</p>
               <span
-                className="work-swatch mt-4"
+                className="work-swatch mt-5"
                 style={{ background: `linear-gradient(90deg, ${workSlots[open].colors.join(", ")})` }}
               />
-              <Link href={`/${locale}/work/${items[open].slug}`} className="work-mono work-close mt-5 block text-lime">
-                {t.open} -&gt;
-              </Link>
-              <button type="button" className="work-mono work-close mt-2 text-bone" onClick={close} autoFocus>
-                &lt;- {copy.close}
-              </button>
+              <div className="mt-6 flex items-baseline gap-6">
+                <Link href={`/${locale}/work/${items[open].slug}`} className="link-draw text-base text-bone">
+                  {t.open} →
+                </Link>
+                <button type="button" className="work-close" onClick={close}>
+                  ← {copy.close}
+                </button>
+              </div>
             </aside>
           </>
         )}
@@ -227,8 +234,8 @@ export function WorkSection({ locale }: { locale: Locale }) {
                 background: `radial-gradient(120% 90% at 30% 20%, ${workSlots[i].colors[2]}55, transparent 60%), linear-gradient(135deg, ${workSlots[i].colors[0]}, ${workSlots[i].colors[1]})`,
               }}
             >
-              <Link href={`/${locale}/work/${item.slug}`} className="work-mono">
-                {pad(i + 1)} — {item.title}
+              <Link href={`/${locale}/work/${item.slug}`} className="work-panel-title">
+                {item.title}
               </Link>
             </li>
           ))}
