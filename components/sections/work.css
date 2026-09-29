@@ -1,0 +1,123 @@
+/* Selected work — HUD over the stage's card helix. */
+
+.work-mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.work-head,
+.work-dock,
+.work-rail {
+  transition: opacity 0.6s cubic-bezier(0.19, 1, 0.22, 1), transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.work-helix[data-open] .work-head,
+.work-helix[data-open] .work-dock,
+.work-helix[data-open] .work-rail {
+  opacity: 0;
+  pointer-events: none;
+}
+.work-helix[data-travel] .work-head h2 {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+.work-head h2 {
+  transition: opacity 0.6s, transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.work-helix[data-open] .work-dock {
+  transform: translateY(12px);
+}
+
+.work-slot {
+  color: color-mix(in oklab, var(--slot) 55%, var(--bone-dim));
+  transition: color 0.25s, text-shadow 0.25s;
+}
+.work-slot:hover,
+.work-slot:focus-visible,
+.work-slot[data-active] {
+  color: var(--slot);
+  text-shadow: 0 0 12px color-mix(in oklab, var(--slot) 60%, transparent);
+}
+.work-slot:focus-visible {
+  outline: 1px solid var(--slot);
+  outline-offset: 3px;
+}
+
+.work-rail {
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, rgb(255 255 255 / 0.18) 15%, rgb(255 255 255 / 0.18) 85%, transparent);
+}
+.work-rail span {
+  position: absolute;
+  left: -1px;
+  top: 0;
+  width: 3px;
+  height: 18px;
+  margin-top: -9px;
+  border-radius: 2px;
+  background: var(--lime);
+  box-shadow: 0 0 12px var(--lime);
+  transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.work-panel,
+.work-scroll {
+  animation: work-in 0.9s 0.55s cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+.work-swatch {
+  display: block;
+  height: 3px;
+  width: 9rem;
+  border-radius: 2px;
+}
+.work-close {
+  transition: color 0.2s;
+}
+.work-close:hover,
+.work-close:focus-visible {
+  color: var(--lime);
+}
+@keyframes work-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.work-scroll {
+  animation-name: work-in-fade;
+}
+@keyframes work-in-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.work-static {
+  display: none;
+}
+html[data-stage-static] .work-helix {
+  height: auto !important;
+}
+html[data-stage-static] .work-pin {
+  position: relative;
+  height: auto;
+  min-height: 100svh;
+  padding-block: 13rem 12rem;
+}
+html[data-stage-static] .work-static {
+  position: relative;
+  inset: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+html[data-stage-static] .work-static li {
+  aspect-ratio: 1.6;
+  border-radius: 14px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  padding: 1rem;
+  color: var(--bone);
+}
+html[data-stage-static] .work-rail {
+  display: none;
+}

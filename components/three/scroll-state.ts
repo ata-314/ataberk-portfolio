@@ -15,3 +15,13 @@ export const bustState = {
   pitch: 0,
   lift: 0,
 };
+
+// Selected-work helix. The stage owns the 3D layout and publishes the
+// focused card plus a screen-space picker; the section's DOM owns the open
+// card (set by clicks, keys or the slot list) and reads the rest.
+export const workState = {
+  focus: 0, // card nearest the front of the helix
+  hover: -1, // card under the cursor (stage-picked)
+  open: -1, // card the visitor is inside, -1 when browsing
+  pick: null as null | ((clientX: number, clientY: number) => number),
+};

@@ -8,8 +8,10 @@ import { createXLayer } from "./x-layer";
 import { makeGlyphAtlas } from "./matrix-layer";
 import { createPost } from "./post";
 import { buildBirdLinks } from "./bird-links";
-import { createBirdBehaviour } from "./bird-behaviour";
-import { bustState, scrollState } from "../three/scroll-state";
+import { createBirdBehaviour, FOLD_FRAME } from "./bird-behaviour";
+import { createWorkHelixLayer } from "./work-helix-layer";
+import { bustState, scrollState, workState } from "../three/scroll-state";
+import { slotRgb, workSlots } from "@/content/work-slots";
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
 const BIRD_SAMPLES = 9000;
@@ -274,6 +276,21 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const sculpture = createSculptureLayer(gl, mobile);
     // Voyage: after the opening, the bird on black, then the voxel tunnel.
     const tunnel = createTunnelLayer(gl, mobile);
+    // Selected work: glass cards on a helix round the diving bird.
+    const work = createWorkHelixLayer(gl, mobile, workSlots.map((slot) => ({
+      deep: slotRgb(slot.colors[0]),
+      mid: slotRgb(slot.colors[1]),
+      glow: slotRgb(slot.colors[2]),
+    })));
+    let workElement: HTMLElement | null = null;
+    let workAmount = 0;
+    let workProgress = 0;
+    let workEnter = -1;
+    let workYaw = 0;
+    let workLastProgress = 0;
+    // Which way along the body the tail lies in the bake (+1: toward +z).
+    const workTailSign = 1;
+    workState.pick = (x, y) => work.pick(x, y, stageW, stageH);
     // Film look (bloom, lens ring, grade); blended in only for the tunnel.
     const post = createPost(gl);
     let voyageElement: HTMLElement | null = null;
@@ -860,7 +877,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         speedShown = Math.round(tunnelSpeed);
         voyageElement.dataset.speed = String(speedShown);
       }
-      const freeFlight = (1 - voyageHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
+      const freeFlight = (1 - voyageHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale) * (1 - workAmount);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
       const ease = motion.snappy ? 7 : 2.2;
@@ -889,6 +906,18 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         orbitRing[3] = Math.min(0.62, r.height / stageH + (mobile ? 0.1 : 0.14));
       }
       orbit = damp(orbit, orbitTarget, 2.2, delta);
+      // Selected work: pinned runway progress, and how far the section has
+      // slid in (-1 below the screen, 0 pinned, +1 gone above).
+      workElement ??= document.querySelector<HTMLElement>("[data-work-helix]");
+      let workTarget = 0;
+      if (workElement && hero > 0.999) {
+        const r = workElement.getBoundingClientRect();
+        workProgress = Math.max(0, Math.min(1, -r.top / Math.max(r.height - stageH, 1)));
+        const enterTarget = r.top > 0 ? -Math.min(1, r.top / stageH) : r.bottom < stageH ? Math.min(1, (stageH - r.bottom) / stageH) : 0;
+        workEnter = damp(workEnter, enterTarget, 9, delta);
+        workTarget = 1 - smoothstep(Math.abs(enterTarget), 0.25, 0.95);
+      }
+      workAmount = damp(workAmount, workTarget, 5, delta);
       const directionLength = Math.hypot(...flight.direction) || 1;
       const direction: Vec3 = [flight.direction[0] / directionLength, flight.direction[1] / directionLength, flight.direction[2] / directionLength];
       const turning = motion.turn && freeFlight > 0.5;
@@ -915,13 +944,42 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         flight.scale = mix(flight.scale, mix(0.72 - inPortal * 0.12, 0.7, portalThrough), voyageHold);
         yaw = mix(yaw, Math.PI + Math.sin(time * 0.4) * 0.2 * portalThrough, Math.max(smoothstep(voyage, 0.26, 0.38), tunnelIn) * voyageHold);
       }
-      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, roll, pitch);
+      // Selected work: the bird glides straight down the helix axis, nose
+      // first with its wings folded, slowly corkscrewing as it falls.
+      let birdPitch = pitch;
+      let birdRoll = roll;
+      if (workAmount < 0.01) workYaw = yaw;
+      if (workAmount > 0.001) {
+        const w = workAmount * workAmount * (3 - 2 * workAmount);
+        flight.position = [
+          mix(flight.position[0], Math.sin(time * 0.37) * 0.06, w),
+          mix(flight.position[1], -0.55 + Math.sin(time * 0.9) * 0.05, w),
+          mix(flight.position[2], 0, w),
+        ];
+        flight.scale = mix(flight.scale, mobile ? 1.2 : 0.82, w);
+        workYaw += delta * 0.42 + (workProgress - workLastProgress) * 5.5;
+        yaw = mix(yaw, workYaw, w);
+        birdPitch = mix(pitch, 1.5 + Math.sin(time * 0.6) * 0.05, w);
+        birdRoll = mix(roll, Math.sin(time * 0.5) * 0.08, w);
+      }
+      workLastProgress = workProgress;
+      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, birdRoll, birdPitch);
+      // Folded wings hang below the body in the bake; in the dive they are
+      // swept back along it instead (a shear of the wing axis toward the
+      // tail) so the bird reads as one closed, falling dart.
+      if (workAmount > 0.001) {
+        const w = workAmount * workAmount * (3 - 2 * workAmount);
+        const press = 1 - 0.72 * w;
+        const sweep = 0.5 * w * workTailSign;
+        for (let i = 0; i < 3; i++) birdMatrix[4 + i] = birdMatrix[4 + i] * press + birdMatrix[8 + i] * sweep;
+      }
       // The wing beat runs at the behaviour's rate and eases onto a held
       // frame (wings level to glide, folded to stoop) with a slight sway.
-      flapPhase = (flapPhase + delta * eased.beat * (1 - eased.hold * 0.97)) % 1;
-      const holdFrame = eased.holdFrame + Math.sin(time * 1.3) * 0.012;
+      const holdAmount = Math.max(eased.hold, workAmount);
+      flapPhase = (flapPhase + delta * eased.beat * (1 - holdAmount * 0.97)) % 1;
+      const holdFrame = (workAmount > 0.5 ? FOLD_FRAME : eased.holdFrame) + Math.sin(time * 1.3) * 0.012;
       const toHold = ((holdFrame - flapPhase + 1.5) % 1) - 0.5;
-      flap = (flapPhase + toHold * eased.hold + 1) % 1;
+      flap = (flapPhase + toHold * holdAmount + 1) % 1;
 
       // A short dolly-in settles the camera as the field assembles.
       const camera: Vec3 = [
@@ -1032,6 +1090,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         aspect: stageW / Math.max(stageH, 1),
       });
       gl.viewport(0, 0, canvas.width, canvas.height);
+      work.update({
+        view, projection, camera, time, delta,
+        width: canvas.width, height: canvas.height,
+        amount: workAmount, progress: workProgress, enter: workEnter,
+        bird: [birdMatrix[12], birdMatrix[13], birdMatrix[14]],
+        open: workState.open, hover: workState.hover,
+      });
+      workState.focus = work.focus;
       const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       const tunnelExit = smoothstep(voyage, 0.86, 0.99);
@@ -1042,6 +1108,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const scrollTravel = Math.max(0, voyage - 0.5) * 160;
       tunnel.render(view, projection, time, tunnelClock + scrollTravel + tunnelExit * tunnelExit * 140, tunnelIn,
         0.5 - 0.5 * Math.cos(tunnelClock * 0.004), smoothstep(voyage, 0.3, 0.5), Math.max(tunnelExit, warp * 0.45));
+      work.renderBack();
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -1058,13 +1125,15 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           sim: simInput,
         }, sceneTarget);
       if (sceneTarget) gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      work.renderFront();
       post?.finish(time, {
         bloom: 0.8 + warp * 0.35,
         threshold: 0.72,
         aberration: 0.02 + warp * 0.05,
         grain: 0.04,
         grade: [0.0, 0.25, 0.3],
-        amount: Math.max(tunnelIn, xOpen * voyageHold),
+        amount: Math.max(tunnelIn, xOpen * voyageHold, workAmount * 0.9),
         ring: tunnelIn,
       });
       prevBird.set(birdMatrix);
@@ -1088,6 +1157,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
       tunnel.dispose();
+      work.dispose();
+      workState.pick = null;
       gl.deleteTexture(glyphAtlas);
       xLayer.dispose();
       post?.dispose();
