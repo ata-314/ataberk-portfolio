@@ -304,6 +304,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let rideTime = 0;
     let warp = 0;
     let speedShown = -1;
+    let exitSent = false;
     gl.bindVertexArray(vao);
     gl.useProgram(program);
     // Sparse grains supply the handoff; the particle sculpture carries entry.
@@ -848,6 +849,13 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       tunnelSpeed = damp(tunnelSpeed, riding ? 12 + 78 * surge * surge : 0, 3, delta);
       tunnelClock += delta * tunnelSpeed;
       warp = Math.max(0, Math.min(1, (tunnelSpeed - 12) / 78)) * tunnelIn;
+      // After a stretch at full rush the flight carries the page on to the
+      // next section (Voyage runs the scroll; any user input cancels it).
+      if (rideTime === 0) exitSent = false;
+      if (riding && rideTime > 4.4 && !exitSent && voyageElement) {
+        exitSent = true;
+        voyageElement.dispatchEvent(new CustomEvent("voyage-exit"));
+      }
       if (voyageElement && Math.round(tunnelSpeed) !== speedShown) {
         speedShown = Math.round(tunnelSpeed);
         voyageElement.dataset.speed = String(speedShown);

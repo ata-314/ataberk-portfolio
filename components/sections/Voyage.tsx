@@ -17,7 +17,9 @@ const copy = {
 // portal and the flight through it into the voxel tunnel, all of it drawn
 // by the stage (which reads this section's progress through [data-voyage]).
 // Inside the tunnel the flight runs on its own, so the depth readout counts
-// with the flight's speed rather than the scroll.
+// with the flight's speed rather than the scroll; when the stage signals the
+// end of the ride ("voyage-exit") the page is carried on through the tunnel's
+// exit to the next section, unless the visitor takes the scroll back.
 export function Voyage({ locale }: { locale: Locale }) {
   const t = copy[locale];
   const root = useRef<HTMLElement>(null);
@@ -55,9 +57,34 @@ export function Voyage({ locale }: { locale: Locale }) {
       if (depth.current) depth.current.textContent = String(Math.floor(metres) % 10000).padStart(4, "0");
     };
     gsap.ticker.add(tick);
+    let carry: gsap.core.Tween | null = null;
+    const cancel = () => {
+      carry?.kill();
+      carry = null;
+    };
+    const onExit = () => {
+      const next = section.nextElementSibling as HTMLElement | null;
+      if (!next || carry) return;
+      const target = next.getBoundingClientRect().top + scrollY;
+      if (target <= scrollY) return;
+      const proxy = { y: scrollY };
+      carry = gsap.to(proxy, {
+        y: target,
+        duration: 2.8,
+        ease: "power2.inOut",
+        onUpdate: () => window.scrollTo({ top: proxy.y, behavior: "instant" }),
+        onComplete: () => { carry = null; },
+      });
+    };
+    section.addEventListener("voyage-exit", onExit);
+    const inputs = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+    inputs.forEach((type) => addEventListener(type, cancel, { passive: true }));
     return () => {
       gsap.ticker.remove(tick);
       tl.kill();
+      cancel();
+      section.removeEventListener("voyage-exit", onExit);
+      inputs.forEach((type) => removeEventListener(type, cancel));
     };
   }, { scope: root });
 
