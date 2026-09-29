@@ -229,13 +229,13 @@ void main(){
   if(uReveal<1.0){
     vec2 rel=(q-vec2(0.0,-1.5))*vec2(1.0,1.25);
     float warp=vnoise(q*.35+3.7)-.5;
-    float delay=clamp(length(rel)/17.0*.55+warp*.2+seed*.07,0.0,.6);
-    float tt=clamp((uReveal-delay)/.4,0.0,1.0);
+    float delay=clamp(length(rel)/17.0*.42+warp*.18+seed*.08,0.0,.48);
+    float tt=clamp((uReveal-delay)/.52,0.0,1.0);
     float rise=tt*tt*tt*(tt*(tt*6.0-15.0)+10.0);
     float remain=1.0-rise;
-    radius+=remain*(3.5+seed*4.0);
-    q.y-=remain*(.6+seed*.5);
-    ang+=sin(seed*23.0+tt*5.5)*.03*remain;
+    radius+=remain*(5.0+seed*6.0);
+    q.y-=remain*(1.0+seed*.8);
+    ang+=sin(seed*23.0+tt*4.0)*.05*remain;
     crossing=smoothstep(0.0,.2,tt)*(1.0-smoothstep(.3,.65,tt));
     introAlpha=smoothstep(0.0,.35,tt);
     introSize=mix(.35,1.0,smoothstep(0.0,.75,tt));
@@ -264,7 +264,7 @@ void main(){
   tint=mix(tint,vec3(.86,1.0,1.0)*1.6,scan*smoothstep(.2,.9,light)*.8);
   float pulse=pow(.5+.5*sin(q.y*.7-q.x*.3-t*.8),8.0);
   tint=mix(tint,citron,pulse*.07);
-  tint+=citron*crossing*(.12+step(.82,seed)*.9);
+  tint+=mix(citron,vec3(.85,1.0,1.0),.4)*crossing*(.22+step(.8,seed)*1.3);
   tint=mix(tint,mix(citron,vec3(.8,1.0,1.0),seed)*1.4,smoothstep(.05,1.0,stir)*.65);
   float edge=(1.0-smoothstep(.62,1.0,abs(g.x*2.0-1.0)))*(1.0-smoothstep(.72,1.0,abs(g.y*2.0-1.0)));
   vColor=tint;

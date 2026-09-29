@@ -30,7 +30,7 @@ const CARD_R = 0.055;
 const STEP_ANGLE = Math.PI / 3;
 const STEP_Y = 0.95;
 // Share of the pinned runway the cards use; the tail is the backdrop's exit.
-export const CARDS_END = 0.86;
+export const CARDS_END = 0.78;
 
 function compile(gl: WebGL2RenderingContext, vs: string, fs: string) {
   const make = (type: number, src: string) => {
@@ -326,6 +326,7 @@ export function createWorkHelixLayer(
   // it has sunk again before any neighbouring section is on screen.
   let revealClock = 0;
   let reveal = 0;
+  let revealShown = 0;
   let openT = 0;
   let shown = -1; // card currently opened or closing
   let focus = 0;
@@ -415,11 +416,17 @@ export function createWorkHelixLayer(
     frame = f;
     syncTitles();
     const pinned = f.amount > 0.4 && f.enter > -0.03;
-    if (pinned) revealClock = Math.min(1, revealClock + f.delta / 2.8);
-    else if (f.amount < 0.4) revealClock = Math.max(0, revealClock - f.delta / 2.2);
-    const gateTop = smooth(f.enter, -0.35, -0.02);
-    const gateEnd = 1 - smooth(f.progress, CARDS_END, 0.995);
-    reveal = Math.min(revealClock, gateTop, gateEnd);
+    if (pinned) revealClock = Math.min(1, revealClock + f.delta / 4.2);
+    else if (f.amount < 0.4) revealClock = Math.max(0, revealClock - f.delta / 3);
+    // Soft gates shape the scrubbed exit; the shown value trails them so a
+    // fast scroll still plays as a slow, cinematic sink. Hard gates at the
+    // very ends guarantee nothing reaches a neighbouring section.
+    const gateTop = smooth(f.enter, -0.45, -0.02);
+    const gateEnd = 1 - smooth(f.progress, CARDS_END + 0.01, 0.97);
+    const hard = Math.min(smooth(f.enter, -0.12, -0.01), 1 - smooth(f.progress, 0.975, 0.998));
+    const target = Math.min(revealClock, gateTop, gateEnd);
+    revealShown = target > revealShown ? target : damp(revealShown, target, 1.5, f.delta);
+    reveal = Math.min(revealShown, hard);
     const wantOpen = f.open >= 0 && f.amount > 0.5;
     if (wantOpen && shown !== f.open && openT < 0.02) shown = f.open;
     if (wantOpen && shown === f.open) openT = Math.min(1, openT + f.delta / 1.6);
