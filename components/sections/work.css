@@ -29,6 +29,17 @@
   transform: translateY(12px);
 }
 
+/* A soft shadow so the HUD reads over the particle sea. */
+.work-head::before,
+.work-dock::before {
+  content: "";
+  position: absolute;
+  inset: -3rem -5rem -3rem -3rem;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgb(5 8 8 / 0.78), rgb(5 8 8 / 0.45) 60%, transparent);
+  pointer-events: none;
+}
+
 .work-slot {
   color: color-mix(in oklab, var(--slot) 55%, var(--bone-dim));
   transition: color 0.25s, text-shadow 0.25s;

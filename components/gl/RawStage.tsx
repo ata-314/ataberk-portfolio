@@ -1169,8 +1169,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       post?.finish(time, {
         bloom: 0.8 + warp * 0.35,
         threshold: 0.72,
-        aberration: 0.02 + warp * 0.05,
-        grain: 0.04,
+        // The work backdrop is fine grains: colour fringing and film grain
+        // would smear them into static, so both ease off there.
+        aberration: (0.02 + warp * 0.05) * (1 - workAmount * 0.85),
+        grain: 0.04 * (1 - workAmount * 0.75),
         grade: [0.0, 0.25, 0.3],
         amount: Math.max(tunnelIn, xOpen * voyageHold, workAmount * 0.9),
         ring: tunnelIn,

@@ -168,57 +168,93 @@ void main(){
   color=vec4(c*uAmount,0.0);
 }`;
 
-// The far background: the hero's particle sea stood on end as a curved
-// wall behind the helix. Grains ride slow, layered waves (displaced toward
-// the camera), light up along the crests and in bands that stream with the
-// flight — up while the bird dives, down while it climbs.
+// The far background: the hero's particle sea, stood on end as a curved
+// wall behind the helix. The same recipe as the hero — a dense relief of
+// lit grains, folds turned from the light sinking into shadow, forest →
+// lime → citron bands drifting toward the accent hue, and a white-cyan scan
+// sweeping the surface — flowing with the flight (up while the bird dives,
+// down while it climbs).
 export const dataVertex = `#version 300 es
 precision highp float;
 uniform mat4 uView,uProj;
 uniform vec2 uGrid;
 uniform float uTime,uTravel,uAmount,uDpr;
-out vec3 vColor; out float vAlpha;
-float h11(float x){return fract(sin(x*127.1)*43758.5453);}
+out vec3 vColor; out float vAlpha; out vec2 vLight;
+float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.0-2.0*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),u.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),u.x),u.y);}
+float fbm3(vec2 p){float v=0.0,a=.5;mat2 r=mat2(.8,-.6,.6,.8);
+  for(int i=0;i<3;i++){v+=a*vnoise(p);p=r*p*2.07+5.3;a*=.5;}return v;}
+// Relief height over the sheet (x across, y along the flow).
+float relief(vec2 q,float t,float flow){
+  vec2 w=q+vec2(0.0,flow);
+  float h=fbm3(w*vec2(.42,.3)+vec2(t*.02,0.0))*1.6;
+  h+=.45*sin(w.x*.55+w.y*.38+t*.25);
+  h+=.25*sin(w.x*1.3-w.y*.7-t*.18);
+  return h;
+}
 void main(){
   float id=float(gl_VertexID);
   vec2 cell=vec2(mod(id,uGrid.x),floor(id/uGrid.x));
-  vec2 j=vec2(h11(id*.37),h11(id*.71+3.0))-.5;
-  vec2 g=(cell+.5+j*.8)/uGrid;
-  float u=g.x*2.0-1.0;
-  float span=11.0;
-  float v=(g.y-.5)*span;
-  float t=uTime*.18, tr=uTravel*1.2;
-  // Layered travelling waves across the sheet.
-  float h=sin(u*3.1+v*.55-t*1.3+tr*.4)*.55
-         +sin(u*6.3-v*.9+t*1.7+tr*.7)*.25
-         +sin(u*1.4+v*1.3+t*.8-tr*.5)*.35
-         +sin(u*11.0+v*2.3-t*2.4+tr)*.08;
-  float ang=u*1.75;
-  float radius=9.0-h*1.1;
-  vec3 p=vec3(sin(ang)*radius,v+sin(u*2.0+t)*.25,-cos(ang)*radius-1.5);
+  vec2 j=vec2(h21(cell*.37+1.7),h21(cell.yx*.71+3.0))-.5;
+  vec2 g=(cell+.5+j*.95)/uGrid;
+  float seed=h21(cell+9.1);
+  float width=30.0, span=17.0;
+  vec2 q=vec2((g.x-.5)*width,(g.y-.5)*span);
+  float t=uTime, flow=-uTravel*1.6;
+  float h=relief(q,t,flow);
+  float e=.12;
+  float hx=relief(q+vec2(e,0),t,flow)-relief(q-vec2(e,0),t,flow);
+  float hy=relief(q+vec2(0,e),t,flow)-relief(q-vec2(0,e),t,flow);
+  // Steepened normals: the folds read as deep relief, as in the hero.
+  vec3 n=normalize(vec3(-hx/(2.0*e)*2.6,-hy/(2.0*e)*2.6,1.0));
+  // Wrap the sheet into a wall curving round the scene; relief comes
+  // toward the viewer. Grains sit unevenly on the surface, like the hero.
+  float ang=q.x/10.0;
+  float radius=10.5-h*.9-(seed-.5)*.06;
+  vec3 p=vec3(sin(ang)*radius,q.y,-cos(ang)*radius-1.5);
   vec4 view=uView*vec4(p,1.0);
   gl_Position=uProj*view;
-  float crest=smoothstep(.15,.95,h);
-  float band=pow(.5+.5*sin(v*2.2-tr*3.0+u*2.4+h*2.0),6.0);
-  float lit=crest*.75+band*.55;
-  gl_PointSize=max(1.0,(1.3+lit*1.4+h11(id)*.6)*uDpr*1.4);
-  vec3 deep=vec3(.03,.2,.22), mid=vec3(.35,.78,.42), peak=vec3(.78,1.0,.24);
-  vec3 col=mix(deep,mid,smoothstep(0.0,.6,lit));
-  col=mix(col,peak,smoothstep(.55,1.1,lit));
-  col=mix(col,vec3(.95,.97,.9)*1.4,smoothstep(1.0,1.3,lit)*.6);
-  float edge=(1.0-smoothstep(.55,1.0,abs(u)))*(1.0-smoothstep(span*.32,span*.5,abs(v)));
-  vColor=col;
-  vAlpha=(.12+lit*.75)*edge*uAmount;
+  // Hero palette, cycling toward the accent over time.
+  float cycle=.5-.5*cos(t*.065);
+  vec3 accent=mix(vec3(.02,.75,1.0),vec3(.59,.12,1.0),.5+.5*sin(t*.043));
+  vec3 forest=mix(vec3(.035,.15,.045),accent*.18,cycle*.7);
+  vec3 lime=mix(vec3(.58,.88,.045),accent,cycle*.85);
+  vec3 citron=mix(vec3(.83,1.0,.17),mix(accent,vec3(.7,1.,1.),.4),cycle*.7);
+  float region=vnoise((q+vec2(0,flow))*.25+t*.01);
+  float band=sin(q.y*.45-q.x*.28+region*5.0+t*.035+flow*.2);
+  vec3 tint=mix(forest,lime,smoothstep(-.85,.12,band));
+  tint=mix(tint,citron,smoothstep(.05,.8,band));
+  float light=max(dot(n,normalize(vec3(-.65,.9,1.3))),0.0);
+  float cavity=mix(.35,1.0,smoothstep(.15,.85,n.z));
+  // Valleys sink toward black, crests carry the light.
+  float crest=smoothstep(-.1,1.5,h);
+  tint*=(.12+1.2*light)*cavity*mix(.4,1.0,crest)*1.05;
+  // The scan: a white-cyan front sweeping slowly along the flow.
+  float scanY=mod(t*1.4-flow*.35,span*1.6)-span*.8;
+  float scan=exp(-pow((q.y+q.x*.15-scanY)*.55,2.0));
+  tint=mix(tint,vec3(.86,1.0,1.0)*1.6,scan*smoothstep(.2,.9,light)*.8);
+  float pulse=pow(.5+.5*sin(q.y*.7-q.x*.3-t*.8),8.0);
+  tint=mix(tint,citron,pulse*.07);
+  float edge=(1.0-smoothstep(.62,1.0,abs(g.x*2.0-1.0)))*(1.0-smoothstep(.72,1.0,abs(g.y*2.0-1.0)));
+  vColor=tint;
+  vAlpha=edge*uAmount;
+  vLight=vec2(light,seed);
+  gl_PointSize=max(1.0,(2.2+seed*.9)*uDpr*9.0/max(-view.z,1.0)*2.3);
 }`;
 
 export const dataFragment = `#version 300 es
 precision highp float;
-in vec3 vColor; in float vAlpha;
+in vec3 vColor; in float vAlpha; in vec2 vLight;
 out vec4 color;
 void main(){
   vec2 q=gl_PointCoord*2.0-1.0;
-  float a=(1.0-smoothstep(.35,1.0,dot(q,q)))*vAlpha;
-  color=vec4(vColor*a,a);
+  float r2=dot(q,q);
+  if(r2>1.0) discard;
+  // A tiny lit bead: brighter toward its lit side.
+  float shade=.75+.35*(q.x*-.4+q.y*-.5);
+  float a=(1.0-smoothstep(.45,1.0,r2))*vAlpha;
+  color=vec4(vColor*shade*a,a);
 }`;
 
 // Darkens the world behind an opened card: near-black teal with slow

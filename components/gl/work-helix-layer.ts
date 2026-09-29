@@ -186,8 +186,9 @@ export function createWorkHelixLayer(
 
   const emptyVao = gl.createVertexArray();
   gl.bindVertexArray(null);
-  const dataCols = mobile ? 90 : 170;
-  const dataRows = mobile ? 70 : 100;
+  // Dense like the hero's sea: grains a couple of pixels apart.
+  const dataCols = mobile ? 300 : 560;
+  const dataRows = mobile ? 170 : 300;
 
   // Hologram titles: one 4:1 canvas cell per card, redrawn when the names
   // (or the display font) change.
@@ -541,7 +542,8 @@ export function createWorkHelixLayer(
     gl.bindVertexArray(emptyVao);
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE);
-    gl.uniform1f(atmosphere.u("uAmount"), f.amount);
+    // Faint: the particle sea carries the backdrop now.
+    gl.uniform1f(atmosphere.u("uAmount"), f.amount * 0.35);
     gl.uniform1f(atmosphere.u("uTime"), f.time);
     gl.uniform1f(atmosphere.u("uAspect"), f.width / Math.max(f.height, 1));
     gl.uniform2f(atmosphere.u("uAxis"), 0.5, 0.5);
@@ -554,6 +556,7 @@ export function createWorkHelixLayer(
       gl.uniform1f(data.u("uTime"), f.time);
       gl.uniform1f(data.u("uTravel"), f.travel);
       gl.uniform1f(data.u("uPx"), f.height / (2 * Math.tan(Math.PI / 8)));
+      gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
       gl.uniform1f(data.u("uAmount"), f.amount * hide());
       gl.uniform1f(data.u("uDpr"), f.height / 900);
       gl.drawArrays(gl.POINTS, 0, dataCols * dataRows);
