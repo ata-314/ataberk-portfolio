@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Archivo, Audiowide, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { notFound } from "next/navigation";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
+import { BASE_URL } from "@/lib/url";
 import { site } from "@/content/site";
 import { Nav } from "@/components/nav/Nav";
 import "../globals.css";
@@ -21,8 +22,6 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "800"],
 });
-
-const BASE_URL = "https://ataberk-portfolio-rho.vercel.app";
 
 const meta: Record<Locale, { description: string }> = {
   tr: {

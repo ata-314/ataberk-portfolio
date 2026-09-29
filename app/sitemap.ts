@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
 import { locales } from "@/lib/i18n";
+import { BASE_URL } from "@/lib/url";
 import { work } from "@/content/work";
 
-const BASE = "https://ataberk-portfolio-rho.vercel.app";
+const BASE = BASE_URL;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const entries: MetadataRoute.Sitemap = [];
