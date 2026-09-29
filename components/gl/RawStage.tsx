@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
 import { createTunnelLayer } from "./tunnel-layer";
-import { createVortexLayer } from "./vortex-layer";
 import { createXLayer } from "./x-layer";
 import { createPost } from "./post";
 import { buildBirdLinks } from "./bird-links";
@@ -280,12 +279,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let voyageHold = 0;
     let voyage = 0;
     let tunnelIn = 0;
-    // The voyage vortex: headline letters (and the bird's grains, through the
-    // sculpture's helix ring) wind round the bird and are sucked into the
-    // tunnel mouth. Sampled once the section holds the screen.
-    const vortex = createVortexLayer(gl);
-    let vortexSampled = "";
-    const birdNdc: [number, number] = [0, 0];
     // The X: the name's last letter handed over as particles, assembled
     // into a structure behind the bird and flown through into the tunnel.
     const xLayer = createXLayer(gl, mobile);
@@ -818,7 +811,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       }
       // The tunnel assembles behind the swelling word and hands over to the
       // services scene with a stretch and a flare.
-      tunnelIn = damp(tunnelIn, smoothstep(voyage, 0.3, 0.4) * (1 - smoothstep(voyage, 0.975, 1)) * voyageHold, 5, delta);
+      tunnelIn = damp(tunnelIn, smoothstep(voyage, 0.08, 0.18) * (1 - smoothstep(voyage, 0.975, 1)) * voyageHold, 5, delta);
       const freeFlight = (1 - voyageHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
@@ -960,62 +953,37 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
       const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
-      // Where the bird is on screen: the vortex turns round it.
-      {
-        const bx = birdMatrix[12], by = birdMatrix[13], bz = birdMatrix[14];
-        const vx = view[0] * bx + view[4] * by + view[8] * bz + view[12];
-        const vy = view[1] * bx + view[5] * by + view[9] * bz + view[13];
-        const vz = view[2] * bx + view[6] * by + view[10] * bz + view[14];
-        const cw = -vz || 1;
-        birdNdc[0] = (projection[0] * vx) / cw;
-        birdNdc[1] = (projection[5] * vy) / cw;
-      }
-      if (voyage > 0.02 && voyageHold > 0.5) {
-        const key = `${stageW}x${stageH}`;
-        if (vortexSampled !== key && vortex.sample(stageW, stageH, mobile ? 14000 : 34000)) vortexSampled = key;
-      }
-      // The X: sampled from the name while it is on screen, formed while the
-      // name disperses, then rushing at the camera as the vortex pulls in.
+      // The X: sampled from the name while it is on screen. As the page
+      // scrolls it forms out of particles, gains depth and size, and at the
+      // start of the voyage the camera flies straight through its crossing
+      // into the tunnel.
       if (hero < 0.04 && document.querySelector("[data-hero-name] [data-code-ready]")) {
         const key = `${stageW}x${stageH}`;
         if (xSampled !== key && xLayer.sample(stageW, stageH)) xSampled = key;
-      }
-      const vortexPresence = smoothstep(voyage, 0.1, 0.13) * (1 - smoothstep(voyage, 0.42, 0.47)) * voyageHold;
-      const vortexForm = smoothstep(voyage, 0.11, 0.3);
-      const suction = smoothstep(voyage, 0.27, 0.42);
-      // The bird's own grains join it: they unwind onto a ring round the
-      // bird that shrinks into the centre, then re-form the bird in the
-      // tunnel.
-      const birdOrbit = smoothstep(voyage, 0.13, 0.23) * (1 - smoothstep(voyage, 0.38, 0.47)) * voyageHold;
-      if (birdOrbit > orbit) {
-        const aspect = stageW / Math.max(stageH, 1);
-        const radius = 0.3 * (1 - suction * 0.92);
-        orbitRing[0] = birdNdc[0];
-        orbitRing[1] = birdNdc[1];
-        orbitRing[2] = radius / aspect;
-        orbitRing[3] = radius * 0.42;
       }
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       // The corridor streams toward us; its light shifts deeper in.
       const tunnelExit = smoothstep(voyage, 0.86, 0.99);
       {
-        const approach = smoothstep(voyage, 0.2, 0.4);
+        const approach = smoothstep(voyage, 0, 0.2);
+        const volume = smoothstep(hero, 0.22, 0.6);
         const pull = approach * approach;
         xCentre[0] = mix(0, birdMatrix[12], approach);
         xCentre[1] = mix(0.2, birdMatrix[13], approach);
         xCentre[2] = mix(-2.8, 8.2, pull);
         xLayer.render(view, projection, time, {
           centre: xCentre,
-          scale: (mobile ? 1.0 : 1.5) * (1 + approach * 0.6),
-          yaw: Math.sin(time * 0.15) * 0.35 + approach * 1.4,
+          scale: (mobile ? 1.3 : 2.0) * (0.75 + volume * 0.45) * (1 + approach * 0.6),
+          yaw: (Math.sin(time * 0.15) * 0.35 + 0.5) * volume + approach * 1.2,
+          volume,
           form: smoothstep(hero, 0.05, 0.32),
-          presence: smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(voyage, 0.4, 0.46)),
+          presence: smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(voyage, 0.2, 0.26)),
           approach,
           pixel: pixelRatio,
         });
       }
-      tunnel.render(view, projection, time, (voyage - 0.34) * 150 + tunnelExit * tunnelExit * 140, tunnelIn,
-        smoothstep(voyage, 0.5, 0.95), smoothstep(voyage, 0.3, 0.5), tunnelExit);
+      tunnel.render(view, projection, time, (voyage - 0.12) * 150 + tunnelExit * tunnelExit * 140, tunnelIn,
+        smoothstep(voyage, 0.3, 0.95), smoothstep(voyage, 0.08, 0.28), tunnelExit);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -1027,19 +995,18 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
           matrix: birdMatrix, view, projection,
           positions: positionTexture, normals: normalTexture,
           trail: wake, burst, intro, bust,
-          orbit: Math.max(orbit, birdOrbit), orbitRing,
+          orbit, orbitRing,
           links: linksReady ? linkTexture : null,
           sim: simInput,
         }, sceneTarget);
       if (sceneTarget) gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget);
-      vortex.render(canvas.width, canvas.height, time, birdNdc, vortexForm, suction, vortexPresence, pixelRatio * 1.3);
       post?.finish(time, {
         bloom: 0.8,
         threshold: 0.72,
         aberration: 0.02,
         grain: 0.04,
         grade: [0.0, 0.25, 0.3],
-        amount: Math.max(tunnelIn, vortexPresence * 0.8),
+        amount: tunnelIn,
         ring: tunnelIn,
       });
       prevBird.set(birdMatrix);
@@ -1063,7 +1030,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
       tunnel.dispose();
-      vortex.dispose();
       xLayer.dispose();
       post?.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));

@@ -21,6 +21,7 @@ uniform float presence;
 uniform float time;
 uniform float pixel;
 uniform float approach;
+uniform float volume; // 0 flat letter → 1 full depth
 out vec3 vColor;
 out float vAlpha;
 void main() {
@@ -28,6 +29,8 @@ void main() {
   float m=smoothstep(seed.x*.45,seed.x*.45+.55,form);
   float e=m*m*(3.0-2.0*m);
   vec3 p=local;
+  // Gains its depth: the flat letter extrudes into a solid.
+  p.z*=mix(.04,1.0,volume);
   // Living matter: a slow shimmer along the bars.
   p+=vec3(sin(time*.9+seed.y*40.0),cos(time*.7+seed.z*33.0),sin(time*.8+seed.x*29.0))*.02*(1.0-seed.w*.6);
   float cy=cos(yaw),sy=sin(yaw);
@@ -75,13 +78,13 @@ export function createXLayer(gl: WebGL2RenderingContext, mobile: boolean) {
   }
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "X link failed");
-  const u = Object.fromEntries(["view", "projection", "centre", "scale", "yaw", "form", "presence", "time", "pixel", "approach"].map((n) => [n, gl.getUniformLocation(program, n)]));
+  const u = Object.fromEntries(["view", "projection", "centre", "scale", "yaw", "form", "presence", "time", "pixel", "approach", "volume"].map((n) => [n, gl.getUniformLocation(program, n)]));
 
   // The structure: two crossed bars (length L, width W, thickness T),
   // grains mostly on their faces and edges so the form reads, a share
   // inside as haze.
-  const count = mobile ? 9000 : 26000;
-  const L = 2.3, W = 0.34, T = 0.26;
+  const count = mobile ? 14000 : 42000;
+  const L = 2.3, W = 0.5, T = 0.44;
   const local = new Float32Array(count * 3);
   const seeds = new Float32Array(count * 4);
   for (let i = 0; i < count; i++) {
@@ -90,12 +93,12 @@ export function createXLayer(gl: WebGL2RenderingContext, mobile: boolean) {
     let y = (Math.random() - 0.5) * W, z = (Math.random() - 0.5) * T;
     const kind = Math.random();
     let edge = 0;
-    if (kind < 0.45) {
+    if (kind < 0.3) {
       // On a long edge.
       y = (Math.random() < 0.5 ? -0.5 : 0.5) * W;
       z = (Math.random() < 0.5 ? -0.5 : 0.5) * T;
       edge = 1;
-    } else if (kind < 0.8) {
+    } else if (kind < 0.7) {
       // On a face.
       if (Math.random() < 0.6) z = (Math.random() < 0.5 ? -0.5 : 0.5) * T;
       else y = (Math.random() < 0.5 ? -0.5 : 0.5) * W;
@@ -166,7 +169,7 @@ export function createXLayer(gl: WebGL2RenderingContext, mobile: boolean) {
       gl.bufferData(gl.ARRAY_BUFFER, starts, gl.DYNAMIC_DRAW);
       return true;
     },
-    render(view: Float32Array, projection: Float32Array, time: number, o: { centre: [number, number, number]; scale: number; yaw: number; form: number; presence: number; approach: number; pixel: number }) {
+    render(view: Float32Array, projection: Float32Array, time: number, o: { centre: [number, number, number]; scale: number; yaw: number; form: number; presence: number; approach: number; pixel: number; volume: number }) {
       if (o.presence < 0.005) return;
       gl.bindVertexArray(vao);
       gl.useProgram(program);
@@ -183,6 +186,7 @@ export function createXLayer(gl: WebGL2RenderingContext, mobile: boolean) {
       gl.uniform1f(u.time, time);
       gl.uniform1f(u.pixel, o.pixel);
       gl.uniform1f(u.approach, o.approach);
+      gl.uniform1f(u.volume, o.volume);
       gl.drawArrays(gl.POINTS, 0, count);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.bindVertexArray(null);
