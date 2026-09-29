@@ -141,7 +141,9 @@ export function WorkSection({ locale }: { locale: Locale }) {
       data-work-helix
       data-open={open >= 0 ? "true" : undefined}
       className="work-helix relative z-20"
-      style={{ height: `${100 + (count - 1) * 42}svh` }}
+      // Card runway plus a tail in which the backdrop sinks away before the
+      // next section arrives (see CARDS_END in the helix layer).
+      style={{ height: `${100 + (count - 1) * 42 + 48}svh` }}
       aria-labelledby="work-heading"
     >
       <div

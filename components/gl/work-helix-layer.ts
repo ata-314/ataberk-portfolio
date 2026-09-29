@@ -29,6 +29,8 @@ const CARD_D = 0.018;
 const CARD_R = 0.055;
 const STEP_ANGLE = Math.PI / 3;
 const STEP_Y = 0.95;
+// Share of the pinned runway the cards use; the tail is the backdrop's exit.
+export const CARDS_END = 0.86;
 
 function compile(gl: WebGL2RenderingContext, vs: string, fs: string) {
   const make = (type: number, src: string) => {
@@ -319,8 +321,10 @@ export function createWorkHelixLayer(
   const pickable = new Uint8Array(count);
   const order: number[] = [];
   let frame: WorkFrame | null = null;
-  // The backdrop's emergence clock: runs once the section arrives and
-  // resets after it has fully left, so every arrival replays it.
+  // The backdrop's emergence: a clock that surfaces the sea once the
+  // section is pinned full-screen, capped by scroll gates at both ends so
+  // it has sunk again before any neighbouring section is on screen.
+  let revealClock = 0;
   let reveal = 0;
   let openT = 0;
   let shown = -1; // card currently opened or closing
@@ -334,8 +338,11 @@ export function createWorkHelixLayer(
   const cursorVel: [number, number] = [0, 0];
   let lastHover = -1;
 
+  // The cards turn through the runway up to CARDS_END; the rest is the
+  // backdrop's exit.
+  const cardsAlong = (f: WorkFrame) => Math.min(1, f.progress / CARDS_END) * (count - 1);
   const helixPose = (i: number, f: WorkFrame) => {
-    const along = f.progress * (count - 1);
+    const along = cardsAlong(f);
     const angle = (i - along) * STEP_ANGLE + leanX * 0.16;
     const y = (along - i) * STEP_Y + f.enter * 6.5 + 0.05;
     const pos: Vec3 = [Math.sin(angle) * radius, y + leanY * 0.08, Math.cos(angle) * radius];
@@ -407,9 +414,12 @@ export function createWorkHelixLayer(
   const update = (f: WorkFrame) => {
     frame = f;
     syncTitles();
-    // Surface on arrival, sink back on leaving — each on its own clock.
-    if (f.amount > 0.4) reveal = Math.min(1, reveal + f.delta / 2.8);
-    else reveal = Math.max(0, reveal - f.delta / 2.2);
+    const pinned = f.amount > 0.4 && f.enter > -0.03;
+    if (pinned) revealClock = Math.min(1, revealClock + f.delta / 2.8);
+    else if (f.amount < 0.4) revealClock = Math.max(0, revealClock - f.delta / 2.2);
+    const gateTop = smooth(f.enter, -0.35, -0.02);
+    const gateEnd = 1 - smooth(f.progress, CARDS_END, 0.995);
+    reveal = Math.min(revealClock, gateTop, gateEnd);
     const wantOpen = f.open >= 0 && f.amount > 0.5;
     if (wantOpen && shown !== f.open && openT < 0.02) shown = f.open;
     if (wantOpen && shown === f.open) openT = Math.min(1, openT + f.delta / 1.6);
@@ -420,7 +430,7 @@ export function createWorkHelixLayer(
     leanX = damp(leanX, f.cursor[0] * browsing, 3, f.delta);
     leanY = damp(leanY, f.cursor[1] * browsing, 3, f.delta);
 
-    const along = f.progress * (count - 1);
+    const along = cardsAlong(f);
     focus = Math.max(0, Math.min(count - 1, Math.round(along)));
     const fly = smooth(openT, 0, 0.55);
     const flyE = fly < 0.5 ? 4 * fly * fly * fly : 1 - Math.pow(-2 * fly + 2, 3) / 2;
