@@ -288,6 +288,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // How far the voyage has slid in: 0 with its top at the screen's foot,
     // 1 once the X has had room to rejoin.
     let xPath = 0;
+    let xGather = 0;
     let xSampled = "";
     const xCentre: [number, number, number] = [0, 0.2, -2.8];
     // Voyage chapters (section progress): condense, open, fly in, pass
@@ -977,34 +978,37 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uBirdReady"), readyMix);
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
-      const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
-      // The X: sampled from the name while it is on screen, then handed to
-      // the bead layer as the hero scrolls away.
+      // The X: sampled from the name while it is on screen, then simulated
+      // — it comes apart into code as the hero scrolls away, swarms round
+      // the middle, spirals into the bead X as the voyage slides in, opens
+      // as the portal and rushes past the camera. The simulation step runs
+      // before the scene target is bound.
       if (hero < 0.04 && document.querySelector("[data-hero-name] [data-code-ready]")) {
         const key = `${stageW}x${stageH}`;
         if (xSampled !== key && xLayer.sample(stageW, stageH)) xSampled = key;
       }
+      xGather = damp(xGather, smoothstep(xPath, 0.1, 1), 5, delta);
+      const pull = portalThrough * portalThrough;
+      xCentre[0] = 0;
+      xCentre[1] = mix(0.2, mobile ? 0.1 : 0.12, voyageHold);
+      xCentre[2] = mix(-2.8, 8.4, pull);
+      xLayer.step(view, projection, time, delta, {
+        centre: xCentre,
+        scale: (mobile ? 1.15 : 1.9) * (0.9 + xDense * 0.2) * (1 + xOpen * 0.35),
+        yaw: Math.sin(time * 0.3) * 0.3 * (1 - xOpen),
+        dissolve: smoothstep(hero, 0.04, 0.45),
+        gather: xGather,
+        open: xOpen,
+        rush: smoothstep(portalThrough, 0.05, 0.3),
+        cursor: [hover[0], hover[1]],
+        cursorOn: hover[2],
+        aspect: stageW / Math.max(stageH, 1),
+      });
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      // The corridor streams toward us; its light shifts deeper in.
       const tunnelExit = smoothstep(voyage, 0.86, 0.99);
-      {
-        // Comes apart into code as the hero scrolls away, pours down and
-        // rejoins as the voyage slides in; opens, then the ring rushes past
-        // the camera.
-        const pull = portalThrough * portalThrough;
-        xCentre[0] = 0;
-        xCentre[1] = mix(0.2, mobile ? 0.1 : 0.12, voyageHold);
-        xCentre[2] = mix(-2.8, 8.4, pull);
-        xLayer.render(view, projection, time, canvas.height, {
-          centre: xCentre,
-          scale: (mobile ? 1.15 : 1.9) * (0.9 + xDense * 0.2) * (1 + xOpen * 0.35),
-          yaw: Math.sin(time * 0.3) * 0.3 * (1 - xOpen),
-          dissolve: smoothstep(hero, 0.04, 0.5),
-          gather: smoothstep(xPath, 0.12, 1),
-          open: xOpen,
-          presence: smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(portalThrough, 0.8, 1)),
-        });
-      }
+      xLayer.render(time, canvas.height, projection, smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(portalThrough, 0.8, 1)));
       // The corridor rushes toward us on its own clock, and scrolling pushes
       // the flight on or back on top of it; its light cycles teal → pink →
       // blue and back over the ride.
