@@ -5,7 +5,6 @@ import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
 import { createTunnelLayer } from "./tunnel-layer";
 import { createXLayer } from "./x-layer";
-import { createMatrixLayer, makeGlyphAtlas } from "./matrix-layer";
 import { createPost } from "./post";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour } from "./bird-behaviour";
@@ -280,15 +279,20 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let voyageHold = 0;
     let voyage = 0;
     let tunnelIn = 0;
-    // The X: the name's last letter handed over as particles, assembled
-    // into a structure behind the bird and flown through into the tunnel.
-    // Code glyphs shared by the X and the Matrix space inside it.
-    const glyphAtlas = makeGlyphAtlas(gl);
-    const xLayer = createXLayer(gl, mobile, glyphAtlas);
-    const matrix = createMatrixLayer(gl, glyphAtlas, mobile);
-    let matrixIn = 0;
+    // The X: the name's last letter handed over as beads, drifting down
+    // into the voyage, condensing into a solid X and opening as the portal
+    // the bird flies through into the tunnel.
+    const xLayer = createXLayer(gl, mobile);
     let xSampled = "";
     const xCentre: [number, number, number] = [0, 0.2, -2.8];
+    // Voyage chapters (section progress): condense, open, fly in, pass
+    // through; inside, the tunnel runs on its own clock, not the scroll.
+    let xDense = 0;
+    let xOpen = 0;
+    let birdEnter = 0;
+    let portalThrough = 0;
+    let tunnelClock = 0;
+    let tunnelSpeed = 0;
     gl.bindVertexArray(vao);
     gl.useProgram(program);
     // Sparse grains supply the handoff; the particle sculpture carries entry.
@@ -814,11 +818,18 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         // by the time the words have risen.
         voyageHold = damp(voyageHold, smoothstep(r.top / stageH, 1.0, 0.25) * smoothstep(r.bottom / stageH, 0.3, 1), 5, delta);
       }
-      // The tunnel assembles behind the swelling word and hands over to the
-      // services scene with a stretch and a flare.
-      // Through the X into its code (the Matrix space), then the tunnel.
-      matrixIn = damp(matrixIn, smoothstep(voyage, 0.05, 0.12) * (1 - smoothstep(voyage, 0.38, 0.46)) * voyageHold, 5, delta);
-      tunnelIn = damp(tunnelIn, smoothstep(voyage, 0.38, 0.47) * (1 - smoothstep(voyage, 0.975, 1)) * voyageHold, 5, delta);
+      // The X condenses, opens as a portal, the bird flies in, the ring
+      // passes the camera; the tunnel assembles round the opening and hands
+      // over to the next scene with a stretch and a flare.
+      xDense = damp(xDense, smoothstep(voyage, 0, 0.2), 6, delta);
+      xOpen = damp(xOpen, smoothstep(voyage, 0.22, 0.4), 6, delta);
+      birdEnter = damp(birdEnter, smoothstep(voyage, 0.34, 0.48), 6, delta);
+      portalThrough = damp(portalThrough, smoothstep(voyage, 0.44, 0.56), 6, delta);
+      tunnelIn = damp(tunnelIn, smoothstep(voyage, 0.3, 0.44) * (1 - smoothstep(voyage, 0.975, 1)) * voyageHold, 5, delta);
+      // Inside, the flight moves on by itself: cruise speed eases in once
+      // through the portal and holds however the page is scrolled.
+      tunnelSpeed = damp(tunnelSpeed, portalThrough > 0.5 && tunnelIn > 0.05 ? 9 : 0, 1.4, delta);
+      tunnelClock += delta * tunnelSpeed;
       const freeFlight = (1 - voyageHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
@@ -860,18 +871,19 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // Positive pitch dips the nose; loops and barrel rolls add whole turns.
       const pitch = eased.pitch + motion.spinPitch * freeFlight;
       const roll = Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + eased.bank + motion.spinRoll * freeFlight;
-      // Voyage: the bird floats at the centre of the black, then turns to fly
-      // away from us down the tunnel, weaving gently.
+      // Voyage: the bird floats in front of the condensing X, turns and
+      // flies into the opened portal; once the ring has passed us it is
+      // ahead of the camera in the tunnel, weaving gently.
       if (voyageHold > 0.001) {
-        const sway = Math.sin(time * 0.6) * 0.18 * tunnelIn;
+        const sway = Math.sin(time * 0.6) * 0.18 * portalThrough;
+        const inPortal = birdEnter * birdEnter * (3 - 2 * birdEnter);
         flight.position = [
           mix(flight.position[0], sway, voyageHold),
-          // Phones: above the headline, which sits low on the screen.
-          mix(flight.position[1], (mobile ? 1.15 * (1 - tunnelIn) : 0.12) - tunnelIn * 0.15 + Math.sin(time * 0.8) * 0.05, voyageHold),
-          mix(flight.position[2], -tunnelIn * 0.8, voyageHold),
+          mix(flight.position[1], mix(-0.35, 0.12, inPortal) - portalThrough * 0.15 + Math.sin(time * 0.8) * 0.05 * (1 - inPortal * (1 - portalThrough)), voyageHold),
+          mix(flight.position[2], mix(-2.6 * inPortal, -0.8, portalThrough), voyageHold),
         ];
-        flight.scale = mix(flight.scale, 0.95 - tunnelIn * 0.25, voyageHold);
-        yaw = mix(yaw, Math.PI + Math.sin(time * 0.4) * 0.2, Math.max(tunnelIn, matrixIn) * voyageHold);
+        flight.scale = mix(flight.scale, mix(0.72 - inPortal * 0.12, 0.7, portalThrough), voyageHold);
+        yaw = mix(yaw, Math.PI + Math.sin(time * 0.4) * 0.2 * portalThrough, Math.max(smoothstep(voyage, 0.26, 0.38), tunnelIn) * voyageHold);
       }
       compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, roll, pitch);
       // The wing beat runs at the behaviour's rate and eases onto a held
@@ -960,10 +972,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       gl.uniform1f(u("uIntro"), intro);
       gl.uniform1f(u("uScanBoost"), 0);
       const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
-      // The X: sampled from the name while it is on screen. As the page
-      // scrolls it forms out of particles, gains depth and size, and at the
-      // start of the voyage the camera flies straight through its crossing
-      // into the tunnel.
+      // The X: sampled from the name while it is on screen, then handed to
+      // the bead layer as the hero scrolls away.
       if (hero < 0.04 && document.querySelector("[data-hero-name] [data-code-ready]")) {
         const key = `${stageW}x${stageH}`;
         if (xSampled !== key && xLayer.sample(stageW, stageH)) xSampled = key;
@@ -972,26 +982,28 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // The corridor streams toward us; its light shifts deeper in.
       const tunnelExit = smoothstep(voyage, 0.86, 0.99);
       {
-        const approach = smoothstep(voyage, 0, 0.13);
-        const volume = smoothstep(hero, 0.22, 0.6);
-        const pull = approach * approach;
-        xCentre[0] = mix(0, birdMatrix[12], approach);
-        xCentre[1] = mix(0.2, birdMatrix[13], approach);
-        xCentre[2] = mix(-2.8, 8.2, pull);
-        xLayer.render(view, projection, time, {
+        // Leaves the name loose and drifts down behind the bird as the hero
+        // scrolls away; condenses and faces us, opens, then the ring rushes
+        // past the camera.
+        const pull = portalThrough * portalThrough;
+        const face = 1 - xOpen;
+        xCentre[0] = 0;
+        xCentre[1] = mix(0.2, mobile ? 0.1 : 0.12, voyageHold);
+        xCentre[2] = mix(-2.8, 8.4, pull);
+        xLayer.render(view, projection, time, canvas.height, {
           centre: xCentre,
-          scale: (mobile ? 1.3 : 2.0) * (0.75 + volume * 0.45) * (1 + approach * 0.6),
-          yaw: (Math.sin(time * 0.15) * 0.35 + 0.5) * volume + approach * 1.2,
-          volume,
-          form: smoothstep(hero, 0.05, 0.32),
-          presence: smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(voyage, 0.12, 0.17)),
-          approach,
-          pixel: pixelRatio,
+          scale: (mobile ? 1.15 : 1.9) * (0.85 + xDense * 0.25) * (1 + xOpen * 0.35),
+          yaw: Math.sin(time * 0.3) * 0.5 * (1 - xDense * 0.7) * face + (1 - smoothstep(hero, 0.1, 0.8)) * 0.6,
+          form: smoothstep(hero, 0.05, 0.6),
+          dense: xDense,
+          open: xOpen,
+          presence: smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(portalThrough, 0.8, 1)),
         });
       }
-      matrix.render(view, projection, time, (voyage - 0.05) * 90, matrixIn, pixelRatio);
-      tunnel.render(view, projection, time, (voyage - 0.4) * 150 + tunnelExit * tunnelExit * 140, tunnelIn,
-        smoothstep(voyage, 0.55, 0.95), smoothstep(voyage, 0.38, 0.56), tunnelExit);
+      // The corridor streams toward us on its own clock; its light cycles
+      // teal → pink → blue and back over the ride.
+      tunnel.render(view, projection, time, tunnelClock + tunnelExit * tunnelExit * 140, tunnelIn,
+        0.5 - 0.5 * Math.cos(tunnelClock * 0.012), smoothstep(voyage, 0.3, 0.5), tunnelExit);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -1014,7 +1026,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         aberration: 0.02,
         grain: 0.04,
         grade: [0.0, 0.25, 0.3],
-        amount: Math.max(tunnelIn, matrixIn),
+        amount: Math.max(tunnelIn, xOpen * voyageHold),
         ring: tunnelIn,
       });
       prevBird.set(birdMatrix);
@@ -1039,8 +1051,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       sculpture.dispose();
       tunnel.dispose();
       xLayer.dispose();
-      matrix.dispose();
-      gl.deleteTexture(glyphAtlas);
       post?.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
       gl.deleteTexture(positionTexture);
