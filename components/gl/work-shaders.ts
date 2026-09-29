@@ -1,5 +1,5 @@
 // Shaders for the selected-work helix (see work-helix-layer.ts): glass
-// project cards, the bubble-and-light swarm round the diving bird, the
+// project cards, the beads shed round the diving bird, the
 // scene's atmosphere and the particle interior of an opened card.
 
 // Value noise + fbm, and the card "world": a slow ink nebula in the slot's
@@ -96,70 +96,63 @@ void main(){
   color=vec4(c,a*uAlpha);
 }`;
 
-// Bubbles and lights. Two populations: a swarm on a slow vortex round the
-// helix axis that rises as the bird dives (scroll lifts it too), and a
-// stream breathed off the bird's body that drifts outward.
-export const bubbleVertex = `#version 300 es
+// Beads round the bird, in its own grain palette. Two populations: beads
+// shed off its body that peel away and trail behind the flight (upward
+// while it dives, downward while it climbs), and fine air motes streaming
+// past on the travel clock, so the fall reads as speed through air.
+export const beadVertex = `#version 300 es
 precision highp float;
 in vec4 aSeed;
 uniform mat4 uView,uProj;
-uniform float uTime,uRise,uPx,uAmount;
+uniform float uTime,uPx,uAmount,uFlow,uTravel,uSpeed,uLen;
 uniform vec3 uBird;
-out float vKind; out float vAlpha; out float vHue; out float vSpark;
+out float vAlpha; out vec3 vColor; out float vMote;
 void main(){
   vec4 s=aSeed;
   float t=uTime;
   vec3 p; float size; float life;
-  vKind=step(.72,fract(s.w*7.31));
-  if(s.w<.35){
-    // Breathed off the bird: born on its body, spiral outward and up.
-    life=fract(s.z+t*(.07+s.x*.08));
-    float ang=s.y*6.2832+life*2.4*(s.x>.5?1.0:-1.0);
-    float r=.12+life*(1.2+s.x*1.8);
-    p=uBird+vec3(sin(ang)*r,(life*life)*2.2+(s.x-.5)*.6,cos(ang)*r*.8);
+  vMote=step(.5,s.w);
+  if(s.w<.5){
+    // Peel off the body, spin out and fall behind the flight.
+    life=fract(s.z+t*(.16+s.x*.2)*(.7+uSpeed*.8));
+    float along=(s.x-.5)*uLen;
+    float ang=s.y*6.2832+life*(1.2+s.x*1.6)*(fract(s.w*9.1)>.5?1.0:-1.0);
+    float r=.06+life*(.35+s.y*.9)+life*life*.5;
+    p=uBird+vec3(sin(ang)*r,along+uFlow*life*life*(1.4+s.y*2.2)*(.8+uSpeed),cos(ang)*r*.8);
+    size=mix(.018,.045,fract(s.y*7.3))*(1.0-life*.55);
   } else {
     float span=10.0;
-    life=fract(s.z+t*(.012+s.x*.018)+uRise*.08);
-    float r=mix(.6,4.2,pow(fract(s.x*3.7+s.y),1.4));
-    float ang=s.y*6.2832+t*(.05+s.x*.08)*(fract(s.w*13.0)>.5?1.0:-1.0);
-    p=vec3(sin(ang)*r,(life-.5)*span,cos(ang)*r*.9-.4);
-    p.x+=sin(t*.9+s.y*31.0)*.05;
+    life=fract(s.z+uTravel*(.35+s.x*.5));
+    float r=mix(.9,5.2,pow(fract(s.x*3.7+s.y),1.2));
+    float ang=s.y*6.2832+t*.03*(fract(s.w*13.0)>.5?1.0:-1.0);
+    p=vec3(sin(ang)*r,(life-.5)*span,cos(ang)*r*.85-1.2);
+    size=mix(.008,.022,fract(s.y*5.3));
   }
-  float edge=smoothstep(0.0,.12,life)*(1.0-smoothstep(.8,1.0,life));
+  float edge=smoothstep(0.0,.1,life)*(1.0-smoothstep(.75,1.0,life));
   vec4 view=uView*vec4(p,1.0);
   gl_Position=uProj*view;
-  size=vKind>.5?mix(.012,.03,s.x):mix(.02,.11,pow(fract(s.y*5.3),3.0));
-  gl_PointSize=clamp(size*uPx/max(-view.z,.3),1.5,90.0);
-  float twinkle=.55+.45*sin(t*(2.0+s.x*5.0)+s.y*40.0);
-  vAlpha=edge*uAmount*(vKind>.5?twinkle:1.0)*smoothstep(.2,1.5,-view.z);
-  vHue=fract(s.y*3.1+s.z);
-  vSpark=twinkle;
+  gl_PointSize=clamp(size*uPx/max(-view.z,.3),1.2,40.0);
+  float twinkle=.7+.3*sin(t*(2.0+s.x*5.0)+s.y*40.0);
+  vAlpha=edge*uAmount*twinkle*smoothstep(.2,1.5,-view.z)*(vMote>.5?.55+uSpeed*.6:1.0);
+  float hue=fract(s.y*3.1+s.z);
+  vColor=hue<.62?vec3(.953,.937,.906):hue<.9?vec3(.541,.902,1.0):vec3(.784,1.0,.243);
 }`;
 
-export const bubbleFragment = `#version 300 es
+export const beadFragment = `#version 300 es
 precision highp float;
-in float vKind; in float vAlpha; in float vHue; in float vSpark;
+in float vAlpha; in vec3 vColor; in float vMote;
 out vec4 color;
 void main(){
   vec2 q=gl_PointCoord*2.0-1.0;
-  float r=length(q);
-  if(r>1.0) discard;
-  vec3 c; float a;
-  if(vKind>.5){
-    // A point of light with a soft halo.
-    float core=exp(-r*r*14.0), halo=exp(-r*r*3.0)*.35;
-    c=mix(vec3(.55,.95,1.0),vec3(1.0,.62,.95),vHue)*(core*2.4+halo);
-    a=(core+halo)*vAlpha;
-  } else {
-    // Soap bubble: thin-film rainbow rim, clear body, one window highlight.
-    float ring=smoothstep(.7,.96,r)*(1.0-smoothstep(.96,1.0,r));
-    vec3 film=.5+.5*cos(6.2832*(vec3(0.0,.33,.67)+r*1.6+q.y*.6+vHue));
-    film=mix(film,vec3(.6,.95,1.0),.25);
-    vec2 h=q-vec2(-.38,.4);
-    float hl=exp(-dot(h,h)*30.0)*1.6+exp(-dot(q+vec2(-.3,.42),q+vec2(-.3,.42))*80.0)*.6;
-    c=film*ring*1.25+vec3(1.0)*hl+film*.035;
-    a=(ring*.85+hl*.8+.035)*vAlpha;
-  }
+  float r2=dot(q,q);
+  if(r2>1.0) discard;
+  // A lit glass bead: sphere shading, a hot core and one specular point.
+  vec3 n=vec3(q.x,-q.y,sqrt(1.0-r2));
+  float light=max(dot(n,normalize(vec3(-.4,.55,.75))),0.0);
+  float spec=pow(max(dot(reflect(-normalize(vec3(-.4,.55,.75)),n),vec3(0,0,1)),0.0),24.0);
+  vec3 c=vColor*(.35+.9*light)+vec3(1.0)*spec*1.4;
+  c=mix(c,vColor*1.6,vMote);
+  float a=(1.0-smoothstep(.75,1.0,r2))*vAlpha;
   color=vec4(c*a,a);
 }`;
 
@@ -213,7 +206,11 @@ uniform vec2 uGrid;
 uniform vec4 uRect; // centre xy, half size zw (NDC)
 uniform float uTime,uClock,uAssemble,uComets,uAspect,uPanelAspect,uSeed,uCellPx;
 uniform vec3 uDeep,uMid,uGlow;
-out vec3 vColor; out float vAlpha; out float vHot;
+// Cursor wake in panel space: xy position, zw velocity; weights apart.
+uniform vec4 uTrail[8];
+uniform float uTrailW[8];
+uniform vec4 uBurst; // xy centre, z age (s), w strength
+out vec3 vColor; out float vAlpha; out float vHot; out float vBead;
 ${nebulaChunk}
 vec2 comet(float i,float t){
   float w=.23+i*.07;
@@ -242,6 +239,32 @@ void main(){
       if(k==0) hot+=exp(-dot(dv,dv)*40.0)*uComets;
     }
   }
+  // The cursor parts the picture into beads: grains near it lift off and
+  // roll aside along its stroke, and settle back as the wake fades.
+  float bead=0.0;
+  for(int i=0;i<8;i++){
+    float tw=uTrailW[i];
+    if(tw<.002) continue;
+    vec2 dv=home-uTrail[i].xy;
+    float w=exp(-dot(dv,dv)*14.0)*tw;
+    vec2 out2=dv/max(length(dv),1e-3);
+    p.xy+=out2*w*(.18+r1*.14)+uTrail[i].zw*w*.035;
+    p.z+=w*(.35+r2*.45);
+    bead+=w;
+  }
+  // A click bursts a ring of beads outward from the point.
+  if(uBurst.w>0.0){
+    vec2 dv=home-uBurst.xy;
+    float d=length(dv);
+    float ring=exp(-pow((d-uBurst.z*1.9)*5.0,2.0))*exp(-uBurst.z*1.6)*uBurst.w;
+    float core=exp(-d*d*9.0)*exp(-uBurst.z*3.0)*uBurst.w;
+    p.xy+=dv/max(d,1e-3)*(ring*.3+core*.4)*(.6+r1*.8);
+    p.z+=(ring+core)*(.5+r2*.6);
+    bead+=ring+core;
+    hot+=ring*.6;
+  }
+  bead=min(bead,1.0);
+  stir+=bead*.6;
   // Ragged border: grains near the edge fray loose and drift.
   vec2 e=abs(uv*2.0-1.0);
   float fray=smoothstep(.9,1.0,max(e.x,e.y))*step(.55,r1);
@@ -263,16 +286,26 @@ void main(){
   vColor=col;
   vAlpha=gate*(1.0-min(stir,1.0)*.25*r2);
   vHot=min(hot+stir*.3,1.0);
+  vBead=max(bead,min(stir,1.0));
 }`;
 
 export const insideFragment = `#version 300 es
 precision highp float;
-in vec3 vColor; in float vAlpha; in float vHot;
+in vec3 vColor; in float vAlpha; in float vHot; in float vBead;
 out vec4 color;
 void main(){
-  vec2 q=abs(gl_PointCoord*2.0-1.0);
+  vec2 c2=gl_PointCoord*2.0-1.0;
+  vec2 q=abs(c2);
+  // At rest the grains tile the picture as pixels; stirred, each becomes a
+  // lit bead with its own highlight.
   float sq=1.0-smoothstep(.62,1.0,max(q.x,q.y));
-  float round=exp(-dot(q,q)*2.5);
-  float a=mix(sq,round,vHot)*vAlpha;
-  color=vec4(vColor,a);
+  float r2=dot(c2,c2);
+  float disc=1.0-smoothstep(.55,1.0,r2);
+  vec3 n=vec3(c2.x,-c2.y,sqrt(max(1.0-r2,0.0)));
+  float light=max(dot(n,normalize(vec3(-.4,.55,.75))),0.0);
+  float spec=pow(max(n.z*.6+n.y*.4-n.x*.3,0.0),18.0);
+  vec3 beadCol=vColor*(.45+.8*light)+vec3(1.0)*spec*.9;
+  vec3 col=mix(vColor,beadCol,vBead);
+  float a=mix(sq,disc,max(vBead,vHot))*vAlpha;
+  color=vec4(col,a);
 }`;

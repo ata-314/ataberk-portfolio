@@ -288,6 +288,13 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let workEnter = -1;
     let workYaw = 0;
     let workLastProgress = 0;
+    // Flight through the helix follows the scroll: velocity along the
+    // runway, how far the bird has turned to climb (0 diving, 1 climbing),
+    // and the distance flown, which drives the air streaming past.
+    let workVel = 0;
+    let workUp = 0;
+    let workUpTarget = 0;
+    let workTravel = 0;
     // Which way along the body the tail lies in the bake (+1: toward +z).
     const workTailSign = 1;
     workState.pick = (x, y) => work.pick(x, y, stageW, stageH);
@@ -655,6 +662,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       onPointerMove(event);
       waveAge = 0;
       burst.set([(event.clientX / stageW) * 2 - 1, -((event.clientY / stageH) * 2 - 1), 0]);
+      work.burst((event.clientX / stageW) * 2 - 1, -((event.clientY / stageH) * 2 - 1));
     };
     addEventListener("pointermove", onPointerMove, { passive: true });
     addEventListener("pointerdown", onPointerDown, { passive: true });
@@ -944,22 +952,30 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         flight.scale = mix(flight.scale, mix(0.72 - inPortal * 0.12, 0.7, portalThrough), voyageHold);
         yaw = mix(yaw, Math.PI + Math.sin(time * 0.4) * 0.2 * portalThrough, Math.max(smoothstep(voyage, 0.26, 0.38), tunnelIn) * voyageHold);
       }
-      // Selected work: the bird glides straight down the helix axis, nose
-      // first with its wings folded, slowly corkscrewing as it falls.
+      // Selected work: far behind the helix the bird glides down through
+      // the air, nose first with its wings folded, slowly corkscrewing.
+      // Scrolling back up turns it head up and it beats its way upward.
       let birdPitch = pitch;
       let birdRoll = roll;
+      workVel = damp(workVel, (workProgress - workLastProgress) / Math.max(delta, 1 / 240), 5, delta);
+      if (workVel > 0.012) workUpTarget = 0;
+      else if (workVel < -0.012) workUpTarget = 1;
+      workUp = damp(workUp, workUpTarget, 2.6, delta);
+      const workSpeed = Math.min(1, Math.abs(workVel) * 4);
+      workTravel += delta * (1 - 2 * workUp) * (0.16 + workSpeed * 1.3) * workAmount;
       if (workAmount < 0.01) workYaw = yaw;
       if (workAmount > 0.001) {
         const w = workAmount * workAmount * (3 - 2 * workAmount);
+        const k = mobile ? 1.5 : 1.4;
         flight.position = [
-          mix(flight.position[0], Math.sin(time * 0.37) * 0.06, w),
-          mix(flight.position[1], -0.55 + Math.sin(time * 0.9) * 0.05, w),
-          mix(flight.position[2], 0, w),
+          mix(flight.position[0], Math.sin(time * 0.37) * 0.1, w),
+          mix(flight.position[1], mix(-0.55, 0.05, workUp) * k + Math.sin(time * 0.9) * 0.06, w),
+          mix(flight.position[2], -3.1, w),
         ];
-        flight.scale = mix(flight.scale, mobile ? 1.2 : 0.82, w);
-        workYaw += delta * 0.42 + (workProgress - workLastProgress) * 5.5;
+        flight.scale = mix(flight.scale, (mobile ? 1.2 : 0.82) * k, w);
+        workYaw += delta * mix(0.42, 0.2, workUp) + (workProgress - workLastProgress) * 5.5;
         yaw = mix(yaw, workYaw, w);
-        birdPitch = mix(pitch, 1.5 + Math.sin(time * 0.6) * 0.05, w);
+        birdPitch = mix(pitch, mix(1.5, -1.3, workUp) + Math.sin(time * 0.6) * 0.05, w);
         birdRoll = mix(roll, Math.sin(time * 0.5) * 0.08, w);
       }
       workLastProgress = workProgress;
@@ -969,14 +985,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // tail) so the bird reads as one closed, falling dart.
       if (workAmount > 0.001) {
         const w = workAmount * workAmount * (3 - 2 * workAmount);
-        const press = 1 - 0.72 * w;
-        const sweep = 0.5 * w * workTailSign;
+        const press = 1 - 0.72 * w * (1 - workUp);
+        const sweep = 0.5 * w * workTailSign * (1 - workUp);
         for (let i = 0; i < 3; i++) birdMatrix[4 + i] = birdMatrix[4 + i] * press + birdMatrix[8 + i] * sweep;
       }
       // The wing beat runs at the behaviour's rate and eases onto a held
       // frame (wings level to glide, folded to stoop) with a slight sway.
-      const holdAmount = Math.max(eased.hold, workAmount);
-      flapPhase = (flapPhase + delta * eased.beat * (1 - holdAmount * 0.97)) % 1;
+      const holdAmount = Math.max(eased.hold, workAmount * (1 - workUp));
+      flapPhase = (flapPhase + delta * eased.beat * (1 + workUp * workAmount * 0.6) * (1 - holdAmount * 0.97)) % 1;
       const holdFrame = (workAmount > 0.5 ? FOLD_FRAME : eased.holdFrame) + Math.sin(time * 1.3) * 0.012;
       const toHold = ((holdFrame - flapPhase + 1.5) % 1) - 0.5;
       flap = (flapPhase + toHold * holdAmount + 1) % 1;
@@ -1095,7 +1111,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         width: canvas.width, height: canvas.height,
         amount: workAmount, progress: workProgress, enter: workEnter,
         bird: [birdMatrix[12], birdMatrix[13], birdMatrix[14]],
+        birdLength: 2.2 * flight.scale * (mobile ? 0.55 : 1),
+        flow: 1 - 2 * workUp, travel: workTravel, speed: workSpeed,
         open: workState.open, hover: workState.hover,
+        cursor: [wakeTarget[0], wakeTarget[1]], cursorOn: wakeArmed ? hoverTarget : 0,
       });
       workState.focus = work.focus;
       const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;

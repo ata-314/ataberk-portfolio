@@ -41,11 +41,34 @@ if (open) {
     waited = t;
     await page.screenshot({ path: `${out}/work-open-${t}.png` });
   }
+  // Cursor through the opened card, then a click burst.
+  const [sx, sy] = phone ? [80, 380] : [420, 380];
+  await page.mouse.move(sx, sy);
+  await page.mouse.move(sx + (phone ? 220 : 620), sy + 90, { steps: 24 });
+  await page.waitForTimeout(60);
+  await page.screenshot({ path: `${out}/work-beads.png` });
+  await page.mouse.click(cx, cy - 40);
+  await page.waitForTimeout(280);
+  await page.screenshot({ path: `${out}/work-burst.png` });
   await page.mouse.wheel(0, 300);
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${out}/work-closing.png` });
   await page.waitForTimeout(1600);
   await page.screenshot({ path: `${out}/work-closed.png` });
+}
+// Scroll back up: the bird turns and climbs.
+if (open) {
+  for (let i = 0; i < 8; i++) {
+    await page.mouse.wheel(0, -90);
+    await page.waitForTimeout(90);
+  }
+  await page.screenshot({ path: `${out}/work-climb.png` });
+  for (let i = 0; i < 8; i++) {
+    await page.mouse.wheel(0, 90);
+    await page.waitForTimeout(90);
+  }
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${out}/work-dive.png` });
 }
 console.log(logs.slice(-15).join("\n"));
 await browser.close();

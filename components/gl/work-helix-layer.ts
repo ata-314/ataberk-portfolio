@@ -4,11 +4,12 @@
 // in the middle, nose down, wings folded — reads as falling through it.
 // Clicking a card flies it to the front, the world behind it goes dark and
 // the card comes apart into its own picture as particles, raked by comets
-// of light. Bubbles and points of light stream round the bird throughout.
+// of light; the cursor parts it into beads and a click bursts them. Beads
+// peel off the bird and trail its flight throughout.
 import {
   atmosphereFragment,
-  bubbleFragment,
-  bubbleVertex,
+  beadFragment,
+  beadVertex,
   cardFragment,
   cardVertex,
   fullscreenVertex,
@@ -139,8 +140,14 @@ export type WorkFrame = {
   progress: number; // 0..1 along the pinned runway
   enter: number; // -1 below, 0 pinned, +1 above: helix slides with the page
   bird: Vec3;
+  birdLength: number; // world length of the bird's body along the fall
+  flow: number; // +1 diving (beads trail up), -1 climbing
+  travel: number; // integrated flight distance, drives the air motes
+  speed: number; // 0..1 scroll speed
   open: number; // requested open card, -1 none
   hover: number;
+  cursor: [number, number]; // NDC
+  cursorOn: number;
 };
 
 export function createWorkHelixLayer(
@@ -150,7 +157,7 @@ export function createWorkHelixLayer(
 ) {
   const count = slots.length;
   const card = compile(gl, cardVertex, cardFragment);
-  const bubbles = compile(gl, bubbleVertex, bubbleFragment);
+  const beads = compile(gl, beadVertex, beadFragment);
   const atmosphere = compile(gl, fullscreenVertex, atmosphereFragment);
   const veil = compile(gl, fullscreenVertex, veilFragment);
   const inside = compile(gl, insideVertex, insideFragment);
@@ -174,20 +181,20 @@ export function createWorkHelixLayer(
   attr("aFace", 1, 8);
   const cardVerts = geometry.length / 9;
 
-  const bubbleCount = mobile ? 420 : 1100;
-  const bubbleVao = gl.createVertexArray();
-  gl.bindVertexArray(bubbleVao);
-  const seeds = new Float32Array(bubbleCount * 4);
+  const beadCount = mobile ? 1400 : 3600;
+  const beadVao = gl.createVertexArray();
+  gl.bindVertexArray(beadVao);
+  const seeds = new Float32Array(beadCount * 4);
   let rs = 0x2545f491;
   const rnd = () => {
     rs ^= rs << 13; rs ^= rs >>> 17; rs ^= rs << 5;
     return (rs >>> 0) / 4294967296;
   };
   for (let i = 0; i < seeds.length; i++) seeds[i] = rnd();
-  const bubbleBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, bubbleBuffer);
+  const beadBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, beadBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
-  const seedLoc = gl.getAttribLocation(bubbles.p, "aSeed");
+  const seedLoc = gl.getAttribLocation(beads.p, "aSeed");
   gl.enableVertexAttribArray(seedLoc);
   gl.vertexAttribPointer(seedLoc, 4, gl.FLOAT, false, 0, 0);
   const emptyVao = gl.createVertexArray();
@@ -210,6 +217,18 @@ export function createWorkHelixLayer(
   let clock = 0;
   let focus = 0;
   const openRect = new Float32Array(4);
+  // Cursor wake over the opened card, in panel space: slot 0 is the live
+  // cursor, 1..7 a ring of recent stroke samples that fade.
+  const trail = new Float32Array(32);
+  const trailW = new Float32Array(8);
+  let trailSlot = 1;
+  let trailLast: [number, number] | null = null;
+  let trailClock = 0;
+  const burst = new Float32Array([0, 0, 9, 0]);
+  const toPanel = (x: number, y: number): [number, number] => [
+    ((x - openRect[0]) / Math.max(openRect[2], 1e-3)) * (CARD_W / CARD_H),
+    (y - openRect[1]) / Math.max(openRect[3], 1e-3),
+  ];
   const openModel = new Float32Array(16);
 
   // Pose of card i on the helix at the current scroll.
@@ -328,6 +347,26 @@ export function createWorkHelixLayer(
     }
     // Far to near.
     order.sort((a, b) => depths[a] - depths[b]);
+    // Cursor wake inside the opened card.
+    const [cx, cy] = toPanel(f.cursor[0], f.cursor[1]);
+    const live = openT > 0.85 ? f.cursorOn : 0;
+    for (let k = 1; k < 8; k++) trailW[k] *= Math.exp(-f.delta * 1.8);
+    trailClock += f.delta;
+    if (trailLast && live > 0.5) {
+      const dx = cx - trailLast[0], dy = cy - trailLast[1];
+      const moved = Math.hypot(dx, dy);
+      if (moved > 0.035 && trailClock > 1 / 40) {
+        trailClock = 0;
+        trail.set([cx, cy, dx / Math.max(f.delta, 1 / 120), dy / Math.max(f.delta, 1 / 120)], trailSlot * 4);
+        trailW[trailSlot] = Math.min(1, 0.35 + moved * 4);
+        trailSlot = trailSlot % 7 + 1;
+      }
+    }
+    trailLast = [cx, cy];
+    trail.set([cx, cy, 0, 0], 0);
+    trailW[0] = damp(trailW[0], live * 0.55, 8, f.delta);
+    burst[2] += f.delta;
+    if (openT < 0.5) burst[3] = 0;
     if (shown >= 0) {
       openModel.set(models[shown]);
       const tl = project(openModel, f, -CARD_W / 2, CARD_H / 2);
@@ -407,17 +446,20 @@ export function createWorkHelixLayer(
     for (const i of order) if (i !== shown && depths[i] >= bz) drawCard(i, f, 1 - smooth(openT, 0.1, 0.5));
     endCards();
 
-    gl.useProgram(bubbles.p);
-    gl.bindVertexArray(bubbleVao);
+    gl.useProgram(beads.p);
+    gl.bindVertexArray(beadVao);
     gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE);
-    gl.uniformMatrix4fv(bubbles.u("uView"), false, f.view);
-    gl.uniformMatrix4fv(bubbles.u("uProj"), false, f.projection);
-    gl.uniform1f(bubbles.u("uTime"), f.time);
-    gl.uniform1f(bubbles.u("uRise"), f.progress * (count - 1) * STEP_Y + f.enter * 6.5);
-    gl.uniform1f(bubbles.u("uPx"), f.height / (2 * Math.tan(Math.PI / 8)));
-    gl.uniform1f(bubbles.u("uAmount"), f.amount * (1 - smooth(openT, 0.1, 0.5)));
-    gl.uniform3fv(bubbles.u("uBird"), f.bird);
-    gl.drawArrays(gl.POINTS, 0, bubbleCount);
+    gl.uniformMatrix4fv(beads.u("uView"), false, f.view);
+    gl.uniformMatrix4fv(beads.u("uProj"), false, f.projection);
+    gl.uniform1f(beads.u("uTime"), f.time);
+    gl.uniform1f(beads.u("uPx"), f.height / (2 * Math.tan(Math.PI / 8)));
+    gl.uniform1f(beads.u("uAmount"), f.amount * (1 - smooth(openT, 0.1, 0.5)));
+    gl.uniform1f(beads.u("uFlow"), f.flow);
+    gl.uniform1f(beads.u("uTravel"), f.travel);
+    gl.uniform1f(beads.u("uSpeed"), f.speed);
+    gl.uniform1f(beads.u("uLen"), f.birdLength);
+    gl.uniform3fv(beads.u("uBird"), f.bird);
+    gl.drawArrays(gl.POINTS, 0, beadCount);
 
     if (shown < 0) return;
     const veilA = smooth(openT, 0.12, 0.6);
@@ -455,6 +497,9 @@ export function createWorkHelixLayer(
     gl.uniform3fv(inside.u("uDeep"), s.deep);
     gl.uniform3fv(inside.u("uMid"), s.mid);
     gl.uniform3fv(inside.u("uGlow"), s.glow);
+    gl.uniform4fv(inside.u("uTrail"), trail);
+    gl.uniform1fv(inside.u("uTrailW"), trailW);
+    gl.uniform4fv(inside.u("uBurst"), burst);
     gl.drawArrays(gl.POINTS, 0, cols * rows);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
   };
@@ -464,14 +509,20 @@ export function createWorkHelixLayer(
     renderBack,
     renderFront,
     pick,
+    // A click inside the opened card bursts its beads from that point.
+    burst(x: number, y: number) {
+      if (openT < 0.85) return;
+      const [px, py] = toPanel(x, y);
+      burst.set([px, py, 0, 1]);
+    },
     get focus() { return focus; },
     get openAmount() { return openT; },
     dispose() {
-      [card, bubbles, atmosphere, veil, inside].forEach((x) => gl.deleteProgram(x.p));
+      [card, beads, atmosphere, veil, inside].forEach((x) => gl.deleteProgram(x.p));
       gl.deleteBuffer(cardBuffer);
-      gl.deleteBuffer(bubbleBuffer);
+      gl.deleteBuffer(beadBuffer);
       gl.deleteVertexArray(cardVao);
-      gl.deleteVertexArray(bubbleVao);
+      gl.deleteVertexArray(beadVao);
       gl.deleteVertexArray(emptyVao);
     },
   };
