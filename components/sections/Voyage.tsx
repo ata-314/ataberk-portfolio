@@ -17,7 +17,7 @@ const copy = {
 // portal and the flight through it into the voxel tunnel, all of it drawn
 // by the stage (which reads this section's progress through [data-voyage]).
 // Inside the tunnel the flight runs on its own, so the depth readout counts
-// on a clock rather than the scroll.
+// with the flight's speed rather than the scroll.
 export function Voyage({ locale }: { locale: Locale }) {
   const t = copy[locale];
   const root = useRef<HTMLElement>(null);
@@ -50,7 +50,8 @@ export function Voyage({ locale }: { locale: Locale }) {
         if (progress < 0.46) metres = 0;
         return;
       }
-      metres += deltaMs * 0.12;
+      // Counts with the stage's flight speed, which it writes on the section.
+      metres += (deltaMs / 1000) * Number(section.dataset.speed || 0) * 4;
       if (depth.current) depth.current.textContent = String(Math.floor(metres) % 10000).padStart(4, "0");
     };
     gsap.ticker.add(tick);

@@ -299,6 +299,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let portalThrough = 0;
     let tunnelClock = 0;
     let tunnelSpeed = 0;
+    // The ride: seconds since the flight passed the portal, and how far into
+    // warp speed it is (0 gliding in → 1 full rush).
+    let rideTime = 0;
+    let warp = 0;
+    let speedShown = -1;
     gl.bindVertexArray(vao);
     gl.useProgram(program);
     // Sparse grains supply the handoff; the particle sculpture carries entry.
@@ -833,10 +838,20 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       birdEnter = damp(birdEnter, smoothstep(voyage, 0.34, 0.48), 6, delta);
       portalThrough = damp(portalThrough, smoothstep(voyage, 0.44, 0.56), 6, delta);
       tunnelIn = damp(tunnelIn, smoothstep(voyage, 0.3, 0.44) * (1 - smoothstep(voyage, 0.975, 1)) * voyageHold, 5, delta);
-      // Inside, the flight moves on by itself: cruise speed eases in once
-      // through the portal and holds however the page is scrolled.
-      tunnelSpeed = damp(tunnelSpeed, portalThrough > 0.5 && tunnelIn > 0.05 ? 24 : 0, 1.8, delta);
+      // Inside, the flight runs by itself like a shot: it glides in at a
+      // steady pace for a beat, then accelerates hard into a sustained rush,
+      // whatever the page is doing. Scrolling back out of the tunnel resets
+      // the ride.
+      const riding = portalThrough > 0.5 && tunnelIn > 0.05;
+      rideTime = riding ? rideTime + delta : portalThrough < 0.3 ? 0 : rideTime;
+      const surge = smoothstep(rideTime, 1.1, 2.8);
+      tunnelSpeed = damp(tunnelSpeed, riding ? 12 + 78 * surge * surge : 0, 3, delta);
       tunnelClock += delta * tunnelSpeed;
+      warp = Math.max(0, Math.min(1, (tunnelSpeed - 12) / 78)) * tunnelIn;
+      if (voyageElement && Math.round(tunnelSpeed) !== speedShown) {
+        speedShown = Math.round(tunnelSpeed);
+        voyageElement.dataset.speed = String(speedShown);
+      }
       const freeFlight = (1 - voyageHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
       const motion = behaviour.step(time, travel);
@@ -887,7 +902,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         flight.position = [
           mix(flight.position[0], sway, voyageHold),
           mix(flight.position[1], mix(-0.35, 0.12, inPortal) - portalThrough * 0.15 + Math.sin(time * 0.8) * 0.05 * (1 - inPortal * (1 - portalThrough)), voyageHold),
-          mix(flight.position[2], mix(-2.6 * inPortal, -0.8, portalThrough), voyageHold),
+          mix(flight.position[2], mix(-2.6 * inPortal, -0.8 + warp * 0.35, portalThrough), voyageHold),
         ];
         flight.scale = mix(flight.scale, mix(0.72 - inPortal * 0.12, 0.7, portalThrough), voyageHold);
         yaw = mix(yaw, Math.PI + Math.sin(time * 0.4) * 0.2 * portalThrough, Math.max(smoothstep(voyage, 0.26, 0.38), tunnelIn) * voyageHold);
@@ -906,6 +921,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         -0.02 - hero * 0.03,
         mix(10.4, 8.2 - hero * 1.5 * (1 - finale), introEase),
       ];
+      // Warp: the lens widens and the camera shudders at full rush.
+      camera[0] += (Math.sin(time * 31) + Math.sin(time * 17.3)) * 0.006 * warp;
+      camera[1] += (Math.sin(time * 27 + 1) + Math.sin(time * 13.1)) * 0.005 * warp;
+      perspective(projection, (Math.PI / 4) * (1 + warp * 0.32), stageW / Math.max(stageH, 1), 0.1, 100);
       lookAt(view, camera, [0, 0.08, 0]);
       // Cursor velocity where its ray crosses the bird's depth, and the
       // world size of the picture plane there: the flow field is stamped
@@ -1014,7 +1033,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // blue and back over the ride.
       const scrollTravel = Math.max(0, voyage - 0.5) * 160;
       tunnel.render(view, projection, time, tunnelClock + scrollTravel + tunnelExit * tunnelExit * 140, tunnelIn,
-        0.5 - 0.5 * Math.cos(tunnelClock * 0.006), smoothstep(voyage, 0.3, 0.5), tunnelExit);
+        0.5 - 0.5 * Math.cos(tunnelClock * 0.004), smoothstep(voyage, 0.3, 0.5), Math.max(tunnelExit, warp * 0.45));
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -1032,9 +1051,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         }, sceneTarget);
       if (sceneTarget) gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget);
       post?.finish(time, {
-        bloom: 0.8,
+        bloom: 0.8 + warp * 0.35,
         threshold: 0.72,
-        aberration: 0.02,
+        aberration: 0.02 + warp * 0.05,
         grain: 0.04,
         grade: [0.0, 0.25, 0.3],
         amount: Math.max(tunnelIn, xOpen * voyageHold),
