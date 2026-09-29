@@ -5,6 +5,7 @@ import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
 import { createTunnelLayer } from "./tunnel-layer";
 import { createXLayer } from "./x-layer";
+import { makeGlyphAtlas } from "./matrix-layer";
 import { createPost } from "./post";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour } from "./bird-behaviour";
@@ -282,7 +283,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // The X: the name's last letter handed over as beads, drifting down
     // into the voyage, condensing into a solid X and opening as the portal
     // the bird flies through into the tunnel.
-    const xLayer = createXLayer(gl, mobile);
+    const glyphAtlas = makeGlyphAtlas(gl);
+    const xLayer = createXLayer(gl, mobile, glyphAtlas);
+    // How far the voyage has slid in: 0 with its top at the screen's foot,
+    // 1 once the X has had room to rejoin.
+    let xPath = 0;
     let xSampled = "";
     const xCentre: [number, number, number] = [0, 0.2, -2.8];
     // Voyage chapters (section progress): condense, open, fly in, pass
@@ -814,6 +819,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       if (voyageElement) {
         const r = voyageElement.getBoundingClientRect();
         voyage = Math.max(0, Math.min(1, -r.top / Math.max(r.height - stageH, 1)));
+        xPath = Math.max(0, Math.min(1, (stageH - r.top) / (stageH + 0.18 * (r.height - stageH))));
         // Starts taking the bird as the section slides in, so it is centred
         // by the time the words have risen.
         voyageHold = damp(voyageHold, smoothstep(r.top / stageH, 1.0, 0.25) * smoothstep(r.bottom / stageH, 0.3, 1), 5, delta);
@@ -828,7 +834,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       tunnelIn = damp(tunnelIn, smoothstep(voyage, 0.3, 0.44) * (1 - smoothstep(voyage, 0.975, 1)) * voyageHold, 5, delta);
       // Inside, the flight moves on by itself: cruise speed eases in once
       // through the portal and holds however the page is scrolled.
-      tunnelSpeed = damp(tunnelSpeed, portalThrough > 0.5 && tunnelIn > 0.05 ? 9 : 0, 1.4, delta);
+      tunnelSpeed = damp(tunnelSpeed, portalThrough > 0.5 && tunnelIn > 0.05 ? 24 : 0, 1.8, delta);
       tunnelClock += delta * tunnelSpeed;
       const freeFlight = (1 - voyageHold) * smoothstep(hero, 0.6, 0.8) * (1 - orbit) * (1 - bust.morph) * (1 - finale);
       const travel = flight.direction[0] >= 0 ? 1 : -1;
@@ -982,28 +988,29 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // The corridor streams toward us; its light shifts deeper in.
       const tunnelExit = smoothstep(voyage, 0.86, 0.99);
       {
-        // Leaves the name loose and drifts down behind the bird as the hero
-        // scrolls away; condenses and faces us, opens, then the ring rushes
-        // past the camera.
+        // Comes apart into code as the hero scrolls away, pours down and
+        // rejoins as the voyage slides in; opens, then the ring rushes past
+        // the camera.
         const pull = portalThrough * portalThrough;
-        const face = 1 - xOpen;
         xCentre[0] = 0;
         xCentre[1] = mix(0.2, mobile ? 0.1 : 0.12, voyageHold);
         xCentre[2] = mix(-2.8, 8.4, pull);
         xLayer.render(view, projection, time, canvas.height, {
           centre: xCentre,
-          scale: (mobile ? 1.15 : 1.9) * (0.85 + xDense * 0.25) * (1 + xOpen * 0.35),
-          yaw: Math.sin(time * 0.3) * 0.5 * (1 - xDense * 0.7) * face + (1 - smoothstep(hero, 0.1, 0.8)) * 0.6,
-          form: smoothstep(hero, 0.05, 0.6),
-          dense: xDense,
+          scale: (mobile ? 1.15 : 1.9) * (0.9 + xDense * 0.2) * (1 + xOpen * 0.35),
+          yaw: Math.sin(time * 0.3) * 0.3 * (1 - xOpen),
+          dissolve: smoothstep(hero, 0.04, 0.5),
+          gather: smoothstep(xPath, 0.12, 1),
           open: xOpen,
           presence: smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(portalThrough, 0.8, 1)),
         });
       }
-      // The corridor streams toward us on its own clock; its light cycles
-      // teal → pink → blue and back over the ride.
-      tunnel.render(view, projection, time, tunnelClock + tunnelExit * tunnelExit * 140, tunnelIn,
-        0.5 - 0.5 * Math.cos(tunnelClock * 0.012), smoothstep(voyage, 0.3, 0.5), tunnelExit);
+      // The corridor rushes toward us on its own clock, and scrolling pushes
+      // the flight on or back on top of it; its light cycles teal → pink →
+      // blue and back over the ride.
+      const scrollTravel = Math.max(0, voyage - 0.5) * 160;
+      tunnel.render(view, projection, time, tunnelClock + scrollTravel + tunnelExit * tunnelExit * 140, tunnelIn,
+        0.5 - 0.5 * Math.cos(tunnelClock * 0.006), smoothstep(voyage, 0.3, 0.5), tunnelExit);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -1050,6 +1057,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
       tunnel.dispose();
+      gl.deleteTexture(glyphAtlas);
       xLayer.dispose();
       post?.dispose();
       buffers.forEach((buffer) => gl.deleteBuffer(buffer));
