@@ -4,13 +4,13 @@
 // as falling (or, scrolling back, climbing) through it. The cards are real
 // glass — they refract a blurred grab of the scene behind them — and follow
 // the cursor: the helix leans toward it, a hovered card tilts under it and
-// catches a glare where it points. Code streams in the far background.
+// ripples its colours in waves round the point. A particle current (the
+// hero's data sea, stood on end) flows in the far background, and each
+// card carries its project's name as a hologram inside the glass.
 // Clicking a card flies it to the front, darkens the world and hands it to
 // a fluid of beads (work-inside.ts) the cursor and clicks can stir.
 import {
   atmosphereFragment,
-  beadFragment,
-  beadVertex,
   cardFragment,
   cardVertex,
   dataFragment,
@@ -24,8 +24,8 @@ type Vec3 = [number, number, number];
 
 const CARD_W = 1;
 const CARD_H = 0.62;
-const CARD_D = 0.045;
-const CARD_R = 0.07;
+const CARD_D = 0.018;
+const CARD_R = 0.055;
 const STEP_ANGLE = Math.PI / 3;
 const STEP_Y = 0.95;
 
@@ -156,11 +156,10 @@ export function createWorkHelixLayer(
   gl: WebGL2RenderingContext,
   mobile: boolean,
   slots: { deep: Vec3; mid: Vec3; glow: Vec3 }[],
-  glyphAtlas: WebGLTexture | null,
+  titles: () => string[],
 ) {
   const count = slots.length;
   const card = compile(gl, cardVertex, cardFragment);
-  const beads = compile(gl, beadVertex, beadFragment);
   const data = compile(gl, dataVertex, dataFragment);
   const atmosphere = compile(gl, fullscreenVertex, atmosphereFragment);
   const veil = compile(gl, fullscreenVertex, veilFragment);
@@ -185,28 +184,70 @@ export function createWorkHelixLayer(
   attr("aFace", 1, 8);
   const cardVerts = geometry.length / 9;
 
-  // Beads off the bird (first 60%) and a thin scatter of air motes.
-  const beadCount = mobile ? 520 : 1300;
-  const beadVao = gl.createVertexArray();
-  gl.bindVertexArray(beadVao);
-  const seeds = new Float32Array(beadCount * 4);
-  let rs = 0x2545f491;
-  const rnd = () => {
-    rs ^= rs << 13; rs ^= rs >>> 17; rs ^= rs << 5;
-    return (rs >>> 0) / 4294967296;
-  };
-  for (let i = 0; i < seeds.length; i++) seeds[i] = rnd();
-  for (let i = 0; i < beadCount; i++) seeds[i * 4 + 3] = i < beadCount * 0.6 ? seeds[i * 4 + 3] * 0.5 : 0.5 + seeds[i * 4 + 3] * 0.5;
-  const beadBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, beadBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
-  const seedLoc = gl.getAttribLocation(beads.p, "aSeed");
-  gl.enableVertexAttribArray(seedLoc);
-  gl.vertexAttribPointer(seedLoc, 4, gl.FLOAT, false, 0, 0);
   const emptyVao = gl.createVertexArray();
   gl.bindVertexArray(null);
-  const dataCols = mobile ? 48 : 110;
-  const dataRows = mobile ? 30 : 38;
+  const dataCols = mobile ? 90 : 170;
+  const dataRows = mobile ? 70 : 100;
+
+  // Hologram titles: one 4:1 canvas cell per card, redrawn when the names
+  // (or the display font) change.
+  const titleTex = gl.createTexture();
+  let titleKey = "";
+  let titleReady = 0;
+  const drawTitles = (names: string[]) => {
+    const cellW = 1024, cellH = 256;
+    const canvas = document.createElement("canvas");
+    canvas.width = cellW;
+    canvas.height = cellH * count;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const family = getComputedStyle(document.body).getPropertyValue("--font-audiowide").trim() || "sans-serif";
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    names.slice(0, count).forEach((raw, i) => {
+      const name = raw.toUpperCase();
+      let size = 112;
+      const font = () => `400 ${size}px ${family}`;
+      ctx.font = font();
+      // One line if it fits, else two balanced lines; shrink to fit.
+      let lines = [name];
+      if (ctx.measureText(name).width > cellW * 0.9 && name.includes(" ")) {
+        const words = name.split(" ");
+        let best = [name, ""], score = Infinity;
+        for (let k = 1; k < words.length; k++) {
+          const a = words.slice(0, k).join(" "), b = words.slice(k).join(" ");
+          const w = Math.max(ctx.measureText(a).width, ctx.measureText(b).width);
+          if (w < score) { score = w; best = [a, b]; }
+        }
+        lines = best;
+      }
+      const widest = () => Math.max(...lines.map((l) => ctx.measureText(l).width));
+      while (widest() > cellW * 0.9 && size > 40) { size -= 4; ctx.font = font(); }
+      if (lines.length === 2) while (size * 2.1 > cellH * 0.92 && size > 40) { size -= 4; ctx.font = font(); }
+      const lh = size * 1.02;
+      lines.forEach((l, k) => ctx.fillText(l, cellW / 2, i * cellH + cellH / 2 + (k - (lines.length - 1) / 2) * lh));
+    });
+    gl.activeTexture(gl.TEXTURE15);
+    gl.bindTexture(gl.TEXTURE_2D, titleTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    titleReady = 1;
+  };
+  const syncTitles = () => {
+    const names = titles();
+    const key = names.join("|");
+    if (!names.length || key === titleKey) return;
+    titleKey = key;
+    drawTitles(names);
+    // Redraw once the display font has actually loaded.
+    void document.fonts?.ready.then(() => titleKey === key && drawTitles(names));
+  };
 
   // Glass: a half-resolution, mip-mapped grab of the frame drawn so far.
   let grab: { tex: WebGLTexture; fbo: WebGLFramebuffer; w: number; h: number; float: boolean } | null = null;
@@ -262,6 +303,7 @@ export function createWorkHelixLayer(
   let leanX = 0;
   let leanY = 0;
   const cursorUv: [number, number] = [0.5, 0.5];
+  const cursorVel: [number, number] = [0, 0];
   let lastHover = -1;
 
   const helixPose = (i: number, f: WorkFrame) => {
@@ -336,6 +378,7 @@ export function createWorkHelixLayer(
 
   const update = (f: WorkFrame) => {
     frame = f;
+    syncTitles();
     const wantOpen = f.open >= 0 && f.amount > 0.5;
     if (wantOpen && shown !== f.open && openT < 0.02) shown = f.open;
     if (wantOpen && shown === f.open) openT = Math.min(1, openT + f.delta / 1.6);
@@ -354,8 +397,12 @@ export function createWorkHelixLayer(
     const hoverUv = f.hover >= 0 && openT < 0.02 ? cursorOnCard(f.hover, f) : null;
     if (hoverUv) {
       if (lastHover !== f.hover) cursorUv.splice(0, 2, hoverUv[0], hoverUv[1]);
+      const px = cursorUv[0], py = cursorUv[1];
       cursorUv[0] = damp(cursorUv[0], hoverUv[0], 14, f.delta);
       cursorUv[1] = damp(cursorUv[1], hoverUv[1], 14, f.delta);
+      const dt = Math.max(f.delta, 1 / 240);
+      cursorVel[0] = damp(cursorVel[0], Math.max(-3, Math.min(3, (cursorUv[0] - px) / dt)), 6, f.delta);
+      cursorVel[1] = damp(cursorVel[1], Math.max(-3, Math.min(3, (cursorUv[1] - py) / dt)), 6, f.delta);
     }
     lastHover = hoverUv ? f.hover : -1;
     order.length = 0;
@@ -429,6 +476,9 @@ export function createWorkHelixLayer(
     gl.uniform1f(card.u("uTime"), f.time);
     gl.uniform2f(card.u("uResolution"), f.width, f.height);
     gl.uniform1i(card.u("uScene"), 12);
+    gl.activeTexture(gl.TEXTURE15);
+    gl.bindTexture(gl.TEXTURE_2D, titleTex);
+    gl.uniform1i(card.u("uTitles"), 15);
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
     gl.enable(gl.CULL_FACE);
@@ -440,14 +490,14 @@ export function createWorkHelixLayer(
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
   };
 
-  // Each card refracts what is behind it, so the scene is grabbed right
-  // before it (phones grab once per pass).
+  // Cards refract one grab of the scene per pass (behind the bird, in
+  // front of it): per-card grabs cost frames and made scrolling judder.
   const drawCards = (list: number[], f: WorkFrame, target: WebGLFramebuffer | null, alphaScale: number) => {
     let grabbed = false;
     for (const i of list) {
       const a = alphas[i] * alphaScale;
       if (a < 0.003) continue;
-      if (!mobile || !grabbed) {
+      if (!grabbed) {
         grabScene(target, f);
         grabbed = true;
         beginCards(f);
@@ -463,17 +513,23 @@ export function createWorkHelixLayer(
       gl.uniform1f(card.u("uSeed"), i * 1.37 + 0.4);
       gl.uniform1f(card.u("uAlpha"), a);
       gl.uniform1f(card.u("uHover"), hovers[i]);
-      gl.uniform1f(card.u("uGlitch"), hovers[i] > 0.05 ? 0.35 + 0.35 * Math.sin(f.time * 3) : 0);
+      gl.uniform1f(card.u("uRow"), i);
+      gl.uniform1f(card.u("uRows"), count);
+      gl.uniform1f(card.u("uTitleOn"), titleReady);
+      gl.uniform3f(card.u("uAxisX"), models[i][0] / s0(i), models[i][1] / s0(i), models[i][2] / s0(i));
+      gl.uniform3f(card.u("uAxisY"), models[i][4] / s0(i), models[i][5] / s0(i), models[i][6] / s0(i));
       gl.uniform1f(card.u("uDim"), dims[i]);
       gl.uniform1f(card.u("uSweep"), sweeps[i]);
       gl.uniform1f(card.u("uSolid"), i === shown ? smooth(openT, 0.05, 0.4) : 0);
       gl.uniform2f(card.u("uCursorUv"), cursorUv[0], cursorUv[1]);
+      gl.uniform2f(card.u("uCursorVel"), cursorVel[0], cursorVel[1]);
       gl.uniform1f(card.u("uCursorLight"), hovers[i]);
       gl.drawArrays(gl.TRIANGLES, 0, cardVerts);
     }
     if (grabbed) endCards();
   };
 
+  const s0 = (i: number) => Math.hypot(models[i][0], models[i][1], models[i][2]) || 1;
   const birdDepth = (f: WorkFrame) => mulVec(f.view, f.bird[0], f.bird[1], f.bird[2])[2];
   const hide = () => 1 - smooth(openT, 0.1, 0.5);
 
@@ -490,46 +546,28 @@ export function createWorkHelixLayer(
     gl.uniform1f(atmosphere.u("uAspect"), f.width / Math.max(f.height, 1));
     gl.uniform2f(atmosphere.u("uAxis"), 0.5, 0.5);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-    if (glyphAtlas) {
+    {
       gl.useProgram(data.p);
-      gl.activeTexture(gl.TEXTURE14);
-      gl.bindTexture(gl.TEXTURE_2D, glyphAtlas);
-      gl.uniform1i(data.u("uAtlas"), 14);
       gl.uniformMatrix4fv(data.u("uView"), false, f.view);
       gl.uniformMatrix4fv(data.u("uProj"), false, f.projection);
       gl.uniform2f(data.u("uGrid"), dataCols, dataRows);
       gl.uniform1f(data.u("uTime"), f.time);
       gl.uniform1f(data.u("uTravel"), f.travel);
       gl.uniform1f(data.u("uPx"), f.height / (2 * Math.tan(Math.PI / 8)));
-      gl.uniform1f(data.u("uAmount"), f.amount * 0.8 * hide());
+      gl.uniform1f(data.u("uAmount"), f.amount * hide());
+      gl.uniform1f(data.u("uDpr"), f.height / 900);
       gl.drawArrays(gl.POINTS, 0, dataCols * dataRows);
     }
     const bz = birdDepth(f);
     drawCards(order.filter((i) => i !== shown && depths[i] < bz), f, target, hide());
   };
 
-  // Cards in front of the bird, its beads, then the opened card.
+  // Cards in front of the bird, then the opened card.
   const renderFront = (target: WebGLFramebuffer | null) => {
     const f = frame;
     if (!f || f.amount < 0.003) return;
     const bz = birdDepth(f);
     drawCards(order.filter((i) => i !== shown && depths[i] >= bz), f, target, hide());
-
-    gl.useProgram(beads.p);
-    gl.bindVertexArray(beadVao);
-    gl.enable(gl.BLEND);
-    gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE);
-    gl.uniformMatrix4fv(beads.u("uView"), false, f.view);
-    gl.uniformMatrix4fv(beads.u("uProj"), false, f.projection);
-    gl.uniform1f(beads.u("uTime"), f.time);
-    gl.uniform1f(beads.u("uPx"), f.height / (2 * Math.tan(Math.PI / 8)));
-    gl.uniform1f(beads.u("uAmount"), f.amount * hide());
-    gl.uniform1f(beads.u("uFlow"), f.flow);
-    gl.uniform1f(beads.u("uTravel"), f.travel);
-    gl.uniform1f(beads.u("uSpeed"), f.speed);
-    gl.uniform1f(beads.u("uLen"), f.birdLength);
-    gl.uniform3fv(beads.u("uBird"), f.bird);
-    gl.drawArrays(gl.POINTS, 0, beadCount);
 
     // The inside fluid runs only while a card is (nearly) open.
     const [px, py] = toPanel(f.cursor[0], f.cursor[1]);
@@ -571,16 +609,15 @@ export function createWorkHelixLayer(
     get focus() { return focus; },
     get openAmount() { return openT; },
     dispose() {
-      [card, beads, data, atmosphere, veil].forEach((x) => gl.deleteProgram(x.p));
+      [card, data, atmosphere, veil].forEach((x) => gl.deleteProgram(x.p));
+      gl.deleteTexture(titleTex);
       inside.dispose();
       if (grab) {
         gl.deleteTexture(grab.tex);
         gl.deleteFramebuffer(grab.fbo);
       }
       gl.deleteBuffer(cardBuffer);
-      gl.deleteBuffer(beadBuffer);
       gl.deleteVertexArray(cardVao);
-      gl.deleteVertexArray(beadVao);
       gl.deleteVertexArray(emptyVao);
     },
   };

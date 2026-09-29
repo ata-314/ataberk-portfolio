@@ -12,6 +12,9 @@ import { createBirdBehaviour, FOLD_FRAME } from "./bird-behaviour";
 import { createWorkHelixLayer } from "./work-helix-layer";
 import { bustState, scrollState, workState } from "../three/scroll-state";
 import { slotRgb, workSlots } from "@/content/work-slots";
+import { work as workContent } from "@/content/work";
+
+const workItemCount = Math.min(workSlots.length, workContent.tr.items.length);
 
 const GLYPHS = ["0", "1", "<", ">", "{", "}", "/", "+", "*", "=", ":", ";", ".", "-", "|", "_"];
 const BIRD_SAMPLES = 9000;
@@ -305,11 +308,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const glyphAtlas = makeGlyphAtlas(gl);
     const xLayer = createXLayer(gl, mobile, glyphAtlas);
     // Selected work: glass cards on a helix with the bird behind.
-    const work = createWorkHelixLayer(gl, mobile, workSlots.map((slot) => ({
+    const work = createWorkHelixLayer(gl, mobile, workSlots.slice(0, workItemCount).map((slot) => ({
       deep: slotRgb(slot.colors[0]),
       mid: slotRgb(slot.colors[1]),
       glow: slotRgb(slot.colors[2]),
-    })), glyphAtlas);
+    })), () => workState.titles);
     // How far the voyage has slid in: 0 with its top at the screen's foot,
     // 1 once the X has had room to rejoin.
     let xPath = 0;
@@ -922,7 +925,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       let workTarget = 0;
       if (workElement && hero > 0.999) {
         const r = workElement.getBoundingClientRect();
-        workProgress = Math.max(0, Math.min(1, -r.top / Math.max(r.height - stageH, 1)));
+        // Eased: raw scroll arrives in wheel-sized steps, which made the
+        // helix (and the bird's spin) judder.
+        const progressTarget = Math.max(0, Math.min(1, -r.top / Math.max(r.height - stageH, 1)));
+        workProgress = workAmount < 0.02 ? progressTarget : damp(workProgress, progressTarget, 6.5, delta);
         const enterTarget = r.top > 0 ? -Math.min(1, r.top / stageH) : r.bottom < stageH ? Math.min(1, (stageH - r.bottom) / stageH) : 0;
         workEnter = damp(workEnter, enterTarget, 9, delta);
         workTarget = 1 - smoothstep(Math.abs(enterTarget), 0.25, 0.95);
@@ -1047,7 +1053,13 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const birdVisible = hero > 0.06 && readyMix > 0.5 && finale < 0.98 && services < 0.98;
       simInput.reset = !birdVisible || !simPrimed;
       simInput.dt = Math.max(1 / 240, Math.min(delta, 1 / 30));
-      simInput.hover = hover[2];
+      // In the work helix the bird stays whole: no cursor gusts, and no
+      // motion lag (its corkscrew and wing beats would fling grains off).
+      simInput.hover = hover[2] * (1 - workAmount);
+      if (workAmount > 0.02) {
+        const keep = workAmount * workAmount * (3 - 2 * workAmount);
+        for (let i = 0; i < 16; i++) prevBird[i] = mix(prevBird[i], birdMatrix[i], keep);
+      }
       gl.useProgram(program);
       gl.bindVertexArray(vao);
       gl.uniformMatrix4fv(u("projectionMatrix"), false, projection);

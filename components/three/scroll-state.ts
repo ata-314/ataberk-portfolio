@@ -24,5 +24,6 @@ export const workState = {
   progress: 0, // 0..1 along the pinned runway
   hover: -1, // card under the cursor (stage-picked)
   open: -1, // card the visitor is inside, -1 when browsing
+  titles: [] as string[], // card names, in the visitor's language
   pick: null as null | ((clientX: number, clientY: number) => number),
 };
