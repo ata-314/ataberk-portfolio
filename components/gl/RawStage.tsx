@@ -1134,6 +1134,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         flow: 1 - 2 * workUp, travel: workTravel, speed: workSpeed,
         open: workState.open, hover: workState.hover,
         cursor: [wakeTarget[0], wakeTarget[1]], cursorOn: wakeArmed ? hoverTarget : 0,
+        wake,
       });
       workState.focus = work.focus;
       workState.progress = workProgress;

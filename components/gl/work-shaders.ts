@@ -173,12 +173,15 @@ void main(){
 // lit grains, folds turned from the light sinking into shadow, forest →
 // lime → citron bands drifting toward the accent hue, and a white-cyan scan
 // sweeping the surface — flowing with the flight (up while the bird dives,
-// down while it climbs).
+// down while it climbs). Arriving at the section, the sea surfaces from
+// deep inside the page like the hero's opening; the cursor's wake (the
+// hero's own stamps) pushes grains toward the viewer and lights them.
 export const dataVertex = `#version 300 es
 precision highp float;
 uniform mat4 uView,uProj;
 uniform vec2 uGrid;
-uniform float uTime,uTravel,uAmount,uDpr;
+uniform float uTime,uTravel,uAmount,uDpr,uReveal,uAspect;
+uniform vec4 uWake[16]; // NDC x,y, strength, heading
 out vec3 vColor; out float vAlpha; out vec2 vLight;
 float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.0-2.0*f);
@@ -212,8 +215,44 @@ void main(){
   // toward the viewer. Grains sit unevenly on the surface, like the hero.
   float ang=q.x/10.0;
   float radius=10.5-h*.9-(seed-.5)*.06;
+  // Emergence: a front opens just below centre and spreads out with a
+  // noise-warped edge; behind it each grain rises from deep beneath its
+  // place and sways on a decaying current until it settles.
+  float introAlpha=1.0,introSize=1.0,crossing=0.0;
+  if(uReveal<1.0){
+    vec2 rel=(q-vec2(0.0,-1.5))*vec2(1.0,1.25);
+    float warp=vnoise(q*.35+3.7)-.5;
+    float delay=clamp(length(rel)/17.0*.55+warp*.2+seed*.07,0.0,.6);
+    float tt=clamp((uReveal-delay)/.4,0.0,1.0);
+    float rise=tt*tt*tt*(tt*(tt*6.0-15.0)+10.0);
+    float remain=1.0-rise;
+    radius+=remain*(3.5+seed*4.0);
+    q.y-=remain*(.6+seed*.5);
+    ang+=sin(seed*23.0+tt*5.5)*.03*remain;
+    crossing=smoothstep(0.0,.2,tt)*(1.0-smoothstep(.3,.65,tt));
+    introAlpha=smoothstep(0.0,.35,tt);
+    introSize=mix(.35,1.0,smoothstep(0.0,.75,tt));
+  }
   vec3 p=vec3(sin(ang)*radius,q.y,-cos(ang)*radius-1.5);
   vec4 view=uView*vec4(p,1.0);
+  // Cursor wake: grains under the stroke lift toward the viewer and are
+  // swept aside along its heading.
+  vec4 clip0=uProj*view;
+  vec2 ndc=clip0.xy/max(clip0.w,.001);
+  float stir=0.0;
+  vec2 push=vec2(0.0);
+  for(int i=0;i<16;i++){
+    vec4 w=uWake[i];
+    if(w.z<.002) continue;
+    vec2 d=(ndc-w.xy)*vec2(uAspect,1.0);
+    float r=exp(-dot(d,d)*28.0)*w.z*2.4;
+    vec2 out2=d/max(length(d),.02);
+    push+=(out2*.7+vec2(cos(w.w),sin(w.w))*.5)*r;
+    stir+=r;
+  }
+  stir=min(stir,1.2);
+  view.xy+=push*(.35+seed*.4)*(-view.z*.06);
+  view.z+=stir*(1.2+seed*1.5);
   gl_Position=uProj*view;
   // Hero palette, cycling toward the accent over time.
   float cycle=.5-.5*cos(t*.065);
@@ -236,11 +275,13 @@ void main(){
   tint=mix(tint,vec3(.86,1.0,1.0)*1.6,scan*smoothstep(.2,.9,light)*.8);
   float pulse=pow(.5+.5*sin(q.y*.7-q.x*.3-t*.8),8.0);
   tint=mix(tint,citron,pulse*.07);
+  tint+=citron*crossing*(.12+step(.82,seed)*.9);
+  tint=mix(tint,mix(citron,vec3(.8,1.0,1.0),seed)*1.5,min(stir,1.0)*.7);
   float edge=(1.0-smoothstep(.62,1.0,abs(g.x*2.0-1.0)))*(1.0-smoothstep(.72,1.0,abs(g.y*2.0-1.0)));
   vColor=tint;
-  vAlpha=edge*uAmount;
+  vAlpha=edge*uAmount*introAlpha;
   vLight=vec2(light,seed);
-  gl_PointSize=max(1.0,(2.2+seed*.9)*uDpr*9.0/max(-view.z,1.0)*2.3);
+  gl_PointSize=max(1.0,(2.2+seed*.9)*uDpr*9.0/max(-view.z,1.0)*2.3*introSize*(1.0+stir*.35));
 }`;
 
 export const dataFragment = `#version 300 es

@@ -150,6 +150,7 @@ export type WorkFrame = {
   hover: number;
   cursor: [number, number]; // NDC
   cursorOn: number;
+  wake: Float32Array; // the stage's cursor wake stamps (16 × xy, strength, heading)
 };
 
 export function createWorkHelixLayer(
@@ -295,6 +296,9 @@ export function createWorkHelixLayer(
   const pickable = new Uint8Array(count);
   const order: number[] = [];
   let frame: WorkFrame | null = null;
+  // The backdrop's emergence clock: runs once the section arrives and
+  // resets after it has fully left, so every arrival replays it.
+  let reveal = 0;
   let openT = 0;
   let shown = -1; // card currently opened or closing
   let focus = 0;
@@ -380,6 +384,8 @@ export function createWorkHelixLayer(
   const update = (f: WorkFrame) => {
     frame = f;
     syncTitles();
+    if (f.amount < 0.02) reveal = 0;
+    else if (f.amount > 0.25) reveal = Math.min(1, reveal + f.delta / 2.8);
     const wantOpen = f.open >= 0 && f.amount > 0.5;
     if (wantOpen && shown !== f.open && openT < 0.02) shown = f.open;
     if (wantOpen && shown === f.open) openT = Math.min(1, openT + f.delta / 1.6);
@@ -559,6 +565,9 @@ export function createWorkHelixLayer(
       gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
       gl.uniform1f(data.u("uAmount"), f.amount * hide());
       gl.uniform1f(data.u("uDpr"), f.height / 900);
+      gl.uniform1f(data.u("uReveal"), reveal);
+      gl.uniform1f(data.u("uAspect"), f.width / Math.max(f.height, 1));
+      gl.uniform4fv(data.u("uWake"), f.wake);
       gl.drawArrays(gl.POINTS, 0, dataCols * dataRows);
     }
     const bz = birdDepth(f);

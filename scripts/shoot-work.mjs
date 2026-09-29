@@ -4,7 +4,7 @@ import { chromium } from "playwright";
 
 const out = process.argv[2] ?? ".";
 const steps = (process.argv[3] ?? "0,0.35,0.7").split(",").map(Number);
-const open = !["noopen", "manifesto"].includes(process.argv[4]);
+const open = !["noopen", "manifesto", "emerge"].includes(process.argv[4]);
 // MOBILE=1 shoots a phone viewport (touch, coarse pointer).
 const phone = process.env.MOBILE === "1";
 const browser = await chromium.launch({ args: ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist"] });
@@ -31,6 +31,24 @@ if (process.argv[4] === "manifesto") {
     await page.waitForTimeout(2600);
     await page.screenshot({ path: `${out}/manifesto-${i}.png` });
   }
+  await browser.close();
+  process.exit(0);
+}
+// "emerge": arrive at the section, frame the backdrop surfacing, then
+// sweep the cursor through it.
+if (process.argv[4] === "emerge") {
+  const top = await page.evaluate(() => document.querySelector("#work").getBoundingClientRect().top + scrollY);
+  await page.evaluate(([y]) => window.scrollTo(0, y), [top + 20]);
+  let waited = 0;
+  for (const t of [300, 900, 1600, 3200]) {
+    await page.waitForTimeout(t - waited);
+    waited = t;
+    await page.screenshot({ path: `${out}/emerge-${t}.png` });
+  }
+  await page.mouse.move(150, 250);
+  await page.mouse.move(1300, 650, { steps: 30 });
+  await page.waitForTimeout(80);
+  await page.screenshot({ path: `${out}/emerge-wake.png` });
   await browser.close();
   process.exit(0);
 }
