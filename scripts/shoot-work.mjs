@@ -49,6 +49,20 @@ if (process.argv[4] === "emerge") {
   await page.mouse.move(1300, 650, { steps: 30 });
   await page.waitForTimeout(80);
   await page.screenshot({ path: `${out}/emerge-wake.png` });
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: `${out}/emerge-wake-settle.png` });
+  // Leave the section downward: the sea sinks back into the page.
+  const end = await page.evaluate(() => {
+    const r = document.querySelector("#work").getBoundingClientRect();
+    return r.bottom + scrollY;
+  });
+  await page.evaluate(([y]) => window.scrollTo(0, y), [end + 200]);
+  waited = 0;
+  for (const t of [250, 800, 1500]) {
+    await page.waitForTimeout(t - waited);
+    waited = t;
+    await page.screenshot({ path: `${out}/exit-${t}.png` });
+  }
   await browser.close();
   process.exit(0);
 }
