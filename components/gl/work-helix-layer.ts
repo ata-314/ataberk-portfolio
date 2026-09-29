@@ -1,22 +1,24 @@
-// Selected work as a helix of glass cards round the diving bird.
+// Selected work as a helix of glass cards, the bird flying far behind it.
 //
-// Scroll turns the helix and lifts it past the camera, so the bird — held
-// in the middle, nose down, wings folded — reads as falling through it.
-// Clicking a card flies it to the front, the world behind it goes dark and
-// the card comes apart into its own picture as particles, raked by comets
-// of light; the cursor parts it into beads and a click bursts them. Beads
-// peel off the bird and trail its flight throughout.
+// Scroll turns the helix and carries it past the camera, so the bird reads
+// as falling (or, scrolling back, climbing) through it. The cards are real
+// glass — they refract a blurred grab of the scene behind them — and follow
+// the cursor: the helix leans toward it, a hovered card tilts under it and
+// catches a glare where it points. Code streams in the far background.
+// Clicking a card flies it to the front, darkens the world and hands it to
+// a fluid of beads (work-inside.ts) the cursor and clicks can stir.
 import {
   atmosphereFragment,
   beadFragment,
   beadVertex,
   cardFragment,
   cardVertex,
+  dataFragment,
+  dataVertex,
   fullscreenVertex,
-  insideFragment,
-  insideVertex,
   veilFragment,
 } from "./work-shaders";
+import { createWorkInside } from "./work-inside";
 
 type Vec3 = [number, number, number];
 
@@ -24,8 +26,8 @@ const CARD_W = 1;
 const CARD_H = 0.62;
 const CARD_D = 0.045;
 const CARD_R = 0.07;
-const STEP_ANGLE = (Math.PI * 2) / 5;
-const STEP_Y = 1.05;
+const STEP_ANGLE = Math.PI / 3;
+const STEP_Y = 0.95;
 
 function compile(gl: WebGL2RenderingContext, vs: string, fs: string) {
   const make = (type: number, src: string) => {
@@ -142,7 +144,7 @@ export type WorkFrame = {
   bird: Vec3;
   birdLength: number; // world length of the bird's body along the fall
   flow: number; // +1 diving (beads trail up), -1 climbing
-  travel: number; // integrated flight distance, drives the air motes
+  travel: number; // integrated flight distance, drives the streams
   speed: number; // 0..1 scroll speed
   open: number; // requested open card, -1 none
   hover: number;
@@ -154,13 +156,15 @@ export function createWorkHelixLayer(
   gl: WebGL2RenderingContext,
   mobile: boolean,
   slots: { deep: Vec3; mid: Vec3; glow: Vec3 }[],
+  glyphAtlas: WebGLTexture | null,
 ) {
   const count = slots.length;
   const card = compile(gl, cardVertex, cardFragment);
   const beads = compile(gl, beadVertex, beadFragment);
+  const data = compile(gl, dataVertex, dataFragment);
   const atmosphere = compile(gl, fullscreenVertex, atmosphereFragment);
   const veil = compile(gl, fullscreenVertex, veilFragment);
-  const inside = compile(gl, insideVertex, insideFragment);
+  const inside = createWorkInside(gl, mobile, CARD_W / CARD_H);
 
   const cardVao = gl.createVertexArray();
   gl.bindVertexArray(cardVao);
@@ -181,7 +185,8 @@ export function createWorkHelixLayer(
   attr("aFace", 1, 8);
   const cardVerts = geometry.length / 9;
 
-  const beadCount = mobile ? 1400 : 3600;
+  // Beads off the bird (first 60%) and a thin scatter of air motes.
+  const beadCount = mobile ? 520 : 1300;
   const beadVao = gl.createVertexArray();
   gl.bindVertexArray(beadVao);
   const seeds = new Float32Array(beadCount * 4);
@@ -191,6 +196,7 @@ export function createWorkHelixLayer(
     return (rs >>> 0) / 4294967296;
   };
   for (let i = 0; i < seeds.length; i++) seeds[i] = rnd();
+  for (let i = 0; i < beadCount; i++) seeds[i * 4 + 3] = i < beadCount * 0.6 ? seeds[i * 4 + 3] * 0.5 : 0.5 + seeds[i * 4 + 3] * 0.5;
   const beadBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, beadBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
@@ -199,9 +205,44 @@ export function createWorkHelixLayer(
   gl.vertexAttribPointer(seedLoc, 4, gl.FLOAT, false, 0, 0);
   const emptyVao = gl.createVertexArray();
   gl.bindVertexArray(null);
+  const dataCols = mobile ? 48 : 110;
+  const dataRows = mobile ? 30 : 38;
 
-  const radius = mobile ? 1.3 : 2.5;
-  const scale = mobile ? 1.5 : 2.55;
+  // Glass: a half-resolution, mip-mapped grab of the frame drawn so far.
+  let grab: { tex: WebGLTexture; fbo: WebGLFramebuffer; w: number; h: number; float: boolean } | null = null;
+  const grabScene = (source: WebGLFramebuffer | null, f: WorkFrame) => {
+    const w = Math.max(1, f.width >> 1), h = Math.max(1, f.height >> 1);
+    const float = !!source;
+    if (!grab || grab.w !== w || grab.h !== h || grab.float !== float) {
+      if (grab) {
+        gl.deleteTexture(grab.tex);
+        gl.deleteFramebuffer(grab.fbo);
+      }
+      const tex = gl.createTexture()!;
+      gl.activeTexture(gl.TEXTURE12);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      const levels = Math.floor(Math.log2(Math.max(w, h))) + 1;
+      gl.texStorage2D(gl.TEXTURE_2D, levels, float ? gl.RGBA16F : gl.RGBA8, w, h);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      const fbo = gl.createFramebuffer()!;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+      grab = { tex, fbo, w, h, float };
+    }
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, source);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, grab.fbo);
+    gl.blitFramebuffer(0, 0, f.width, f.height, 0, 0, w, h, gl.COLOR_BUFFER_BIT, gl.LINEAR);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, source);
+    gl.activeTexture(gl.TEXTURE12);
+    gl.bindTexture(gl.TEXTURE_2D, grab.tex);
+    gl.generateMipmap(gl.TEXTURE_2D);
+  };
+
+  const radius = mobile ? 1.35 : 2.6;
+  const scale = mobile ? 1.45 : 2.5;
   const models = Array.from({ length: count }, () => new Float32Array(16));
   const alphas = new Float32Array(count);
   const dims = new Float32Array(count);
@@ -214,31 +255,22 @@ export function createWorkHelixLayer(
   let frame: WorkFrame | null = null;
   let openT = 0;
   let shown = -1; // card currently opened or closing
-  let clock = 0;
   let focus = 0;
   const openRect = new Float32Array(4);
-  // Cursor wake over the opened card, in panel space: slot 0 is the live
-  // cursor, 1..7 a ring of recent stroke samples that fade.
-  const trail = new Float32Array(32);
-  const trailW = new Float32Array(8);
-  let trailSlot = 1;
-  let trailLast: [number, number] | null = null;
-  let trailClock = 0;
-  const burst = new Float32Array([0, 0, 9, 0]);
-  const toPanel = (x: number, y: number): [number, number] => [
-    ((x - openRect[0]) / Math.max(openRect[2], 1e-3)) * (CARD_W / CARD_H),
-    (y - openRect[1]) / Math.max(openRect[3], 1e-3),
-  ];
-  const openModel = new Float32Array(16);
+  // Cursor response: the helix leans toward the pointer; the hovered card
+  // tilts under it and carries a glare at the pointed spot.
+  let leanX = 0;
+  let leanY = 0;
+  const cursorUv: [number, number] = [0.5, 0.5];
+  let lastHover = -1;
 
-  // Pose of card i on the helix at the current scroll.
   const helixPose = (i: number, f: WorkFrame) => {
     const along = f.progress * (count - 1);
-    const angle = (i - along) * STEP_ANGLE + Math.sin(f.time * 0.21) * 0.035;
-    const y = (along - i) * STEP_Y + f.enter * 6.5 + 0.08;
-    const pos: Vec3 = [Math.sin(angle) * radius, y, Math.cos(angle) * radius];
-    // Side cards turn a little toward the viewer, like screens on a stair.
-    return { pos, yaw: angle * 0.78, tilt: -y * 0.06, y };
+    const angle = (i - along) * STEP_ANGLE + leanX * 0.16;
+    const y = (along - i) * STEP_Y + f.enter * 6.5 + 0.05;
+    const pos: Vec3 = [Math.sin(angle) * radius, y + leanY * 0.08, Math.cos(angle) * radius];
+    // Tangent to the cylinder, square to the axis: an even spiral stair.
+    return { pos, yaw: angle, tilt: -leanY * 0.05, y };
   };
 
   // Where an opened card sits: square to the camera, filling the frame.
@@ -258,11 +290,32 @@ export function createWorkHelixLayer(
     return [c[0] / c[3], c[1] / c[3], c[3]] as const;
   };
 
+  // Where the cursor ray meets card i, in its uv (may fall outside 0..1).
+  const cursorOnCard = (i: number, f: WorkFrame): [number, number] | null => {
+    const v = f.view, m = models[i];
+    const t = Math.tan(Math.PI / 8), aspect = f.width / Math.max(f.height, 1);
+    const dv = [f.cursor[0] * t * aspect, f.cursor[1] * t, -1];
+    const dir = [
+      v[0] * dv[0] + v[1] * dv[1] + v[2] * dv[2],
+      v[4] * dv[0] + v[5] * dv[1] + v[6] * dv[2],
+      v[8] * dv[0] + v[9] * dv[1] + v[10] * dv[2],
+    ];
+    const n = [m[8], m[9], m[10]];
+    const denom = dir[0] * n[0] + dir[1] * n[1] + dir[2] * n[2];
+    if (Math.abs(denom) < 1e-5) return null;
+    const o = [m[12] - f.camera[0], m[13] - f.camera[1], m[14] - f.camera[2]];
+    const hit = (o[0] * n[0] + o[1] * n[1] + o[2] * n[2]) / denom;
+    const rel = [f.camera[0] + dir[0] * hit - m[12], f.camera[1] + dir[1] * hit - m[13], f.camera[2] + dir[2] * hit - m[14]];
+    const s2 = m[0] * m[0] + m[1] * m[1] + m[2] * m[2];
+    const lx = (rel[0] * m[0] + rel[1] * m[1] + rel[2] * m[2]) / s2;
+    const ly = (rel[0] * m[4] + rel[1] * m[5] + rel[2] * m[6]) / s2;
+    return [lx / CARD_W + 0.5, ly / CARD_H + 0.5];
+  };
+
   const pick = (clientX: number, clientY: number, cssW: number, cssH: number) => {
     if (!frame || openT > 0.02) return -1;
     const x = (clientX / cssW) * 2 - 1;
     const y = 1 - (clientY / cssH) * 2;
-    // Nearest first.
     for (let k = order.length - 1; k >= 0; k--) {
       const i = order[k];
       if (!pickable[i]) continue;
@@ -271,8 +324,7 @@ export function createWorkHelixLayer(
       for (let e = 0; e < 4; e++) {
         const ax = q[e * 2], ay = q[e * 2 + 1];
         const bx = q[((e + 1) % 4) * 2], by = q[((e + 1) % 4) * 2 + 1];
-        const cross = (bx - ax) * (y - ay) - (by - ay) * (x - ax);
-        const s = Math.sign(cross);
+        const s = Math.sign((bx - ax) * (y - ay) - (by - ay) * (x - ax));
         if (s === 0) continue;
         if (sign === 0) sign = s;
         else if (s !== sign) { inside = false; break; }
@@ -289,28 +341,36 @@ export function createWorkHelixLayer(
     if (wantOpen && shown === f.open) openT = Math.min(1, openT + f.delta / 1.6);
     else openT = Math.max(0, openT - f.delta / 1.15);
     if (openT === 0 && !wantOpen) shown = -1;
-    if (openT > 0.75) clock += f.delta;
-    else if (openT === 0) clock = 0;
+
+    const browsing = f.cursorOn * (1 - Math.min(1, openT * 3));
+    leanX = damp(leanX, f.cursor[0] * browsing, 3, f.delta);
+    leanY = damp(leanY, f.cursor[1] * browsing, 3, f.delta);
 
     const along = f.progress * (count - 1);
     focus = Math.max(0, Math.min(count - 1, Math.round(along)));
     const fly = smooth(openT, 0, 0.55);
     const flyE = fly < 0.5 ? 4 * fly * fly * fly : 1 - Math.pow(-2 * fly + 2, 3) / 2;
     const op = openPose(f);
+    const hoverUv = f.hover >= 0 && openT < 0.02 ? cursorOnCard(f.hover, f) : null;
+    if (hoverUv) {
+      if (lastHover !== f.hover) cursorUv.splice(0, 2, hoverUv[0], hoverUv[1]);
+      cursorUv[0] = damp(cursorUv[0], hoverUv[0], 14, f.delta);
+      cursorUv[1] = damp(cursorUv[1], hoverUv[1], 14, f.delta);
+    }
+    lastHover = hoverUv ? f.hover : -1;
     order.length = 0;
     for (let i = 0; i < count; i++) {
       const pose = helixPose(i, f);
-      hovers[i] = damp(hovers[i], f.hover === i && openT < 0.02 ? 1 : 0, 9, f.delta);
-      const lift = hovers[i] * 0.18;
-      const pos: Vec3 = [
-        pose.pos[0] * (1 + lift / radius),
-        pose.pos[1],
-        pose.pos[2] * (1 + lift / radius),
-      ];
-      let s = scale * (1 + hovers[i] * 0.035);
-      let yaw = pose.yaw, tilt = pose.tilt;
+      hovers[i] = damp(hovers[i], f.hover === i && openT < 0.02 ? 1 : 0, 8, f.delta);
+      const lift = hovers[i] * 0.22;
+      const pos: Vec3 = [pose.pos[0] * (1 + lift / radius), pose.pos[1], pose.pos[2] * (1 + lift / radius)];
+      let s = scale * (1 + hovers[i] * 0.03);
+      // The hovered card turns a little under the pointer, like a pane
+      // pressed at that spot.
+      const h = hovers[i];
+      let yaw = pose.yaw - (cursorUv[0] - 0.5) * 0.28 * h;
+      let tilt = pose.tilt + (cursorUv[1] - 0.5) * 0.22 * h;
       if (i === shown) {
-        // Arc to the front: out toward the camera, then square on.
         const arc = Math.sin(flyE * Math.PI) * 0.6;
         pos[0] = mix(pos[0], op.pos[0], flyE);
         pos[1] = mix(pos[1], op.pos[1], flyE) + arc * 0.2;
@@ -320,15 +380,12 @@ export function createWorkHelixLayer(
         tilt = mix(tilt, 0, flyE);
       }
       modelMatrix(models[i], pos, yaw, tilt, s);
-      // Cards far above or below the bird fade into the dark.
-      const band = 1 - smooth(Math.abs(pose.y), mobile ? 1.9 : 2.3, mobile ? 3.4 : 4.1);
+      const band = 1 - smooth(Math.abs(pose.y), mobile ? 1.9 : 2.4, mobile ? 3.4 : 4.2);
       alphas[i] = f.amount * (i === shown ? 1 : band);
       const view = mulVec(f.view, pos[0], pos[1], pos[2]);
       depths[i] = view[2];
-      // Deeper cards sit darker, like the reference's recessed screens.
-      dims[i] = mix(0.42, 1.12, smooth(-view[2], 9.5, 4.5)) * (i === shown ? mix(1, 1.15, flyE) : 1);
+      dims[i] = mix(0.55, 1.08, smooth(-view[2], 9.5, 4.5)) * (i === shown ? mix(1, 1.12, flyE) : 1);
       sweeps[i] = ((yaw * 0.5 + pos[1] * 0.12) % 2 + 2) % 2 - 0.3;
-      // Screen quad for picking.
       const q = quads[i];
       const hw = CARD_W / 2, hh = CARD_H / 2;
       const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
@@ -339,38 +396,15 @@ export function createWorkHelixLayer(
         q[e * 2] = p[0];
         q[e * 2 + 1] = p[1];
       });
-      // Only cards whose face turns toward the viewer can be picked.
       const nx = models[i][8], nz = models[i][10];
       const toCam = [f.camera[0] - pos[0], f.camera[2] - pos[2]];
       pickable[i] = !behind && alphas[i] > 0.35 && nx * toCam[0] + nz * toCam[1] > 0 ? 1 : 0;
       order.push(i);
     }
-    // Far to near.
     order.sort((a, b) => depths[a] - depths[b]);
-    // Cursor wake inside the opened card.
-    const [cx, cy] = toPanel(f.cursor[0], f.cursor[1]);
-    const live = openT > 0.85 ? f.cursorOn : 0;
-    for (let k = 1; k < 8; k++) trailW[k] *= Math.exp(-f.delta * 1.8);
-    trailClock += f.delta;
-    if (trailLast && live > 0.5) {
-      const dx = cx - trailLast[0], dy = cy - trailLast[1];
-      const moved = Math.hypot(dx, dy);
-      if (moved > 0.035 && trailClock > 1 / 40) {
-        trailClock = 0;
-        trail.set([cx, cy, dx / Math.max(f.delta, 1 / 120), dy / Math.max(f.delta, 1 / 120)], trailSlot * 4);
-        trailW[trailSlot] = Math.min(1, 0.35 + moved * 4);
-        trailSlot = trailSlot % 7 + 1;
-      }
-    }
-    trailLast = [cx, cy];
-    trail.set([cx, cy, 0, 0], 0);
-    trailW[0] = damp(trailW[0], live * 0.55, 8, f.delta);
-    burst[2] += f.delta;
-    if (openT < 0.5) burst[3] = 0;
     if (shown >= 0) {
-      openModel.set(models[shown]);
-      const tl = project(openModel, f, -CARD_W / 2, CARD_H / 2);
-      const br = project(openModel, f, CARD_W / 2, -CARD_H / 2);
+      const tl = project(models[shown], f, -CARD_W / 2, CARD_H / 2);
+      const br = project(models[shown], f, CARD_W / 2, -CARD_H / 2);
       openRect[0] = (tl[0] + br[0]) / 2;
       openRect[1] = (tl[1] + br[1]) / 2;
       openRect[2] = Math.abs(br[0] - tl[0]) / 2;
@@ -378,23 +412,10 @@ export function createWorkHelixLayer(
     }
   };
 
-  const drawCard = (i: number, f: WorkFrame, alphaScale = 1) => {
-    const a = alphas[i] * alphaScale;
-    if (a < 0.003) return;
-    const s = slots[i];
-    gl.uniformMatrix4fv(card.u("uModel"), false, models[i]);
-    gl.uniform3fv(card.u("uDeep"), s.deep);
-    gl.uniform3fv(card.u("uMid"), s.mid);
-    gl.uniform3fv(card.u("uGlow"), s.glow);
-    gl.uniform1f(card.u("uSeed"), i * 1.37 + 0.4);
-    gl.uniform1f(card.u("uAlpha"), a);
-    gl.uniform1f(card.u("uHover"), hovers[i]);
-    gl.uniform1f(card.u("uGlitch"), hovers[i] > 0.05 ? 0.5 + 0.5 * Math.sin(f.time * 3) : 0);
-    gl.uniform1f(card.u("uDim"), dims[i]);
-    gl.uniform1f(card.u("uSweep"), sweeps[i]);
-    gl.uniform1f(card.u("uSolid"), i === shown ? smooth(openT, 0.05, 0.4) : 0);
-    gl.drawArrays(gl.TRIANGLES, 0, cardVerts);
-  };
+  const toPanel = (x: number, y: number): [number, number] => [
+    ((x - openRect[0]) / Math.max(openRect[2], 1e-3)) * (CARD_W / CARD_H),
+    (y - openRect[1]) / Math.max(openRect[3], 1e-3),
+  ];
 
   const beginCards = (f: WorkFrame) => {
     gl.useProgram(card.p);
@@ -406,6 +427,8 @@ export function createWorkHelixLayer(
     gl.uniform1f(card.u("uRadius"), CARD_R);
     gl.uniform1f(card.u("uAspect"), CARD_W / CARD_H);
     gl.uniform1f(card.u("uTime"), f.time);
+    gl.uniform2f(card.u("uResolution"), f.width, f.height);
+    gl.uniform1i(card.u("uScene"), 12);
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
     gl.enable(gl.CULL_FACE);
@@ -417,9 +440,45 @@ export function createWorkHelixLayer(
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
   };
 
+  // Each card refracts what is behind it, so the scene is grabbed right
+  // before it (phones grab once per pass).
+  const drawCards = (list: number[], f: WorkFrame, target: WebGLFramebuffer | null, alphaScale: number) => {
+    let grabbed = false;
+    for (const i of list) {
+      const a = alphas[i] * alphaScale;
+      if (a < 0.003) continue;
+      if (!mobile || !grabbed) {
+        grabScene(target, f);
+        grabbed = true;
+        beginCards(f);
+      }
+      const s = slots[i];
+      gl.activeTexture(gl.TEXTURE12);
+      gl.bindTexture(gl.TEXTURE_2D, grab!.tex);
+      gl.uniform1f(card.u("uGlass"), 1);
+      gl.uniformMatrix4fv(card.u("uModel"), false, models[i]);
+      gl.uniform3fv(card.u("uDeep"), s.deep);
+      gl.uniform3fv(card.u("uMid"), s.mid);
+      gl.uniform3fv(card.u("uGlow"), s.glow);
+      gl.uniform1f(card.u("uSeed"), i * 1.37 + 0.4);
+      gl.uniform1f(card.u("uAlpha"), a);
+      gl.uniform1f(card.u("uHover"), hovers[i]);
+      gl.uniform1f(card.u("uGlitch"), hovers[i] > 0.05 ? 0.35 + 0.35 * Math.sin(f.time * 3) : 0);
+      gl.uniform1f(card.u("uDim"), dims[i]);
+      gl.uniform1f(card.u("uSweep"), sweeps[i]);
+      gl.uniform1f(card.u("uSolid"), i === shown ? smooth(openT, 0.05, 0.4) : 0);
+      gl.uniform2f(card.u("uCursorUv"), cursorUv[0], cursorUv[1]);
+      gl.uniform1f(card.u("uCursorLight"), hovers[i]);
+      gl.drawArrays(gl.TRIANGLES, 0, cardVerts);
+    }
+    if (grabbed) endCards();
+  };
+
   const birdDepth = (f: WorkFrame) => mulVec(f.view, f.bird[0], f.bird[1], f.bird[2])[2];
-  // Everything behind the bird, drawn before its grains.
-  const renderBack = () => {
+  const hide = () => 1 - smooth(openT, 0.1, 0.5);
+
+  // Atmosphere, streaming code and the cards behind the bird.
+  const renderBack = (target: WebGLFramebuffer | null) => {
     const f = frame;
     if (!f || f.amount < 0.003) return;
     gl.useProgram(atmosphere.p);
@@ -431,29 +490,40 @@ export function createWorkHelixLayer(
     gl.uniform1f(atmosphere.u("uAspect"), f.width / Math.max(f.height, 1));
     gl.uniform2f(atmosphere.u("uAxis"), 0.5, 0.5);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (glyphAtlas) {
+      gl.useProgram(data.p);
+      gl.activeTexture(gl.TEXTURE14);
+      gl.bindTexture(gl.TEXTURE_2D, glyphAtlas);
+      gl.uniform1i(data.u("uAtlas"), 14);
+      gl.uniformMatrix4fv(data.u("uView"), false, f.view);
+      gl.uniformMatrix4fv(data.u("uProj"), false, f.projection);
+      gl.uniform2f(data.u("uGrid"), dataCols, dataRows);
+      gl.uniform1f(data.u("uTime"), f.time);
+      gl.uniform1f(data.u("uTravel"), f.travel);
+      gl.uniform1f(data.u("uPx"), f.height / (2 * Math.tan(Math.PI / 8)));
+      gl.uniform1f(data.u("uAmount"), f.amount * 0.8 * hide());
+      gl.drawArrays(gl.POINTS, 0, dataCols * dataRows);
+    }
     const bz = birdDepth(f);
-    beginCards(f);
-    for (const i of order) if (i !== shown && depths[i] < bz) drawCard(i, f, 1 - smooth(openT, 0.1, 0.5));
-    endCards();
+    drawCards(order.filter((i) => i !== shown && depths[i] < bz), f, target, hide());
   };
 
-  // Everything in front of the bird, then the opened card's interior.
-  const renderFront = () => {
+  // Cards in front of the bird, its beads, then the opened card.
+  const renderFront = (target: WebGLFramebuffer | null) => {
     const f = frame;
     if (!f || f.amount < 0.003) return;
     const bz = birdDepth(f);
-    beginCards(f);
-    for (const i of order) if (i !== shown && depths[i] >= bz) drawCard(i, f, 1 - smooth(openT, 0.1, 0.5));
-    endCards();
+    drawCards(order.filter((i) => i !== shown && depths[i] >= bz), f, target, hide());
 
     gl.useProgram(beads.p);
     gl.bindVertexArray(beadVao);
+    gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE);
     gl.uniformMatrix4fv(beads.u("uView"), false, f.view);
     gl.uniformMatrix4fv(beads.u("uProj"), false, f.projection);
     gl.uniform1f(beads.u("uTime"), f.time);
     gl.uniform1f(beads.u("uPx"), f.height / (2 * Math.tan(Math.PI / 8)));
-    gl.uniform1f(beads.u("uAmount"), f.amount * (1 - smooth(openT, 0.1, 0.5)));
+    gl.uniform1f(beads.u("uAmount"), f.amount * hide());
     gl.uniform1f(beads.u("uFlow"), f.flow);
     gl.uniform1f(beads.u("uTravel"), f.travel);
     gl.uniform1f(beads.u("uSpeed"), f.speed);
@@ -461,47 +531,30 @@ export function createWorkHelixLayer(
     gl.uniform3fv(beads.u("uBird"), f.bird);
     gl.drawArrays(gl.POINTS, 0, beadCount);
 
+    // The inside fluid runs only while a card is (nearly) open.
+    const [px, py] = toPanel(f.cursor[0], f.cursor[1]);
+    inside.step(f.delta, f.time, shown >= 0 && openT > 0.4, { x: px, y: py, on: openT > 0.85 ? f.cursorOn : 0 }, target);
+    gl.viewport(0, 0, f.width, f.height);
     if (shown < 0) return;
-    const veilA = smooth(openT, 0.12, 0.6);
     const s = slots[shown];
     gl.useProgram(veil.p);
     gl.bindVertexArray(emptyVao);
+    gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
-    gl.uniform1f(veil.u("uAmount"), veilA * f.amount);
+    gl.uniform1f(veil.u("uAmount"), smooth(openT, 0.12, 0.6) * f.amount);
     gl.uniform1f(veil.u("uTime"), f.time);
     gl.uniform1f(veil.u("uAspect"), f.width / Math.max(f.height, 1));
     gl.uniform3fv(veil.u("uTint"), s.mid);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 
-    // The glass card hands over to its particles as it arrives.
-    beginCards(f);
-    drawCard(shown, f, 1 - smooth(openT, 0.5, 0.78));
-    endCards();
+    drawCards([shown], f, target, 1 - smooth(openT, 0.5, 0.78));
 
     const assemble = smooth(openT, 0.45, 0.95);
     if (assemble < 0.002) return;
-    const cols = mobile ? 120 : 210;
-    const rows = Math.round(cols * CARD_H / CARD_W);
-    gl.useProgram(inside.p);
-    gl.bindVertexArray(emptyVao);
-    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
-    gl.uniform2f(inside.u("uGrid"), cols, rows);
-    gl.uniform4fv(inside.u("uRect"), openRect);
-    gl.uniform1f(inside.u("uTime"), f.time);
-    gl.uniform1f(inside.u("uClock"), clock + 2.0);
-    gl.uniform1f(inside.u("uAssemble"), assemble * 1.5);
-    gl.uniform1f(inside.u("uComets"), smooth(clock, 0.1, 1.2) * smooth(openT, 0.8, 1));
-    gl.uniform1f(inside.u("uPanelAspect"), CARD_W / CARD_H);
-    gl.uniform1f(inside.u("uSeed"), shown * 1.37 + 0.4);
-    gl.uniform1f(inside.u("uCellPx"), (openRect[2] * f.width) / cols);
-    gl.uniform3fv(inside.u("uDeep"), s.deep);
-    gl.uniform3fv(inside.u("uMid"), s.mid);
-    gl.uniform3fv(inside.u("uGlow"), s.glow);
-    gl.uniform4fv(inside.u("uTrail"), trail);
-    gl.uniform1fv(inside.u("uTrailW"), trailW);
-    gl.uniform4fv(inside.u("uBurst"), burst);
-    gl.drawArrays(gl.POINTS, 0, cols * rows);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    inside.render({
+      rect: openRect, width: f.width, height: f.height, time: f.time, assemble,
+      seed: shown * 1.37 + 0.4, deep: s.deep, mid: s.mid, glow: s.glow,
+    });
   };
 
   return {
@@ -509,16 +562,21 @@ export function createWorkHelixLayer(
     renderBack,
     renderFront,
     pick,
-    // A click inside the opened card bursts its beads from that point.
+    // A click inside the opened card fires a burst from that point.
     burst(x: number, y: number) {
       if (openT < 0.85) return;
       const [px, py] = toPanel(x, y);
-      burst.set([px, py, 0, 1]);
+      inside.burst(px, py);
     },
     get focus() { return focus; },
     get openAmount() { return openT; },
     dispose() {
-      [card, beads, atmosphere, veil, inside].forEach((x) => gl.deleteProgram(x.p));
+      [card, beads, data, atmosphere, veil].forEach((x) => gl.deleteProgram(x.p));
+      inside.dispose();
+      if (grab) {
+        gl.deleteTexture(grab.tex);
+        gl.deleteFramebuffer(grab.fbo);
+      }
       gl.deleteBuffer(cardBuffer);
       gl.deleteBuffer(beadBuffer);
       gl.deleteVertexArray(cardVao);

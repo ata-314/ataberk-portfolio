@@ -21,6 +21,7 @@ export const bustState = {
 // card (set by clicks, keys or the slot list) and reads the rest.
 export const workState = {
   focus: 0, // card nearest the front of the helix
+  progress: 0, // 0..1 along the pinned runway
   hover: -1, // card under the cursor (stage-picked)
   open: -1, // card the visitor is inside, -1 when browsing
   pick: null as null | ((clientX: number, clientY: number) => number),

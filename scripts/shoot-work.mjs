@@ -4,7 +4,7 @@ import { chromium } from "playwright";
 
 const out = process.argv[2] ?? ".";
 const steps = (process.argv[3] ?? "0,0.35,0.7").split(",").map(Number);
-const open = process.argv[4] !== "noopen";
+const open = !["noopen", "manifesto"].includes(process.argv[4]);
 // MOBILE=1 shoots a phone viewport (touch, coarse pointer).
 const phone = process.env.MOBILE === "1";
 const browser = await chromium.launch({ args: ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist"] });
@@ -20,6 +20,20 @@ page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") 
 page.on("pageerror", (e) => logs.push(`pageerror: ${e.message}`));
 await page.goto("http://localhost:3000/tr", { waitUntil: "networkidle" });
 await page.waitForTimeout(4500);
+// "manifesto": frame the next section's grain ring round the copy instead.
+if (process.argv[4] === "manifesto") {
+  const top = await page.evaluate(() => {
+    const r = document.querySelector("#manifesto").getBoundingClientRect();
+    return r.top + scrollY + r.height / 2;
+  });
+  for (const [i, dy] of [-0.35, -0.1, 0, 0.12].entries()) {
+    await page.evaluate(([y]) => window.scrollTo(0, y), [top - vh / 2 + dy * vh]);
+    await page.waitForTimeout(2600);
+    await page.screenshot({ path: `${out}/manifesto-${i}.png` });
+  }
+  await browser.close();
+  process.exit(0);
+}
 const span = await page.evaluate(() => {
   const el = document.querySelector("#work");
   const r = el.getBoundingClientRect();

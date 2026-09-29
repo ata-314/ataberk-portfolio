@@ -31,66 +31,84 @@ export const cardVertex = `#version 300 es
 precision highp float;
 in vec3 aPos; in vec3 aNormal; in vec2 aUv; in float aFace;
 uniform mat4 uModel,uView,uProj;
-out vec3 vWorld; out vec3 vNormal; out vec2 vUv; out vec3 vLocal; flat out int vFace;
+out vec3 vWorld; out vec3 vNormal; out vec3 vNormalV; out vec2 vUv; out vec3 vLocal; flat out int vFace;
 void main(){
   vec4 w=uModel*vec4(aPos,1.0);
   vWorld=w.xyz; vNormal=normalize(mat3(uModel)*aNormal);
+  vNormalV=mat3(uView)*vNormal;
   vUv=aUv; vLocal=aPos; vFace=int(aFace+.5);
   gl_Position=uProj*uView*w;
 }`;
 
+// Glass cards. The scene behind (a blurred, mip-mapped grab of the frame so
+// far) is refracted through the slab — bent hardest across the bevel, split
+// into colour at the rim — then tinted and lit, with the slot's colour
+// world floating inside the glass. The cursor casts a glare that follows it
+// across the face; a specular band sweeps as the helix turns.
 export const cardFragment = `#version 300 es
 precision highp float;
-in vec3 vWorld; in vec3 vNormal; in vec2 vUv; in vec3 vLocal; flat in int vFace;
+in vec3 vWorld; in vec3 vNormal; in vec3 vNormalV; in vec2 vUv; in vec3 vLocal; flat in int vFace;
 uniform vec3 uCam; uniform vec3 uDeep,uMid,uGlow;
 uniform vec2 uHalf; uniform float uRadius,uAspect;
 uniform float uTime,uSeed,uAlpha,uHover,uDim,uSweep,uGlitch,uSolid;
+uniform sampler2D uScene; uniform vec2 uResolution; uniform float uGlass;
+uniform vec2 uCursorUv; uniform float uCursorLight;
 out vec4 color;
 ${nebulaChunk}
 float sdRound(vec2 p,vec2 b,float r){vec2 q=abs(p)-b+r;return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r;}
+vec3 behind(vec2 suv,vec2 bend,float lod){
+  vec3 c;
+  c.r=textureLod(uScene,suv-bend*1.06,lod).r;
+  c.g=textureLod(uScene,suv-bend,lod).g;
+  c.b=textureLod(uScene,suv-bend*.94,lod).b;
+  return c;
+}
 void main(){
   vec3 N=normalize(vNormal);
   vec3 V=normalize(uCam-vWorld);
-  float facing=abs(dot(N,V));
-  float fres=pow(1.0-facing,3.0);
+  float fres=pow(1.0-abs(dot(N,V)),3.0);
   float d=sdRound(vLocal.xy,uHalf,uRadius);
+  vec2 suv=gl_FragCoord.xy/uResolution;
+  vec2 nv=normalize(vNormalV).xy;
+  vec3 tint=mix(vec3(.82,.95,1.0),uMid,.18);
   vec3 c; float a;
   if(vFace==2){
-    // Thick glass edge: cool, lit along its length, brightest at grazing.
+    // The slab's edge: dense glass, strongly bent light, a travelling gleam.
+    vec3 b=uGlass>.5?behind(suv,nv*.03,2.0):vec3(0);
     float band=.5+.5*sin(vLocal.x*9.0+vLocal.y*7.0+uTime*.6);
-    c=mix(uMid*.25,vec3(.55,.95,.92),.45)*(.35+.9*fres)+vec3(.8,1.0,.96)*pow(band,8.0)*.35;
-    c+=uGlow*uHover*.4;
-    a=.9;
+    c=b*tint*.7+mix(uMid*.2,vec3(.55,.95,.92),.4)*(.25+.8*fres)+vec3(.85,1.0,.96)*pow(band,8.0)*.3;
+    a=uGlass>.5?1.0:.9;
   } else {
     vec2 uv=vUv;
-    // Hover glitch: a few horizontal slices shift and split channels.
     float slice=step(.82,h21(vec2(floor(uv.y*26.0),floor(uTime*14.0))))*uGlitch;
-    uv.x+=slice*(h21(vec2(floor(uv.y*26.0),floor(uTime*9.0)))-.5)*.08;
+    uv.x+=slice*(h21(vec2(floor(uv.y*26.0),floor(uTime*9.0)))-.5)*.06;
     vec3 pic=nebula(uv,uAspect,uTime,uSeed,uDeep,uMid,uGlow);
-    if(slice>0.0){
-      pic.r=nebula(uv+vec2(.012,0),uAspect,uTime,uSeed,uDeep,uMid,uGlow).r;
-      pic.b=nebula(uv-vec2(.012,0),uAspect,uTime,uSeed,uDeep,uMid,uGlow).b;
-    }
-    if(vFace==1) pic=pic*.22+uDeep*.2;
-    // Frosted glass over the picture, a bevel that catches light inside the
-    // border, a crisp rim line and a specular sweep that travels as the
-    // helix turns.
-    float inner=smoothstep(-.07,0.0,d);
-    float rim=exp(-abs(d+.006)*260.0);
-    float scan=.96+.04*sin(uv.y*420.0);
-    c=pic*scan*(.82+.3*uHover);
-    c=mix(c,vec3(.42,.62,.66)*.28,.12+inner*.25);
-    c+=vec3(.5,1.0,.92)*inner*.22+vec3(.85,1.0,.97)*rim*(1.1+uHover*.8);
-    float s=uv.x*.9+uv.y*.45-uSweep;
-    c+=vec3(.9,1.0,1.0)*exp(-s*s*38.0)*.22;
-    c+=vec3(.45,.85,1.0)*fres*.7;
-    // Vignette inside the frame, like a lit screen behind glass.
-    vec2 q=uv-.5; c*=1.0-dot(q,q)*.9;
-    // Glass: the world behind (the bird, far cards) shows through the
-    // picture; the bright parts of the picture hold more.
+    float inner=smoothstep(-.08,0.0,d);
+    float rim=exp(-abs(d+.006)*240.0);
+    // Refraction: the face bends a little, the bevel a lot.
+    vec2 bend=nv*(.012+inner*inner*.07);
     float lum=dot(pic,vec3(.3,.5,.2));
-    a=mix(mix(.5,.97,inner),.97,uSolid)*(.8+.35*smoothstep(.05,.45,lum));
-    a=min(a,.98);
+    if(vFace==1){
+      vec3 b=uGlass>.5?behind(suv,bend,3.2):vec3(0);
+      c=b*tint*.55+uDeep*.25+pic*.12;
+      a=uGlass>.5?1.0:.85;
+    } else {
+      vec3 b=uGlass>.5?mix(behind(suv,bend,3.4),behind(suv,bend,1.2),inner*.6):vec3(0);
+      // The colour world lives inside the glass: strong where it is bright,
+      // letting the frosted world behind breathe through the dark parts.
+      float body=mix(.55,.85,uSolid)*(.55+.6*smoothstep(.04,.4,lum));
+      c=b*tint*(1.0-body*.6)+pic*body*(.95+.3*uHover);
+      c+=vec3(.55,1.0,.94)*inner*.16+vec3(.88,1.0,.98)*rim*(.9+uHover*.9);
+      float s=uv.x*.9+uv.y*.45-uSweep;
+      c+=vec3(.9,1.0,1.0)*exp(-s*s*40.0)*.16;
+      // Glare under the cursor: a wide bloom and a hot core.
+      vec2 g=(uv-uCursorUv)*vec2(uAspect,1.0);
+      float gl2=dot(g,g);
+      c+=(uGlow*.55+vec3(.75,.95,1.0))*(exp(-gl2*9.0)*.26+exp(-gl2*90.0)*.45)*uCursorLight;
+      c+=vec3(.45,.85,1.0)*fres*.55;
+      vec2 q=uv-.5; c*=1.0-dot(q,q)*.7;
+      a=uGlass>.5?1.0:min(.98,mix(.55,.97,inner)*(.8+.35*smoothstep(.05,.45,lum)));
+    }
   }
   c*=uDim;
   color=vec4(c,a*uAlpha);
@@ -180,6 +198,57 @@ void main(){
   color=vec4(c*uAmount,0.0);
 }`;
 
+// Data streaming in the far background: columns of code glyphs wrapped
+// round the scene behind the helix, each carrying bright packets with
+// fading tails that mutate as they go; the columns run with the flight
+// (up while the bird dives, down while it climbs).
+export const dataVertex = `#version 300 es
+precision highp float;
+uniform mat4 uView,uProj;
+uniform vec2 uGrid;
+uniform float uTime,uTravel,uPx,uAmount;
+out float vGlyph; out float vBright; out float vHead; out float vHue;
+float h11(float x){return fract(sin(x*127.1)*43758.5453);}
+void main(){
+  float id=float(gl_VertexID);
+  float col=mod(id,uGrid.x), row=floor(id/uGrid.x);
+  float cs=h11(col+.5);
+  float ang=(col/uGrid.x-.5)*3.9+(cs-.5)*.04;
+  float radius=8.5+h11(col*3.1)*3.0;
+  float spacing=.3;
+  float span=uGrid.y*spacing;
+  float y=mod(row*spacing+uTravel*(1.4+cs*.8)+cs*span,span)-span*.5;
+  vec3 p=vec3(sin(ang)*radius,y,-cos(ang)*radius-1.0);
+  vec4 view=uView*vec4(p,1.0);
+  gl_Position=uProj*view;
+  gl_PointSize=clamp(.2*uPx/max(-view.z,1.0),2.0,26.0);
+  // Packets: a head sliding down the column with a decaying tail.
+  float speed=.35+cs*.6;
+  float head=fract(uTime*speed*.12+cs*7.0)*uGrid.y;
+  float k=mod(head-row+uGrid.y,uGrid.y);
+  float tail=exp(-k*.16)*step(.35,h11(col*7.7));
+  vHead=step(k,1.0)*step(.35,h11(col*7.7));
+  float rate=floor(uTime*(3.0+cs*6.0)+row*.37);
+  vGlyph=floor(h11(row*13.1+col*7.3+rate)*64.0);
+  float edge=1.0-smoothstep(span*.3,span*.5,abs(y));
+  vBright=(tail*.9+.06)*edge*uAmount*smoothstep(.0,.35,1.0-abs(col/uGrid.x-.5)*2.0+.2);
+  vHue=cs;
+}`;
+
+export const dataFragment = `#version 300 es
+precision highp float;
+uniform sampler2D uAtlas;
+in float vGlyph; in float vBright; in float vHead; in float vHue;
+out vec4 color;
+void main(){
+  vec2 cell=vec2(mod(vGlyph,8.0),floor(vGlyph/8.0));
+  float g=texture(uAtlas,(cell+gl_PointCoord)/8.0).a;
+  vec3 c=mix(vec3(.25,.75,.85),vec3(.55,.45,1.0),step(.8,vHue));
+  c=mix(c,vec3(.85,1.0,1.0)*1.8,vHead);
+  float a=g*vBright;
+  color=vec4(c*a,a);
+}`;
+
 // Darkens the world behind an opened card: near-black teal with slow
 // horizontal smoke, like the scene smeared out of focus.
 export const veilFragment = `#version 300 es
@@ -194,118 +263,4 @@ void main(){
   vec3 c=vec3(.014,.022,.026)+uTint*smoke*smoke*.05;
   vec2 q=uv-.5; c*=1.0-dot(q,q)*.8;
   color=vec4(c,.94*uAmount);
-}`;
-
-// The card, opened: its picture as a grid of pixel grains in front of the
-// camera. Comets of light rake across it, blowing grains out of place into
-// glowing wakes that settle back; opening assembles the grid with a wipe,
-// closing scatters it.
-export const insideVertex = `#version 300 es
-precision highp float;
-uniform vec2 uGrid;
-uniform vec4 uRect; // centre xy, half size zw (NDC)
-uniform float uTime,uClock,uAssemble,uComets,uAspect,uPanelAspect,uSeed,uCellPx;
-uniform vec3 uDeep,uMid,uGlow;
-// Cursor wake in panel space: xy position, zw velocity; weights apart.
-uniform vec4 uTrail[8];
-uniform float uTrailW[8];
-uniform vec4 uBurst; // xy centre, z age (s), w strength
-out vec3 vColor; out float vAlpha; out float vHot; out float vBead;
-${nebulaChunk}
-vec2 comet(float i,float t){
-  float w=.23+i*.07;
-  return vec2(sin(t*w*2.1+i*2.4)*1.25*uPanelAspect,sin(t*w*3.3+i*4.1+sin(t*w*.7)*1.3)*.95);
-}
-void main(){
-  float id=float(gl_VertexID);
-  vec2 cell=vec2(mod(id,uGrid.x),floor(id/uGrid.x));
-  vec2 uv=(cell+.5)/uGrid;
-  vec2 home=(uv*2.0-1.0)*vec2(uPanelAspect,1.0);
-  float r1=h21(cell+uSeed),r2=h21(cell.yx+3.1);
-  vec3 pic=nebula(uv,uPanelAspect,uTime,uSeed,uDeep,uMid,uGlow);
-  vec3 p=vec3(home,0.0);
-  float hot=0.0,stir=0.0;
-  for(int c=0;c<2;c++){
-    for(int k=0;k<7;k++){
-      float lag=float(k)*.075;
-      vec2 a=comet(float(c),uClock-lag),b=comet(float(c),uClock-lag-.02);
-      vec2 vel=(a-b)/.02;
-      vec2 dv=home-a;
-      float w=exp(-dot(dv,dv)*(7.0+float(k)*1.2))*(1.0-float(k)/7.0)*uComets;
-      vec2 side=normalize(vec2(-vel.y,vel.x)+1e-4);
-      p.xy+=(normalize(vel+1e-4)*.1+side*sign(dot(dv,side))*.07*(r1-.2))*w;
-      p.z+=w*(.22+r2*.3);
-      stir+=w;
-      if(k==0) hot+=exp(-dot(dv,dv)*40.0)*uComets;
-    }
-  }
-  // The cursor parts the picture into beads: grains near it lift off and
-  // roll aside along its stroke, and settle back as the wake fades.
-  float bead=0.0;
-  for(int i=0;i<8;i++){
-    float tw=uTrailW[i];
-    if(tw<.002) continue;
-    vec2 dv=home-uTrail[i].xy;
-    float w=exp(-dot(dv,dv)*14.0)*tw;
-    vec2 out2=dv/max(length(dv),1e-3);
-    p.xy+=out2*w*(.18+r1*.14)+uTrail[i].zw*w*.035;
-    p.z+=w*(.35+r2*.45);
-    bead+=w;
-  }
-  // A click bursts a ring of beads outward from the point.
-  if(uBurst.w>0.0){
-    vec2 dv=home-uBurst.xy;
-    float d=length(dv);
-    float ring=exp(-pow((d-uBurst.z*1.9)*5.0,2.0))*exp(-uBurst.z*1.6)*uBurst.w;
-    float core=exp(-d*d*9.0)*exp(-uBurst.z*3.0)*uBurst.w;
-    p.xy+=dv/max(d,1e-3)*(ring*.3+core*.4)*(.6+r1*.8);
-    p.z+=(ring+core)*(.5+r2*.6);
-    bead+=ring+core;
-    hot+=ring*.6;
-  }
-  bead=min(bead,1.0);
-  stir+=bead*.6;
-  // Ragged border: grains near the edge fray loose and drift.
-  vec2 e=abs(uv*2.0-1.0);
-  float fray=smoothstep(.9,1.0,max(e.x,e.y))*step(.55,r1);
-  p.xy+=vec2(r2-.5,r1-.5)*fray*.14+sign(home)*fray*r2*.05*(1.0+sin(uTime*.7+r1*20.0));
-  // Grains in a wake jitter off their cells.
-  p.xy+=(vec2(r1,r2)-.5)*.09*min(stir,1.0);
-  // Assembly: a left-to-right wipe from scattered, lifted grains.
-  float gate=smoothstep(uv.x*.55+r1*.12,uv.x*.55+r1*.12+.35,uAssemble);
-  vec2 away=normalize(vec2(r1-.5,r2-.5)+1e-3);
-  p.xy+=away*(1.0-gate)*(1.2+r2*1.4);
-  p.z+=(1.0-gate)*(.8+r1);
-  float persp=1.0/max(1.0-p.z*.28,.2);
-  vec2 ndc=uRect.xy+p.xy/vec2(uPanelAspect,1.0)*uRect.zw*persp;
-  gl_Position=vec4(ndc,0.0,1.0);
-  gl_PointSize=uCellPx*(1.12+min(stir,1.0)*.45+min(hot,1.0)*1.3)*persp;
-  vec3 col=pic*(1.0+min(stir,1.5)*.9);
-  col=mix(col,vec3(.85,.97,1.0)*2.2,min(hot,1.0)*.9);
-  col=mix(col,col*vec3(.7,.95,1.2)+vec3(.05,.12,.18),min(stir,1.0)*.5);
-  vColor=col;
-  vAlpha=gate*(1.0-min(stir,1.0)*.25*r2);
-  vHot=min(hot+stir*.3,1.0);
-  vBead=max(bead,min(stir,1.0));
-}`;
-
-export const insideFragment = `#version 300 es
-precision highp float;
-in vec3 vColor; in float vAlpha; in float vHot; in float vBead;
-out vec4 color;
-void main(){
-  vec2 c2=gl_PointCoord*2.0-1.0;
-  vec2 q=abs(c2);
-  // At rest the grains tile the picture as pixels; stirred, each becomes a
-  // lit bead with its own highlight.
-  float sq=1.0-smoothstep(.62,1.0,max(q.x,q.y));
-  float r2=dot(c2,c2);
-  float disc=1.0-smoothstep(.55,1.0,r2);
-  vec3 n=vec3(c2.x,-c2.y,sqrt(max(1.0-r2,0.0)));
-  float light=max(dot(n,normalize(vec3(-.4,.55,.75))),0.0);
-  float spec=pow(max(n.z*.6+n.y*.4-n.x*.3,0.0),18.0);
-  vec3 beadCol=vColor*(.45+.8*light)+vec3(1.0)*spec*.9;
-  vec3 col=mix(vColor,beadCol,vBead);
-  float a=mix(sq,disc,max(vBead,vHot))*vAlpha;
-  color=vec4(col,a);
 }`;

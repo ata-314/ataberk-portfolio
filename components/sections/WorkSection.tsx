@@ -21,6 +21,7 @@ export function WorkSection({ locale }: { locale: Locale }) {
   const [open, setOpen] = useState(-1);
   const [focus, setFocus] = useState(0);
   const layer = useRef<HTMLDivElement>(null);
+  const section = useRef<HTMLElement>(null);
 
   const openSlot = useCallback((i: number) => {
     workState.open = i;
@@ -37,6 +38,12 @@ export function WorkSection({ locale }: { locale: Locale }) {
     let last = -1;
     const tick = () => {
       frame = requestAnimationFrame(tick);
+      // The big heading steps aside as soon as the helix starts to turn.
+      const travelling = workState.progress > 0.015;
+      if (section.current && (section.current.dataset.travel === "true") !== travelling) {
+        if (travelling) section.current.dataset.travel = "true";
+        else delete section.current.dataset.travel;
+      }
       if (workState.focus !== last) {
         last = workState.focus;
         setFocus(last);
@@ -124,9 +131,9 @@ export function WorkSection({ locale }: { locale: Locale }) {
   return (
     <section
       id="work"
+      ref={section}
       data-work-helix
       data-open={open >= 0 ? "true" : undefined}
-      data-travel={focus > 0 ? "true" : undefined}
       className="work-helix relative z-20"
       style={{ height: `${100 + (count - 1) * 42}svh` }}
       aria-label={t.heading}

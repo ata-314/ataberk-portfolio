@@ -459,13 +459,22 @@ void renderGrain(float id) {
   float helixMix=0.0;
   float helixDepth=0.0;
   float helixPulse=0.0;
+  float orbitFront=.5;
   if(orbitMix>.001 && assembly>0.0) {
     float along=grainRandom(uint(id)+1231u);
     float strand=mod(id,2.0);
     float dust=step(.9,grainRandom(uint(id)+2749u));
-    float u=along*6.28318+time*.22;
+    // An inclined orbit round the copy: the ring's top arc runs behind
+    // the words, the bottom arc sweeps in front (bigger, brighter), and the
+    // whole orbit slowly rocks and breathes so it reads as turning in 3D.
+    float u=along*6.28318+time*.32;
     float phi=u*13.0+strand*3.14159265-time*1.5;
-    vec2 ring=orbitRing.xy+vec2(cos(u)*orbitRing.z,sin(u)*orbitRing.w);
+    float rock=sin(time*.13)*.06;
+    float breathe=1.0+.07*sin(time*.21+1.3);
+    vec2 e=vec2(cos(u)*orbitRing.z,sin(u)*orbitRing.w*breathe);
+    e=vec2(e.x*cos(rock)-e.y*sin(rock)/aspect,e.x*sin(rock)*aspect+e.y*cos(rock));
+    orbitFront=.5-.5*sin(u);
+    vec2 ring=orbitRing.xy+e*(1.0+(orbitFront-.5)*.08);
     vec2 outward=normalize(vec2(cos(u)*orbitRing.w*aspect,sin(u)*orbitRing.z));
     float tube=(aspect<1.0?.055:.075)*(1.0+dust*(seed-.5)*1.6);
     helixDepth=sin(phi);
@@ -545,7 +554,7 @@ void renderGrain(float id) {
     gl_PointSize=mix(gl_PointSize,(1.5+seed*.8)*pixelScale,bustMix);
   }
   if(helixMix>0.0) {
-    float front=.5+.5*helixDepth;
+    float front=mix(.5+.5*helixDepth,orbitFront,.55);
     vec3 coilTint=mix(lime*.55+citron*.25,vec3(.82,1.0,.9),front*.55)*mix(.35,1.2,front);
     coilTint+=electricColor*helixPulse*.9;
     tint=mix(tint,coilTint,helixMix);

@@ -276,12 +276,6 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const sculpture = createSculptureLayer(gl, mobile);
     // Voyage: after the opening, the bird on black, then the voxel tunnel.
     const tunnel = createTunnelLayer(gl, mobile);
-    // Selected work: glass cards on a helix round the diving bird.
-    const work = createWorkHelixLayer(gl, mobile, workSlots.map((slot) => ({
-      deep: slotRgb(slot.colors[0]),
-      mid: slotRgb(slot.colors[1]),
-      glow: slotRgb(slot.colors[2]),
-    })));
     let workElement: HTMLElement | null = null;
     let workAmount = 0;
     let workProgress = 0;
@@ -295,6 +289,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let workUp = 0;
     let workUpTarget = 0;
     let workTravel = 0;
+    let workGlide = 1;
     // Which way along the body the tail lies in the bake (+1: toward +z).
     const workTailSign = 1;
     workState.pick = (x, y) => work.pick(x, y, stageW, stageH);
@@ -309,6 +304,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // the bird flies through into the tunnel.
     const glyphAtlas = makeGlyphAtlas(gl);
     const xLayer = createXLayer(gl, mobile, glyphAtlas);
+    // Selected work: glass cards on a helix with the bird behind.
+    const work = createWorkHelixLayer(gl, mobile, workSlots.map((slot) => ({
+      deep: slotRgb(slot.colors[0]),
+      mid: slotRgb(slot.colors[1]),
+      glow: slotRgb(slot.colors[2]),
+    })), glyphAtlas);
     // How far the voyage has slid in: 0 with its top at the screen's foot,
     // 1 once the X has had room to rejoin.
     let xPath = 0;
@@ -910,8 +911,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         orbitTarget = smoothstep(centre, 1.1, 0.62) * smoothstep(centre, -0.1, 0.38);
         orbitRing[0] = ((r.left + r.width / 2) / stageW) * 2 - 1;
         orbitRing[1] = 1 - ((r.top + r.height / 2) / stageH) * 2;
-        orbitRing[2] = Math.min(mobile ? 0.82 : 0.78, r.width / stageW + (mobile ? 0.02 : 0.08));
-        orbitRing[3] = Math.min(0.62, r.height / stageH + (mobile ? 0.1 : 0.14));
+        // Wide enough that the coil never crosses the words.
+        orbitRing[2] = Math.min(mobile ? 0.86 : 0.84, r.width / stageW + (mobile ? 0.04 : 0.13));
+        orbitRing[3] = Math.min(0.8, r.height / stageH + (mobile ? 0.2 : 0.3));
       }
       orbit = damp(orbit, orbitTarget, 2.2, delta);
       // Selected work: pinned runway progress, and how far the section has
@@ -962,6 +964,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       else if (workVel < -0.012) workUpTarget = 1;
       workUp = damp(workUp, workUpTarget, 2.6, delta);
       const workSpeed = Math.min(1, Math.abs(workVel) * 4);
+      // Diving, it alternates: a few strong beats downward, then a glide
+      // with the wings swept closed.
+      const glideWave = 0.5 + 0.5 * Math.sin(time * 0.75);
+      workGlide = glideWave * glideWave * (3 - 2 * glideWave);
       workTravel += delta * (1 - 2 * workUp) * (0.16 + workSpeed * 1.3) * workAmount;
       if (workAmount < 0.01) workYaw = yaw;
       if (workAmount > 0.001) {
@@ -985,13 +991,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // tail) so the bird reads as one closed, falling dart.
       if (workAmount > 0.001) {
         const w = workAmount * workAmount * (3 - 2 * workAmount);
-        const press = 1 - 0.72 * w * (1 - workUp);
-        const sweep = 0.5 * w * workTailSign * (1 - workUp);
+        const closed = w * (1 - workUp) * workGlide;
+        const press = 1 - 0.72 * closed;
+        const sweep = 0.5 * workTailSign * closed;
         for (let i = 0; i < 3; i++) birdMatrix[4 + i] = birdMatrix[4 + i] * press + birdMatrix[8 + i] * sweep;
       }
       // The wing beat runs at the behaviour's rate and eases onto a held
       // frame (wings level to glide, folded to stoop) with a slight sway.
-      const holdAmount = Math.max(eased.hold, workAmount * (1 - workUp));
+      const holdAmount = Math.max(eased.hold, workAmount * (1 - workUp) * workGlide);
       flapPhase = (flapPhase + delta * eased.beat * (1 + workUp * workAmount * 0.6) * (1 - holdAmount * 0.97)) % 1;
       const holdFrame = (workAmount > 0.5 ? FOLD_FRAME : eased.holdFrame) + Math.sin(time * 1.3) * 0.012;
       const toHold = ((holdFrame - flapPhase + 1.5) % 1) - 0.5;
@@ -1117,6 +1124,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         cursor: [wakeTarget[0], wakeTarget[1]], cursorOn: wakeArmed ? hoverTarget : 0,
       });
       workState.focus = work.focus;
+      workState.progress = workProgress;
       const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       const tunnelExit = smoothstep(voyage, 0.86, 0.99);
@@ -1127,7 +1135,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const scrollTravel = Math.max(0, voyage - 0.5) * 160;
       tunnel.render(view, projection, time, tunnelClock + scrollTravel + tunnelExit * tunnelExit * 140, tunnelIn,
         0.5 - 0.5 * Math.cos(tunnelClock * 0.004), smoothstep(voyage, 0.3, 0.5), Math.max(tunnelExit, warp * 0.45));
-      work.renderBack();
+      work.renderBack(sceneTarget);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -1145,7 +1153,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         }, sceneTarget);
       if (sceneTarget) gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget);
       gl.viewport(0, 0, canvas.width, canvas.height);
-      work.renderFront();
+      work.renderFront(sceneTarget);
       post?.finish(time, {
         bloom: 0.8 + warp * 0.35,
         threshold: 0.72,
