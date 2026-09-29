@@ -9,12 +9,12 @@ import type { Locale } from "@/lib/i18n";
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 const copy = {
-  tr: { caption: "Veri tüneli", depth: "Derinlik" },
-  en: { caption: "Data tunnel", depth: "Depth" },
+  tr: { code: "Kodun içinde", caption: "Veri tüneli", depth: "Derinlik" },
+  en: { code: "Inside the code", caption: "Data tunnel", depth: "Depth" },
 };
 
-// Voyage: the scroll runway for the flight through the X into the voxel
-// tunnel, all of it drawn by the stage (which reads this section's
+// Voyage: the scroll runway for the flight through the X, into its code
+// (a Matrix-style space of falling glyphs) and on into the voxel tunnel, all of it drawn by the stage (which reads this section's
 // progress through [data-voyage]). The page only adds a quiet caption with
 // a live depth readout once inside.
 export function Voyage({ locale }: { locale: Locale }) {
@@ -26,6 +26,7 @@ export function Voyage({ locale }: { locale: Locale }) {
     const section = root.current;
     if (!section || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const caption = section.querySelector("[data-voyage-caption]");
+    const code = section.querySelector("[data-voyage-code]");
     gsap.timeline({
       defaults: { ease: "none" },
       scrollTrigger: {
@@ -38,14 +39,17 @@ export function Voyage({ locale }: { locale: Locale }) {
         },
       },
     })
-      .fromTo(caption, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.06 }, 0.22)
+      .fromTo(code, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.05 }, 0.12)
+      .to(code, { opacity: 0, duration: 0.04 }, 0.34)
+      .fromTo(caption, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.06 }, 0.5)
       .to(caption, { opacity: 0, duration: 0.05 }, 0.86)
       .set({}, {}, 1);
   }, { scope: root });
 
   return (
-    <section ref={root} data-voyage aria-label={t.caption} className="voyage relative z-20 h-[480svh]">
+    <section ref={root} data-voyage aria-label={t.caption} className="voyage relative z-20 h-[600svh]">
       <div className="voyage-frame hero-copy">
+        <p data-voyage-code className="voyage-caption">{t.code}</p>
         <p data-voyage-caption className="voyage-caption">
           {t.caption} · {t.depth} <span ref={depth}>0000</span> m
         </p>

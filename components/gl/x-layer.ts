@@ -4,7 +4,11 @@
 // the world behind the bird — two crossed bars, dense along their edges,
 // hazy inside, slowly turning. In the voyage it comes at the camera: the
 // crossing grows past the lens and the flight goes through it into the
-// tunnel. Additive points drawn into the stage's HDR scene.
+// tunnel. Every grain is a code glyph, like the name it came from, and
+// keeps mutating; while the X forms its glyphs cascade down into place.
+// Additive glyph sprites drawn into the stage's HDR scene.
+
+import { glyphSample } from "./matrix-layer";
 
 const vertex = `#version 300 es
 precision highp float;
@@ -24,6 +28,8 @@ uniform float approach;
 uniform float volume; // 0 flat letter → 1 full depth
 out vec3 vColor;
 out float vAlpha;
+out float vGlyph;
+float hash(float n) {return fract(sin(n*12.9898)*43758.5453);}
 void main() {
   // Each grain leaves the letter on its own beat.
   float m=smoothstep(seed.x*.45,seed.x*.45+.55,form);
@@ -39,32 +45,38 @@ void main() {
   vec4 clip=projection*view*vec4(world,1.0);
   // Before the handoff completes, blend from the glyph's place on screen.
   if(clip.w<.05) {gl_Position=vec4(2.0,2.0,2.0,1.0);vColor=vec3(0);vAlpha=0.0;return;}
-  vec2 ndc=mix(start,clip.xy/clip.w,e);
+  vec2 target=clip.xy/clip.w;
+  // Code falls into place: grains come down from above their spot.
+  target.y+=(1.0-e)*(.35+seed.z*.6)*step(.001,e);
+  vec2 ndc=mix(start,target,e);
   gl_Position=vec4(ndc*clip.w,clip.z,clip.w);
   float depth=max(clip.w,.3);
   vec3 bone=vec3(.97,.97,.93);
   vec3 lime=vec3(.78,1.0,.3);
   vec3 cyan=vec3(.45,.95,1.0);
   vec3 tint=mix(cyan,lime,seed.y);
-  vColor=mix(bone,tint,e*(.35+seed.w*.4))*(.7+seed.w*.9)*(1.0+approach*.6);
+  vColor=mix(bone,tint,e*(.35+seed.w*.4))*(.8+seed.w*.8)*(1.0+approach*.6);
+  vGlyph=floor(hash(seed.x*311.0+floor(time*(1.5+seed.y*6.0)))*64.0);
   // Grains at the lens fade instead of filling the screen.
   vAlpha=presence*smoothstep(.4,1.6,depth);
-  gl_PointSize=pixel*mix(2.0,(1.0+seed.z*1.6)*(1.0+seed.w*.6)*6.0/depth,e);
+  gl_PointSize=pixel*mix(7.0,(1.0+seed.z*.8)*(1.0+seed.w*.4)*26.0/depth,e);
 }`;
 
 const fragment = `#version 300 es
 precision highp float;
+uniform sampler2D atlas;
 in vec3 vColor;
 in float vAlpha;
+in float vGlyph;
 out vec4 color;
+${glyphSample}
 void main() {
-  float d=length(gl_PointCoord-.5);
-  float a=smoothstep(.5,.08,d)*vAlpha;
+  float a=glyphAlpha(atlas,vGlyph,gl_PointCoord)*vAlpha;
   if(a<.004) discard;
   color=vec4(vColor*a,0.0);
 }`;
 
-export function createXLayer(gl: WebGL2RenderingContext, mobile: boolean) {
+export function createXLayer(gl: WebGL2RenderingContext, mobile: boolean, atlas: WebGLTexture | null) {
   const program = gl.createProgram();
   if (!program) throw new Error("X program allocation failed");
   for (const [type, source] of [[gl.VERTEX_SHADER, vertex], [gl.FRAGMENT_SHADER, fragment]] as const) {
@@ -78,12 +90,12 @@ export function createXLayer(gl: WebGL2RenderingContext, mobile: boolean) {
   }
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "X link failed");
-  const u = Object.fromEntries(["view", "projection", "centre", "scale", "yaw", "form", "presence", "time", "pixel", "approach", "volume"].map((n) => [n, gl.getUniformLocation(program, n)]));
+  const u = Object.fromEntries(["view", "projection", "centre", "scale", "yaw", "form", "presence", "time", "pixel", "approach", "volume", "atlas"].map((n) => [n, gl.getUniformLocation(program, n)]));
 
   // The structure: two crossed bars (length L, width W, thickness T),
   // grains mostly on their faces and edges so the form reads, a share
   // inside as haze.
-  const count = mobile ? 14000 : 42000;
+  const count = mobile ? 6000 : 15000;
   const L = 2.3, W = 0.5, T = 0.44;
   const local = new Float32Array(count * 3);
   const seeds = new Float32Array(count * 4);
@@ -187,6 +199,9 @@ export function createXLayer(gl: WebGL2RenderingContext, mobile: boolean) {
       gl.uniform1f(u.pixel, o.pixel);
       gl.uniform1f(u.approach, o.approach);
       gl.uniform1f(u.volume, o.volume);
+      gl.activeTexture(gl.TEXTURE14);
+      gl.bindTexture(gl.TEXTURE_2D, atlas);
+      gl.uniform1i(u.atlas, 14);
       gl.drawArrays(gl.POINTS, 0, count);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.bindVertexArray(null);
