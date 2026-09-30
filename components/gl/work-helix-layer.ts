@@ -30,7 +30,7 @@ const CARD_R = 0.055;
 const STEP_ANGLE = Math.PI / 3;
 const STEP_Y = 0.95;
 // Share of the pinned runway the cards use; the tail is the backdrop's exit.
-export const CARDS_END = 0.78;
+export const CARDS_END = 0.7;
 
 function compile(gl: WebGL2RenderingContext, vs: string, fs: string) {
   const make = (type: number, src: string) => {
@@ -416,16 +416,16 @@ export function createWorkHelixLayer(
     frame = f;
     syncTitles();
     const pinned = f.amount > 0.4 && f.enter > -0.03;
-    if (pinned) revealClock = Math.min(1, revealClock + f.delta / 4.2);
-    else if (f.amount < 0.4) revealClock = Math.max(0, revealClock - f.delta / 3);
+    if (pinned) revealClock = Math.min(1, revealClock + f.delta / 6.5);
+    else if (f.amount < 0.4) revealClock = Math.max(0, revealClock - f.delta / 4.5);
     // Soft gates shape the scrubbed exit; the shown value trails them so a
     // fast scroll still plays as a slow, cinematic sink. Hard gates at the
     // very ends guarantee nothing reaches a neighbouring section.
     const gateTop = smooth(f.enter, -0.45, -0.02);
-    const gateEnd = 1 - smooth(f.progress, CARDS_END + 0.01, 0.97);
+    const gateEnd = 1 - smooth(f.progress, CARDS_END + 0.01, 0.96);
     const hard = Math.min(smooth(f.enter, -0.12, -0.01), 1 - smooth(f.progress, 0.975, 0.998));
     const target = Math.min(revealClock, gateTop, gateEnd);
-    revealShown = target > revealShown ? target : damp(revealShown, target, 1.5, f.delta);
+    revealShown = target > revealShown ? target : damp(revealShown, target, 0.75, f.delta);
     reveal = Math.min(revealShown, hard);
     const wantOpen = f.open >= 0 && f.amount > 0.5;
     if (wantOpen && shown !== f.open && openT < 0.02) shown = f.open;

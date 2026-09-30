@@ -40,7 +40,7 @@ if (process.argv[4] === "emerge") {
   const top = await page.evaluate(() => document.querySelector("#work").getBoundingClientRect().top + scrollY);
   await page.evaluate(([y]) => window.scrollTo(0, y), [top + 20]);
   let waited = 0;
-  for (const t of [600, 1500, 2700, 4300]) {
+  for (const t of [1000, 2500, 4200, 6800]) {
     await page.waitForTimeout(t - waited);
     waited = t;
     await page.screenshot({ path: `${out}/emerge-${t}.png` });

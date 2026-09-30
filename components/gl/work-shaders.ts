@@ -229,16 +229,17 @@ void main(){
   if(uReveal<1.0){
     vec2 rel=(q-vec2(0.0,-1.5))*vec2(1.0,1.25);
     float warp=vnoise(q*.35+3.7)-.5;
-    float delay=clamp(length(rel)/17.0*.42+warp*.18+seed*.08,0.0,.48);
-    float tt=clamp((uReveal-delay)/.52,0.0,1.0);
-    float rise=tt*tt*tt*(tt*(tt*6.0-15.0)+10.0);
+    float delay=clamp(length(rel)/17.0*.38+warp*.15+seed*.08,0.0,.42);
+    float tt=clamp((uReveal-delay)/.58,0.0,1.0);
+    // Soft landing: a long ease-out instead of a snap into place.
+    float rise=1.0-pow(1.0-tt,3.0);
     float remain=1.0-rise;
     radius+=remain*(5.0+seed*6.0);
     q.y-=remain*(1.0+seed*.8);
-    ang+=sin(seed*23.0+tt*4.0)*.05*remain;
+    ang+=sin(seed*23.0+tt*3.0)*.045*remain;
     crossing=smoothstep(0.0,.2,tt)*(1.0-smoothstep(.3,.65,tt));
-    introAlpha=smoothstep(0.0,.35,tt);
-    introSize=mix(.35,1.0,smoothstep(0.0,.75,tt));
+    introAlpha=smoothstep(0.0,.5,tt);
+    introSize=mix(.35,1.0,smoothstep(0.0,.85,tt));
   }
   vec3 p=vec3(sin(ang)*radius,q.y,-cos(ang)*radius-1.5);
   vec4 view=uView*vec4(p,1.0);
