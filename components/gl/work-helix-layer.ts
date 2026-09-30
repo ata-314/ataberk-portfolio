@@ -321,10 +321,7 @@ export function createWorkHelixLayer(
   const pickable = new Uint8Array(count);
   const order: number[] = [];
   let frame: WorkFrame | null = null;
-  // The backdrop's emergence: a clock that surfaces the sea once the
-  // section is pinned full-screen, capped by scroll gates at both ends so
-  // it has sunk again before any neighbouring section is on screen.
-  let revealClock = 0;
+  // The backdrop's arrival (0 absent → 1 whole), led by the scroll.
   let reveal = 0;
   let revealShown = 0;
   let openT = 0;
@@ -415,18 +412,15 @@ export function createWorkHelixLayer(
   const update = (f: WorkFrame) => {
     frame = f;
     syncTitles();
-    const pinned = f.amount > 0.4 && f.enter > -0.03;
-    if (pinned) revealClock = Math.min(1, revealClock + f.delta / 6.5);
-    else if (f.amount < 0.4) revealClock = Math.max(0, revealClock - f.delta / 4.5);
-    // Soft gates shape the scrubbed exit; the shown value trails them so a
-    // fast scroll still plays as a slow, cinematic sink. Hard gates at the
-    // very ends guarantee nothing reaches a neighbouring section.
-    const gateTop = smooth(f.enter, -0.45, -0.02);
-    const gateEnd = 1 - smooth(f.progress, CARDS_END + 0.01, 0.96);
-    const hard = Math.min(smooth(f.enter, -0.12, -0.01), 1 - smooth(f.progress, 0.975, 0.998));
-    const target = Math.min(revealClock, gateTop, gateEnd);
-    revealShown = target > revealShown ? target : damp(revealShown, target, 0.75, f.delta);
-    reveal = Math.min(revealShown, hard);
+    // Arrival follows the scroll, starting before the section: the sea
+    // gathers as the section rises from the bottom of the screen and is
+    // whole by the time it pins; after the last card it thins away. The
+    // shown value trails the target both ways so it never snaps.
+    const arrive = smooth(f.enter, -0.95, -0.05);
+    const depart = 1 - smooth(f.progress, CARDS_END + 0.01, 0.96);
+    const target = Math.min(arrive, depart);
+    revealShown = damp(revealShown, target, 1.3, f.delta);
+    reveal = Math.min(revealShown, 1 - smooth(f.progress, 0.975, 0.998));
     const wantOpen = f.open >= 0 && f.amount > 0.5;
     if (wantOpen && shown !== f.open && openT < 0.02) shown = f.open;
     if (wantOpen && shown === f.open) openT = Math.min(1, openT + f.delta / 1.6);

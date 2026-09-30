@@ -234,9 +234,11 @@ void main(){
     // Soft landing: a long ease-out instead of a snap into place.
     float rise=1.0-pow(1.0-tt,3.0);
     float remain=1.0-rise;
-    radius+=remain*(5.0+seed*6.0);
-    q.y-=remain*(1.0+seed*.8);
-    ang+=sin(seed*23.0+tt*3.0)*.045*remain;
+    // A short, gentle drift forward out of the dark — a materialising,
+    // not a rush from the depths.
+    radius+=remain*(1.3+seed*1.6);
+    q.y-=remain*(.3+seed*.3);
+    ang+=sin(seed*23.0+tt*3.0)*.02*remain;
     crossing=smoothstep(0.0,.2,tt)*(1.0-smoothstep(.3,.65,tt));
     introAlpha=smoothstep(0.0,.5,tt);
     introSize=mix(.35,1.0,smoothstep(0.0,.85,tt));
