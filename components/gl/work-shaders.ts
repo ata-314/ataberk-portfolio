@@ -173,14 +173,19 @@ void main(){
 // lit grains, folds turned from the light sinking into shadow, forest →
 // lime → citron bands drifting toward the accent hue, and a white-cyan scan
 // sweeping the surface — flowing with the flight (up while the bird dives,
-// down while it climbs). It plays by itself: arriving at the section the
-// sea surfaces from deep inside the page like the hero's opening, and it
-// sinks back the same way after the last card.
+// down while it climbs). Arriving at the section, the sea surfaces from
+// deep inside the page like the hero's opening, and sinks back the same way
+// on leaving. The cursor moves it through a small simulation (seaSim):
+// grains carry an offset and velocity, part round the pointer, lift toward
+// the viewer, swirl and spring home, so the response flows instead of
+// snapping between stamps.
 export const dataVertex = `#version 300 es
 precision highp float;
 uniform mat4 uView,uProj;
 uniform vec2 uGrid;
-uniform float uTime,uTravel,uAmount,uDpr,uReveal;
+uniform float uTime,uTravel,uAmount,uDpr,uReveal,uAspect;
+uniform sampler2D uState; // seaSim: xy offset on the sheet, zw velocity
+uniform float uSimOn;
 out vec3 vColor; out float vAlpha; out vec2 vLight;
 float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.0-2.0*f);
@@ -203,6 +208,9 @@ void main(){
   float seed=h21(cell+9.1);
   float width=30.0, span=17.0;
   vec2 q=vec2((g.x-.5)*width,(g.y-.5)*span);
+  vec4 st=uSimOn>.5?texelFetch(uState,ivec2(cell),0):vec4(0);
+  q+=st.xy;
+  float stir=clamp(length(st.xy)*.9+length(st.zw)*.22,0.0,1.2);
   float t=uTime, flow=-uTravel*1.6;
   float h=relief(q,t,flow);
   float e=.12;
@@ -213,7 +221,7 @@ void main(){
   // Wrap the sheet into a wall curving round the scene; relief comes
   // toward the viewer. Grains sit unevenly on the surface, like the hero.
   float ang=q.x/10.0;
-  float radius=10.5-h*.9-(seed-.5)*.06;
+  float radius=10.5-h*.9-(seed-.5)*.06-stir*(1.0+seed*1.4);
   // Emergence: a front opens just below centre and spreads out with a
   // noise-warped edge; behind it each grain rises from deep beneath its
   // place and sways on a decaying current until it settles.
@@ -257,11 +265,12 @@ void main(){
   float pulse=pow(.5+.5*sin(q.y*.7-q.x*.3-t*.8),8.0);
   tint=mix(tint,citron,pulse*.07);
   tint+=mix(citron,vec3(.85,1.0,1.0),.4)*crossing*(.22+step(.8,seed)*1.3);
+  tint=mix(tint,mix(citron,vec3(.8,1.0,1.0),seed)*1.4,smoothstep(.05,1.0,stir)*.65);
   float edge=(1.0-smoothstep(.62,1.0,abs(g.x*2.0-1.0)))*(1.0-smoothstep(.72,1.0,abs(g.y*2.0-1.0)));
   vColor=tint;
   vAlpha=edge*uAmount*introAlpha;
   vLight=vec2(light,seed);
-  gl_PointSize=max(1.0,(2.2+seed*.9)*uDpr*9.0/max(-view.z,1.0)*2.3*introSize);
+  gl_PointSize=max(1.0,(2.2+seed*.9)*uDpr*9.0/max(-view.z,1.0)*2.3*introSize*(1.0+stir*.35));
 }`;
 
 export const dataFragment = `#version 300 es
@@ -276,6 +285,42 @@ void main(){
   float shade=.75+.35*(q.x*-.4+q.y*-.5);
   float a=(1.0-smoothstep(.45,1.0,r2))*vAlpha;
   color=vec4(vColor*shade*a,a);
+}`;
+
+// seaSim: one texel per backdrop grain. The pointer (projected onto the
+// sheet, smoothed on the CPU) is a soft pressure front: grains part round
+// it and are dragged along with its motion; a spring pulls them home, drag
+// calms them and curl noise swirls them in proportion to their speed.
+export const seaSimFragment = `#version 300 es
+precision highp float;
+uniform sampler2D uState;
+uniform vec2 uGrid;
+uniform float uDt,uTime,uReset,uWidth,uSpan;
+uniform vec4 uCursor; // sheet xy, velocity xy
+uniform float uCursorOn;
+out vec4 state;
+float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.0-2.0*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),u.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),u.x),u.y);}
+vec2 curl(vec2 p){float e=.05;
+  return vec2(vnoise(p+vec2(0,e))-vnoise(p-vec2(0,e)),-(vnoise(p+vec2(e,0))-vnoise(p-vec2(e,0))))/(2.0*e);}
+void main(){
+  ivec2 c=ivec2(gl_FragCoord.xy);
+  vec4 s=uReset>.5?vec4(0):texelFetch(uState,c,0);
+  vec2 cell=vec2(c);
+  vec2 j=vec2(h21(cell*.37+1.7),h21(cell.yx*.71+3.0))-.5;
+  vec2 g=(cell+.5+j*.95)/uGrid;
+  vec2 q=vec2((g.x-.5)*uWidth,(g.y-.5)*uSpan)+s.xy;
+  float r=h21(cell+9.1);
+  vec2 acc=-s.xy*(7.0+r*3.0);
+  vec2 d=q-uCursor.xy;
+  float w=exp(-dot(d,d)*.42)*uCursorOn;
+  acc+=d/max(length(d),.05)*w*(9.0+r*5.0)+uCursor.zw*w*1.8;
+  float speed=length(s.zw);
+  acc+=curl(q*.6+vec2(uTime*.1,-uTime*.07))*min(speed,3.0)*1.3;
+  vec2 vel=s.zw+acc*uDt;
+  vel*=exp(-uDt*(2.4+r));
+  state=vec4(s.xy+vel*uDt,vel);
 }`;
 
 // Darkens the world behind an opened card: near-black teal with slow
