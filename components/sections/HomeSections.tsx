@@ -1,37 +1,10 @@
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
-import { SectionIntro } from "./SectionIntro";
 import { HologramBust } from "../gl/HologramBust";
 import { CodeRain } from "./CodeRain";
 
 const CONTACT_URL = "https://github.com/ata-314";
-
-// The working systems behind the visual work, as glass tiles in a two-column
-// definition grid.
-export function AISystems({ t }: { t: SiteContent["aiSystems"] }) {
-  return (
-    <section
-      id="ai-systems"
-      className="relative z-20 px-5 md:px-10"
-      style={{ paddingBlock: "var(--space-section)" }}
-    >
-      <div className="mx-auto max-w-[88rem]">
-        <SectionIntro title={t.heading} lead={t.lead} />
-        <dl className="mt-16 grid gap-3 md:mt-24 md:grid-cols-2 md:gap-4">
-          {t.entries.map((e) => (
-            <div key={e.name} data-reveal className="glass-tile p-7 md:p-10">
-              <dt lang="en" className="font-display text-2xl font-semibold tracking-[-0.03em]">
-                {e.name}
-              </dt>
-              <dd className="mt-3 max-w-lg text-[15px] leading-relaxed text-bone-dim">{e.desc}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </section>
-  );
-}
 
 // Second act of the page: the About story, set openly beside the
 // holographic scan that materializes and turns as the section scrolls.

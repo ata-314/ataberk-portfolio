@@ -15,9 +15,10 @@ export type SiteContent = {
     systems: { key: string; name: string; items: string[]; bridge: string }[];
   };
   aiSystems: {
+    label: string;
     heading: string;
     lead: string;
-    entries: { name: string; desc: string }[];
+    entries: { name: string; tag: string; desc: string }[];
   };
   aboutPreview: { heading: string; line: string; cta: string };
   about: {
@@ -84,13 +85,14 @@ const tr: SiteContent = {
     ],
   },
   aiSystems: {
+    label: "Sistemler",
     heading: "AI Sistemleri & Deneyler",
     lead: "Görsel işin arkasında çalışan, üretim yapan gerçek sistemler.",
     entries: [
-      { name: "MODD-AI · Brand Brain", desc: "Marka hafızası tek kartta: ses, palet, yasaklar, kanıtlanmış desenler. İçerik zekâsı her üretimden öğrenir." },
-      { name: "Multi-agent creative team", desc: "Stratejist → art direktör → üretim → QA. Üretim tek modele değil, rollere dağılır." },
-      { name: "Web Development Agent", desc: "Brief'ten deploy'a web projelerini yöneten, bilgi tabanıyla öğrenen ajan altyapısı — bu site onun boru hattından çıktı." },
-      { name: "Content intelligence", desc: "Hafıza, DNA, ses örnekleri ve kalite kontrol: yayın öncesi her iş denetimden geçer." },
+      { name: "MODD-AI · Brand Brain", tag: "Marka hafızası", desc: "Marka hafızası tek kartta: ses, palet, yasaklar, kanıtlanmış desenler. İçerik zekâsı her üretimden öğrenir." },
+      { name: "Multi-agent creative team", tag: "Orkestrasyon", desc: "Stratejist → art direktör → üretim → QA. Üretim tek modele değil, rollere dağılır." },
+      { name: "Web Development Agent", tag: "Ajan altyapısı", desc: "Brief'ten deploy'a web projelerini yöneten, bilgi tabanıyla öğrenen ajan altyapısı — bu site onun boru hattından çıktı." },
+      { name: "Content intelligence", tag: "Kalite kontrol", desc: "Hafıza, DNA, ses örnekleri ve kalite kontrol: yayın öncesi her iş denetimden geçer." },
     ],
   },
   aboutPreview: {
@@ -156,13 +158,14 @@ const en: SiteContent = {
     ],
   },
   aiSystems: {
+    label: "Systems",
     heading: "AI Systems & Experiments",
     lead: "Real systems that work and produce behind the visual work.",
     entries: [
-      { name: "MODD-AI · Brand Brain", desc: "Brand memory on one card: voice, palette, banned phrases, proven patterns. Content intelligence learns from every production." },
-      { name: "Multi-agent creative team", desc: "Strategist → art director → production → QA. Output is distributed across roles, not thrown at one model." },
-      { name: "Web Development Agent", desc: "Agent infrastructure running web projects from brief to deployment, learning through a knowledge base — this site shipped through its pipeline." },
-      { name: "Content intelligence", desc: "Memory, DNA, voice samples and quality control: every piece passes review before publishing." },
+      { name: "MODD-AI · Brand Brain", tag: "Brand memory", desc: "Brand memory on one card: voice, palette, banned phrases, proven patterns. Content intelligence learns from every production." },
+      { name: "Multi-agent creative team", tag: "Orchestration", desc: "Strategist → art director → production → QA. Output is distributed across roles, not thrown at one model." },
+      { name: "Web Development Agent", tag: "Agent infrastructure", desc: "Agent infrastructure running web projects from brief to deployment, learning through a knowledge base — this site shipped through its pipeline." },
+      { name: "Content intelligence", tag: "Quality control", desc: "Memory, DNA, voice samples and quality control: every piece passes review before publishing." },
     ],
   },
   aboutPreview: {

@@ -9,8 +9,8 @@ import { Manifesto } from "@/components/sections/Manifesto";
 import { WorkSection } from "@/components/sections/WorkSection";
 import { Services } from "@/components/sections/Services";
 import { Voyage } from "@/components/sections/Voyage";
+import { AISystems } from "@/components/sections/AISystems";
 import {
-  AISystems,
   AboutPreview,
   ContactFinale,
   Footer,
@@ -45,7 +45,7 @@ export default async function Home({
         <AboutPreview locale={locale} t={t.aboutPreview} about={t.about} />
         <WorkSection locale={locale} />
         <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
-        <AISystems t={t.aiSystems} />
+        <AISystems locale={locale} t={t.aiSystems} />
         <ContactFinale t={t.contact} />
         <Footer t={t.footer} name={t.name} />
       </main>
