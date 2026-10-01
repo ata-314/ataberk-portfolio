@@ -10,6 +10,7 @@ import { createPost } from "./post";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour, FOLD_FRAME } from "./bird-behaviour";
 import { createWorkHelixLayer } from "./work-helix-layer";
+import { createSeaLayer, SEA_PALETTE } from "./sea-layer";
 import { bustState, scrollState, workState } from "../three/scroll-state";
 import { slotRgb, workSlots } from "@/content/work-slots";
 import { work as workContent } from "@/content/work";
@@ -313,6 +314,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       mid: slotRgb(slot.colors[1]),
       glow: slotRgb(slot.colors[2]),
     })), () => workState.titles);
+    // Services: the same particle sea as the work backdrop, in the bento's
+    // violet, blue and magenta, behind the frosted cards.
+    const servicesSea = createSeaLayer(gl, mobile, SEA_PALETTE.services);
     // How far the voyage has slid in: 0 with its top at the screen's foot,
     // 1 once the X has had room to rejoin.
     let xPath = 0;
@@ -511,6 +515,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let servicesElement: HTMLElement | null = null;
     let orbitElement: HTMLElement | null = null;
     let services = 0;
+    // The services sea's arrival (0 absent → 1 whole), trailing the scroll,
+    // and its flow along the sheet.
+    let servicesSeaShown = 0;
+    let servicesProgress = 0;
+    let servicesTravel = 0;
     const bustLoad = setTimeout(() => {
       void (async () => {
         try {
@@ -780,8 +789,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         const rect = servicesElement.getBoundingClientRect();
         servicesTarget = smoothstep(rect.top / stageH, .95, .2)
           * smoothstep(rect.bottom / stageH, .05, .65);
+        // The sea gathers as the section rises from the foot of the screen
+        // and sinks away as it leaves at the top.
+        const seaTarget = Math.min(smoothstep(rect.top / stageH, 1, 0.15), smoothstep(rect.bottom / stageH, 0, 0.55));
+        servicesSeaShown = damp(servicesSeaShown, seaTarget, 2.2, delta);
+        servicesProgress = Math.max(0, Math.min(1, (stageH - rect.top) / (rect.height + stageH)));
       }
       services = damp(services, servicesTarget, 7, delta);
+      if (servicesSeaShown > 0.001) servicesTravel += delta * 0.12;
       // Morph follows the hologram's place in the viewport: the bird unravels
       // into the bust as it rises into view, holds while it is centred and
       // re-forms as the section leaves.
@@ -1148,6 +1163,13 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       tunnel.render(view, projection, time, tunnelClock + scrollTravel + tunnelExit * tunnelExit * 140, tunnelIn,
         0.5 - 0.5 * Math.cos(tunnelClock * 0.004), smoothstep(voyage, 0.3, 0.5), Math.max(tunnelExit, warp * 0.45));
       work.renderBack(sceneTarget);
+      servicesSea.render({
+        view, projection, camera, time, delta,
+        width: canvas.width, height: canvas.height,
+        travel: servicesTravel + servicesProgress * 1.6,
+        cursor: [wakeTarget[0], wakeTarget[1]], cursorOn: wakeArmed ? hoverTarget : 0,
+        reveal: servicesSeaShown, amount: 1,
+      }, sceneTarget);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
@@ -1171,8 +1193,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         threshold: 0.72,
         // The work backdrop is fine grains: colour fringing and film grain
         // would smear them into static, so both ease off there.
-        aberration: (0.02 + warp * 0.05) * (1 - workAmount * 0.85),
-        grain: 0.04 * (1 - workAmount * 0.75),
+        aberration: (0.02 + warp * 0.05) * (1 - Math.max(workAmount, servicesSeaShown) * 0.85),
+        grain: 0.04 * (1 - Math.max(workAmount, servicesSeaShown) * 0.75),
         grade: [0.0, 0.25, 0.3],
         amount: Math.max(tunnelIn, xOpen * voyageHold, workAmount * 0.9),
         ring: tunnelIn,
@@ -1199,6 +1221,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       sculpture.dispose();
       tunnel.dispose();
       work.dispose();
+      servicesSea.dispose();
       workState.pick = null;
       gl.deleteTexture(glyphAtlas);
       xLayer.dispose();

@@ -13,13 +13,11 @@ import {
   atmosphereFragment,
   cardFragment,
   cardVertex,
-  dataFragment,
-  dataVertex,
-  seaSimFragment,
   fullscreenVertex,
   veilFragment,
 } from "./work-shaders";
 import { createWorkInside } from "./work-inside";
+import { createSeaLayer, SEA_PALETTE } from "./sea-layer";
 
 type Vec3 = [number, number, number];
 
@@ -163,8 +161,7 @@ export function createWorkHelixLayer(
 ) {
   const count = slots.length;
   const card = compile(gl, cardVertex, cardFragment);
-  const data = compile(gl, dataVertex, dataFragment);
-  const seaSim = gl.getExtension("EXT_color_buffer_float") ? compile(gl, fullscreenVertex, seaSimFragment) : null;
+  const sea = createSeaLayer(gl, mobile, SEA_PALETTE.work);
   const atmosphere = compile(gl, fullscreenVertex, atmosphereFragment);
   const veil = compile(gl, fullscreenVertex, veilFragment);
   const inside = createWorkInside(gl, mobile, CARD_W / CARD_H);
@@ -190,32 +187,6 @@ export function createWorkHelixLayer(
 
   const emptyVao = gl.createVertexArray();
   gl.bindVertexArray(null);
-  // Dense like the hero's sea: grains a couple of pixels apart.
-  const dataCols = mobile ? 300 : 560;
-  const dataRows = mobile ? 170 : 300;
-  const SEA_WIDTH = 30, SEA_SPAN = 17, SEA_RADIUS = 10.5;
-  // Backdrop simulation targets: one texel per grain, ping-ponged.
-  const seaTargets = seaSim
-    ? [0, 1].map(() => {
-        const tex = gl.createTexture()!;
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, dataCols, dataRows, 0, gl.RGBA, gl.HALF_FLOAT, null);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        const fbo = gl.createFramebuffer()!;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-        return { tex, fbo };
-      })
-    : [];
-  let seaRead = 0;
-  let seaReset = true;
-  // The pointer on the sheet: a damped follower (so the force glides with
-  // the hand, never jumps) and its velocity.
-  const seaCursor = new Float32Array(4);
-  let seaCursorOn = 0;
-  let seaPrimed = false;
-
   // Hologram titles: one 4:1 canvas cell per card, redrawn when the names
   // (or the display font) change.
   const titleTex = gl.createTexture();
@@ -575,100 +546,17 @@ export function createWorkHelixLayer(
   const birdDepth = (f: WorkFrame) => mulVec(f.view, f.bird[0], f.bird[1], f.bird[2])[2];
   const hide = () => 1 - smooth(openT, 0.1, 0.5);
 
-  // Where the cursor ray meets the backdrop's cylinder, in sheet units.
-  const cursorOnSea = (f: WorkFrame): [number, number] | null => {
-    const v = f.view;
-    const t = Math.tan(Math.PI / 8), aspect = f.width / Math.max(f.height, 1);
-    const dv = [f.cursor[0] * t * aspect, f.cursor[1] * t, -1];
-    const d = [
-      v[0] * dv[0] + v[1] * dv[1] + v[2] * dv[2],
-      v[4] * dv[0] + v[5] * dv[1] + v[6] * dv[2],
-      v[8] * dv[0] + v[9] * dv[1] + v[10] * dv[2],
-    ];
-    const o = [f.camera[0], f.camera[1], f.camera[2] + 1.5];
-    const a = d[0] * d[0] + d[2] * d[2];
-    const b = 2 * (o[0] * d[0] + o[2] * d[2]);
-    const c = o[0] * o[0] + o[2] * o[2] - SEA_RADIUS * SEA_RADIUS;
-    const disc = b * b - 4 * a * c;
-    if (disc < 0 || a < 1e-6) return null;
-    const hit = (-b + Math.sqrt(disc)) / (2 * a);
-    const x = o[0] + d[0] * hit, y = f.camera[1] + d[1] * hit, z = o[2] + d[2] * hit;
-    return [Math.atan2(x, -z) * 10, y];
-  };
-
-  const stepSea = (f: WorkFrame, target: WebGLFramebuffer | null) => {
-    if (!seaSim) return;
-    const hit = cursorOnSea(f);
-    const on = hit && f.cursorOn > 0.5 && openT < 0.05 ? 1 : 0;
-    const dt = Math.min(Math.max(f.delta, 1 / 240), 1 / 30);
-    if (hit) {
-      if (!seaPrimed) {
-        seaCursor[0] = hit[0];
-        seaCursor[1] = hit[1];
-        seaPrimed = true;
-      }
-      const px = seaCursor[0], py = seaCursor[1];
-      seaCursor[0] = damp(seaCursor[0], hit[0], 9, f.delta);
-      seaCursor[1] = damp(seaCursor[1], hit[1], 9, f.delta);
-      seaCursor[2] = damp(seaCursor[2], Math.max(-40, Math.min(40, (seaCursor[0] - px) / dt)), 8, f.delta);
-      seaCursor[3] = damp(seaCursor[3], Math.max(-40, Math.min(40, (seaCursor[1] - py) / dt)), 8, f.delta);
-    }
-    seaCursorOn = damp(seaCursorOn, on, 5, f.delta);
-    gl.disable(gl.BLEND);
-    gl.useProgram(seaSim.p);
-    gl.bindVertexArray(emptyVao);
-    gl.viewport(0, 0, dataCols, dataRows);
-    gl.uniform2f(seaSim.u("uGrid"), dataCols, dataRows);
-    gl.uniform1f(seaSim.u("uWidth"), SEA_WIDTH);
-    gl.uniform1f(seaSim.u("uSpan"), SEA_SPAN);
-    gl.uniform1f(seaSim.u("uTime"), f.time);
-    gl.uniform4fv(seaSim.u("uCursor"), seaCursor);
-    gl.uniform1f(seaSim.u("uCursorOn"), seaCursorOn);
-    gl.uniform1i(seaSim.u("uState"), 13);
-    for (let k = 0; k < 2; k++) {
-      const write = 1 - seaRead;
-      gl.bindFramebuffer(gl.FRAMEBUFFER, seaTargets[write].fbo);
-      gl.activeTexture(gl.TEXTURE13);
-      gl.bindTexture(gl.TEXTURE_2D, seaTargets[seaRead].tex);
-      gl.uniform1f(seaSim.u("uDt"), dt / 2);
-      gl.uniform1f(seaSim.u("uReset"), seaReset ? 1 : 0);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      seaRead = write;
-      seaReset = false;
-    }
-    gl.bindFramebuffer(gl.FRAMEBUFFER, target);
-    gl.viewport(0, 0, f.width, f.height);
-    gl.enable(gl.BLEND);
-  };
-
   // Atmosphere, the particle sea and the cards behind the bird.
   const renderBack = (target: WebGLFramebuffer | null) => {
     const f = frame;
     if (!f) return;
     // The sea outlives the section by its sinking animation.
-    if (reveal > 0.001) {
-      stepSea(f, target);
-      gl.useProgram(data.p);
-      gl.bindVertexArray(emptyVao);
-      gl.activeTexture(gl.TEXTURE13);
-      gl.bindTexture(gl.TEXTURE_2D, seaSim ? seaTargets[seaRead].tex : null);
-      gl.uniform1i(data.u("uState"), 13);
-      gl.uniform1f(data.u("uSimOn"), seaSim ? 1 : 0);
-      gl.uniformMatrix4fv(data.u("uView"), false, f.view);
-      gl.uniformMatrix4fv(data.u("uProj"), false, f.projection);
-      gl.uniform2f(data.u("uGrid"), dataCols, dataRows);
-      gl.uniform1f(data.u("uTime"), f.time);
-      gl.uniform1f(data.u("uTravel"), f.travel);
-      gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
-      gl.uniform1f(data.u("uAmount"), hide());
-      gl.uniform1f(data.u("uDpr"), f.height / 900);
-      gl.uniform1f(data.u("uReveal"), reveal);
-      gl.uniform1f(data.u("uAspect"), f.width / Math.max(f.height, 1));
-      gl.drawArrays(gl.POINTS, 0, dataCols * dataRows);
-    } else {
-      seaReset = true;
-      seaPrimed = false;
-    }
+    sea.render({
+      view: f.view, projection: f.projection, camera: f.camera, time: f.time, delta: f.delta,
+      width: f.width, height: f.height, travel: f.travel,
+      cursor: f.cursor, cursorOn: openT < 0.05 ? f.cursorOn : 0,
+      reveal, amount: hide(),
+    }, target);
     if (f.amount < 0.003) return;
     gl.useProgram(atmosphere.p);
     gl.bindVertexArray(emptyVao);
@@ -731,12 +619,8 @@ export function createWorkHelixLayer(
     get focus() { return focus; },
     get openAmount() { return openT; },
     dispose() {
-      [card, data, atmosphere, veil].forEach((x) => gl.deleteProgram(x.p));
-      if (seaSim) gl.deleteProgram(seaSim.p);
-      seaTargets.forEach((t) => {
-        gl.deleteTexture(t.tex);
-        gl.deleteFramebuffer(t.fbo);
-      });
+      [card, atmosphere, veil].forEach((x) => gl.deleteProgram(x.p));
+      sea.dispose();
       gl.deleteTexture(titleTex);
       inside.dispose();
       if (grab) {
