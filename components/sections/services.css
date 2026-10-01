@@ -5,7 +5,8 @@
    last of the pair, and Chrome ignores the prefixed one. */
 
 .services-section { --violet: 167 139 250; --blue: 96 165 250; --magenta: 232 121 249; --indigo: 129 140 248; position: relative; padding-block: clamp(5rem, 10vw, 9rem); }
-.services-aura { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+/* Clipped sideways only: the orbs near the foot fade out below the section on their own gradient instead of being cut in a hard line under the cards. */
+.services-aura { position: absolute; inset: 0; z-index: 0; overflow: clip visible; pointer-events: none; }
 .services-aura i { position: absolute; border-radius: 50%; filter: blur(50px); opacity: .6; animation: services-drift 20s ease-in-out infinite alternate; }
 .services-aura i:nth-child(1) { left: 2%; top: 22%; width: 34vw; height: 34vw; background: radial-gradient(circle, rgb(139 92 246 / .95), transparent 65%); --dx: 7vw; --dy: -5vh; }
 .services-aura i:nth-child(2) { left: 52%; top: 10%; width: 30vw; height: 30vw; background: radial-gradient(circle, rgb(59 130 246 / .85), transparent 65%); --dx: -6vw; --dy: 8vh; animation-delay: -7s; }
