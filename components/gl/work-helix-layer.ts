@@ -17,7 +17,7 @@ import {
   veilFragment,
 } from "./work-shaders";
 import { createWorkInside } from "./work-inside";
-import { createSeaLayer, SEA_PALETTE } from "./sea-layer";
+import { createSeaLayer } from "./sea-layer";
 
 type Vec3 = [number, number, number];
 
@@ -161,7 +161,7 @@ export function createWorkHelixLayer(
 ) {
   const count = slots.length;
   const card = compile(gl, cardVertex, cardFragment);
-  const sea = createSeaLayer(gl, mobile, SEA_PALETTE.work);
+  const sea = createSeaLayer(gl, mobile);
   const atmosphere = compile(gl, fullscreenVertex, atmosphereFragment);
   const veil = compile(gl, fullscreenVertex, veilFragment);
   const inside = createWorkInside(gl, mobile, CARD_W / CARD_H);

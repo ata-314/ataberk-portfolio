@@ -184,7 +184,6 @@ precision highp float;
 uniform mat4 uView,uProj;
 uniform vec2 uGrid;
 uniform float uTime,uTravel,uAmount,uDpr,uReveal,uAspect;
-uniform float uPalette; // 0 work (forest, lime, citron), 1 services (indigo, violet, lavender)
 uniform sampler2D uState; // seaSim: xy offset on the sheet, zw velocity
 uniform float uSimOn;
 out vec3 vColor; out float vAlpha; out vec2 vLight;
@@ -253,12 +252,6 @@ void main(){
   vec3 forest=mix(vec3(.035,.15,.045),accent*.18,cycle*.7);
   vec3 lime=mix(vec3(.58,.88,.045),accent,cycle*.85);
   vec3 citron=mix(vec3(.83,1.0,.17),mix(accent,vec3(.7,1.,1.),.4),cycle*.7);
-  // Services: the bento's violet, blue and magenta, cycling the same way.
-  vec3 sAccent=mix(vec3(.38,.58,1.0),vec3(.93,.42,.98),.5+.5*sin(t*.043));
-  forest=mix(forest,mix(vec3(.08,.045,.22),sAccent*.18,cycle*.6),uPalette);
-  lime=mix(lime,mix(vec3(.56,.42,1.0),sAccent,cycle*.75),uPalette);
-  citron=mix(citron,mix(vec3(.84,.76,1.0),mix(sAccent,vec3(.96,.92,1.0),.45),cycle*.6),uPalette);
-  vec3 white=mix(vec3(.86,1.0,1.0),vec3(.94,.9,1.0),uPalette);
   float region=vnoise((q+vec2(0,flow))*.25+t*.01);
   float band=sin(q.y*.45-q.x*.28+region*5.0+t*.035+flow*.2);
   vec3 tint=mix(forest,lime,smoothstep(-.85,.12,band));
@@ -271,11 +264,11 @@ void main(){
   // The scan: a white-cyan front sweeping slowly along the flow.
   float scanY=mod(t*1.4-flow*.35,span*1.6)-span*.8;
   float scan=exp(-pow((q.y+q.x*.15-scanY)*.55,2.0));
-  tint=mix(tint,white*1.6,scan*smoothstep(.2,.9,light)*.8);
+  tint=mix(tint,vec3(.86,1.0,1.0)*1.6,scan*smoothstep(.2,.9,light)*.8);
   float pulse=pow(.5+.5*sin(q.y*.7-q.x*.3-t*.8),8.0);
   tint=mix(tint,citron,pulse*.07);
-  tint+=mix(citron,white,.4)*crossing*(.22+step(.8,seed)*1.3);
-  tint=mix(tint,mix(citron,white,seed)*1.4,smoothstep(.05,1.0,stir)*.65);
+  tint+=mix(citron,vec3(.85,1.0,1.0),.4)*crossing*(.22+step(.8,seed)*1.3);
+  tint=mix(tint,mix(citron,vec3(.8,1.0,1.0),seed)*1.4,smoothstep(.05,1.0,stir)*.65);
   float edge=(1.0-smoothstep(.62,1.0,abs(g.x*2.0-1.0)))*(1.0-smoothstep(.72,1.0,abs(g.y*2.0-1.0)));
   vColor=tint;
   vAlpha=edge*uAmount*introAlpha;

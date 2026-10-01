@@ -206,6 +206,17 @@ void renderGrain(float id) {
   float t=fieldTime*.24;
   screen.x += .12*sin(material.y*1.5+t)*(1.0-material.x*material.x);
   screen.y += .10*cos(material.x*1.4+t)*(1.0-material.y*material.y);
+  // Services: two drifting, self-warping swirls ride on the broad current,
+  // so the matter behind the glass cards flows like a liquid instead of
+  // only breathing.
+  float flowing=services*services*(3.0-2.0*services);
+  float ts=time*.55;
+  vec2 swirl=vec2(sin(material.y*2.6+ts+sin(material.x*1.7-ts*.7)*1.2),
+                  cos(material.x*2.2-ts*.8+sin(material.y*1.9+ts*.6)*1.2));
+  swirl+=.5*vec2(sin(material.y*5.1-ts*1.3+material.x*2.0),cos(material.x*4.7+ts*1.1-material.y*1.6));
+  // Fades to nothing at the screen edges, like the broad current, so no
+  // gaps open along the frame.
+  screen+=swirl*.06*flowing*(1.0-material*material);
   // Reflect at the physical screen edges; never teleport to the opposite side.
   screen=1.0-abs(mod(screen+1.0,4.0)-2.0);
   float aspect=resolution.x/resolution.y;

@@ -1,8 +1,7 @@
 // The particle sea: a dense sheet of lit grains wrapped into a wall that
 // curves round the scene, its relief flowing along the scroll. The pointer
 // (projected onto the wall) parts and drags the grains through a small GPU
-// simulation. Shared by the selected-work backdrop and the services section,
-// each with its own instance, palette and arrival.
+// simulation. The selected-work backdrop drives it (work-helix-layer.ts).
 import { dataFragment, dataVertex, fullscreenVertex, seaSimFragment } from "./work-shaders";
 
 type Vec3 = [number, number, number];
@@ -21,8 +20,6 @@ export type SeaFrame = {
   reveal: number; // 0 absent → 1 whole; the emergence/sinking animation
   amount: number; // overall opacity
 };
-
-export const SEA_PALETTE = { work: 0, services: 1 } as const;
 
 function compile(gl: WebGL2RenderingContext, vs: string, fs: string) {
   const make = (type: number, src: string) => {
@@ -51,7 +48,7 @@ function compile(gl: WebGL2RenderingContext, vs: string, fs: string) {
 
 const damp = (c: number, t: number, k: number, d: number) => c + (t - c) * (1 - Math.exp(-k * d));
 
-export function createSeaLayer(gl: WebGL2RenderingContext, mobile: boolean, palette: number) {
+export function createSeaLayer(gl: WebGL2RenderingContext, mobile: boolean) {
   const data = compile(gl, dataVertex, dataFragment);
   const seaSim = gl.getExtension("EXT_color_buffer_float") ? compile(gl, fullscreenVertex, seaSimFragment) : null;
   const emptyVao = gl.createVertexArray();
@@ -167,7 +164,6 @@ export function createSeaLayer(gl: WebGL2RenderingContext, mobile: boolean, pale
       gl.uniform2f(data.u("uGrid"), cols, rows);
       gl.uniform1f(data.u("uTime"), f.time);
       gl.uniform1f(data.u("uTravel"), f.travel);
-      gl.uniform1f(data.u("uPalette"), palette);
       gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
       gl.uniform1f(data.u("uAmount"), f.amount);
       gl.uniform1f(data.u("uDpr"), f.height / 900);
