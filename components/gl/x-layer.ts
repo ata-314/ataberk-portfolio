@@ -101,7 +101,7 @@ void main() {
   float a=B.x+open*1.1+time*(.18+seed.y*.22)*open;
   vec3 onRing=place(vec3(cos(a),sin(a),0.0)*(radius+B.y)+vec3(0.0,0.0,B.z)+wave*.06);
   float di=smoothstep(seed.x*.35,seed.x*.35+.65,dissolve);
-  float gi=smoothstep(seed.y*.35,seed.y*.35+.65,gather);
+  float gi=smoothstep(seed.y*.2,seed.y*.2+.45,gather);
   float oi=smoothstep(seed.w*.12+seed.x*.18,seed.w*.12+seed.x*.18+.7,open);
   vec3 target=mix(mix(mix(letter,swarm,di),onX,gi),onRing,oi);
   if(reset>.5) {outPos=vec4(target,1.0);outVel=vec4(0.0);return;}
@@ -111,7 +111,7 @@ void main() {
   // Springs: locked on the letter, loose in the swarm, firm but wobbly in
   // the X, locked again while the ring rushes the camera.
   float free=di*(1.0-gi);
-  float k=mix(mix(mix(90.0,2.6,di),26.0,gi),90.0,rush);
+  float k=mix(mix(mix(90.0,2.6,di),40.0,gi),90.0,rush);
   float damping=2.0*sqrt(k)*mix(mix(.95,.55,di),.95,rush);
   vec3 acc=(target-p)*k-v*damping;
   acc+=flow(p*.8/scale+vec3(0.0,time*.3,time*.1))*scale*(free*3.2+gi*.5)*(1.0-rush);
