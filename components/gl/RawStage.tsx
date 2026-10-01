@@ -1107,7 +1107,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         const key = `${stageW}x${stageH}`;
         if (xSampled !== key && xLayer.sample(stageW, stageH)) xSampled = key;
       }
-      xGather = damp(xGather, smoothstep(xPath, 0.1, 1), 5, delta);
+      xGather = damp(xGather, smoothstep(xPath, 0.05, 0.6), 9, delta);
       const pull = portalThrough * portalThrough;
       xCentre[0] = 0;
       xCentre[1] = mix(0.2, mobile ? 0.1 : 0.12, voyageHold);
