@@ -1,3 +1,4 @@
+import type { LabEntry } from "@/components/lab/LabExperiment";
 import type { Locale } from "@/lib/i18n";
 
 // Site-wide copy, typed per locale. EN is written natively.
@@ -31,8 +32,11 @@ export type SiteContent = {
   };
   lab: {
     heading: string;
+    label: string;
     lead: string;
-    entries: { name: string; desc: string; status: string }[];
+    stats: string[];
+    note: string;
+    entries: LabEntry[];
   };
   contact: {
     heading: string;
@@ -119,11 +123,17 @@ const tr: SiteContent = {
   },
   lab: {
     heading: "Lab",
-    lead: "Bu sitenin altındaki sistemler dahil — küçük, gerçek deneyler.",
+    label: "Lab · Deneyler",
+    lead: "Bu sitenin altında çalışan sistemler. Ana sayfada gördüğün her hareket aşağıdaki deneylerden birinden geliyor ve her biri burada, sitenin kendi verisinden canlı çiziliyor.",
+    stats: ["6 deney", "WebGL2 · Canvas", "Gerçek bake verisi", "Mobilde test edildi"],
+    note: "Bu sayfa da bir deney: kuş ve büst, ana sahnenin GPU'ya yüklediği aynı dosyalardan okunuyor.",
     entries: [
-      { name: "Code Field", desc: "Bu sitenin hero'su: glyph atlası, akış alanı ve scroll'la yönetilen faz sistemi.", status: "Canlı — bu sayfada" },
-      { name: "Terrain of Mind", desc: "Sıvı veri arazisi çalışması: fbm yüzey, ışık taşıyan veri kanalları.", status: "Arşiv — hero v2" },
-      { name: "GLB → Glyph kuş", desc: "İskelet animasyonlu kartalın pozisyon dokusuna bake edilip kod karakterlerine dönüştürülmesi.", status: "Canlı — bu sayfada" },
+      { kind: "bird", name: "Tanecik Kuş", desc: "Animasyonlu bir GLB kartal, 16 kanat karesi boyunca 9.000 yüzey noktasına bake edildi. Tarayıcıda GPU her noktayı komşularıyla birleştirip yüz binlerce taneciği kuşun derisine yayıyor; kuş kendi davranışlarıyla, kaydırmaya göre uçuyor.", tech: ["WebGL2", "Half-float bake", "GPGPU", "Davranış motoru"], status: "Canlı · Ana sayfa", live: true },
+      { kind: "bust", name: "Hologram Büst", desc: "120.000 noktalık bir 3B tarama. Kuşun taneleri bölüme girerken bu yüze dönüşüyor; derinliği okuyan bir tarama çizgisi yüzeyi baştan aşağı aydınlatıyor.", tech: ["Nokta bulutu", "Morph", "Derinlik taraması"], status: "Canlı · Hakkında", live: true },
+      { kind: "brain", name: "Brand Brain", desc: "Marka hafızası boncuklardan bir beyin: ses, palet, yasaklar ve desenler kendi bölgelerine yerleşiyor. Yüzey sıvı gibi dalgalanıyor, imleç boncukları su gibi aralıyor.", tech: ["Canvas 2D", "Yay fiziği", "Derinlik sıralama"], status: "Canlı · AI Sistemleri", live: true },
+      { kind: "voyage", name: "Geçit", desc: "İsimden kopan kod karakterleri bir X'te toplanıyor, X bir portala açılıyor ve kamera vokselden bir tünele dalıyor. Hepsi tek bir kaydırma zaman çizgisinde.", tech: ["Simülasyon", "Voxel tünel", "Scroll zaman çizgisi"], status: "Canlı · Ana sayfa", live: true },
+      { kind: "helix", name: "İş Sarmalı", desc: "Seçili işler, tanelerden bir sarmal üzerinde dönen cam kartlar. Kaydırma sarmalı çeviriyor; bir karta dokununca proje kendi dünyasına açılıyor.", tech: ["Instancing", "Scroll pin", "Cam malzeme"], status: "Canlı · Seçili İşler", live: true },
+      { kind: "forensics", name: "Mobil GPU Adli İncelemesi", desc: "Kuş bir Mali GPU'lu telefonda formsuz bir buluta dönüşüyordu. Ekrana yazan bir teşhis paneli ve çizim modlarıyla bulundu: vertex shader dokuları varsayılan olarak düşük hassasiyette okunuyor, 2048'in üstündeki komşu indeksleri kayıyordu. Çözüm tek satır: precision highp sampler2D.", tech: ["Cihazda teşhis", "GLSL hassasiyeti", "Mali-G610"], status: "Çözüldü · Ekim 2026", live: false, phases: ["lowp · 16-bit indeksler", "highp · 32-bit indeksler"] },
     ],
   },
   contact: {
@@ -192,11 +202,17 @@ const en: SiteContent = {
   },
   lab: {
     heading: "Lab",
-    lead: "Small, real experiments — including the systems underneath this site.",
+    label: "Lab · Experiments",
+    lead: "The systems running underneath this site. Every motion on the home page comes from one of the experiments below, and each is drawn here live from the site's own data.",
+    stats: ["6 experiments", "WebGL2 · Canvas", "Real bake data", "Tested on phones"],
+    note: "This page is an experiment too: the bird and the bust are read from the same files the home stage uploads to the GPU.",
     entries: [
-      { name: "Code Field", desc: "This site's hero: glyph atlas, flow field and a scroll-driven phase system.", status: "Live — on this page" },
-      { name: "Terrain of Mind", desc: "Liquid data terrain study: fbm surface with light-carrying data channels.", status: "Archive — hero v2" },
-      { name: "GLB → Glyph bird", desc: "A skinned eagle baked into a position texture and re-rendered as code characters.", status: "Live — on this page" },
+      { kind: "bird", name: "Grain Bird", desc: "An animated GLB eagle baked to 9,000 surface samples across 16 wing-beat frames. In the browser the GPU joins every sample to its neighbours and spreads hundreds of thousands of grains over the bird's skin; it flies with its own behaviours, driven by scroll.", tech: ["WebGL2", "Half-float bake", "GPGPU", "Behaviour engine"], status: "Live · Home", live: true },
+      { kind: "bust", name: "Hologram Bust", desc: "A 120,000-point 3D scan. As the section enters, the bird's grains become this face; a scan line that reads depth lights the surface from top to bottom.", tech: ["Point cloud", "Morph", "Depth scan"], status: "Live · About", live: true },
+      { kind: "brain", name: "Brand Brain", desc: "Brand memory as a brain of beads: voice, palette, banned phrases and patterns settle into their own regions. The surface ripples like liquid and the pointer parts the beads like water.", tech: ["Canvas 2D", "Spring physics", "Depth sorting"], status: "Live · AI Systems", live: true },
+      { kind: "voyage", name: "The Gate", desc: "Code characters torn from the name gather into an X, the X opens into a portal and the camera dives into a tunnel of voxels, all on one scroll timeline.", tech: ["Simulation", "Voxel tunnel", "Scroll timeline"], status: "Live · Home", live: true },
+      { kind: "helix", name: "Work Helix", desc: "Selected work as glass cards turning on a helix of grains. Scrolling turns the helix; tapping a card opens the project into its own world.", tech: ["Instancing", "Scroll pin", "Glass material"], status: "Live · Selected Work", live: true },
+      { kind: "forensics", name: "Mobile GPU Forensics", desc: "On a phone with a Mali GPU the bird fell apart into a shapeless cloud. An on-screen diagnostic readout and draw modes found it: vertex-shader textures default to low precision, so neighbour indices above 2048 drifted. The fix is one line: precision highp sampler2D.", tech: ["On-device diagnostics", "GLSL precision", "Mali-G610"], status: "Solved · Oct 2026", live: false, phases: ["lowp · 16-bit indices", "highp · 32-bit indices"] },
     ],
   },
   contact: {

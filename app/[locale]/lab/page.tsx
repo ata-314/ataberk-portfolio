@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { isLocale, locales, type Locale } from "@/lib/i18n";
 import { site } from "@/content/site";
 import { Footer } from "@/components/sections/HomeSections";
+import { LabExperiment } from "@/components/lab/LabExperiment";
+import "@/components/lab/lab.css";
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -35,37 +37,26 @@ export default async function LabPage({
   const t = site[locale].lab;
 
   return (
-    <main id="content" className="relative z-10 bg-ink">
-      <header className="px-6 pt-32 md:px-10 md:pt-44">
-        <div className="mx-auto max-w-7xl">
-          <h1
-            className="font-display font-semibold tracking-tight"
-            style={{ fontSize: "var(--text-h1)" }}
-          >
-            {t.heading}
-          </h1>
-          <p className="mt-4 max-w-xl text-bone-dim">{t.lead}</p>
+    <main id="content" className="relative z-10 min-h-screen overflow-hidden bg-ink">
+      <div className="lab-glow" aria-hidden="true" />
+      <header className="relative px-5 pt-32 md:px-10 md:pt-44">
+        <div className="lab-head">
+          <p className="lab-label">{t.label}</p>
+          <h1 className="lab-title">{t.heading}</h1>
+          <p className="lab-lead">{t.lead}</p>
+          <div className="lab-stats">
+            {t.stats.map((s) => <span key={s}>{s}</span>)}
+          </div>
         </div>
       </header>
-      <div className="px-6 md:px-10" style={{ paddingBlock: "var(--space-section)" }}>
-        <div className="mx-auto max-w-7xl">
-          <dl className="space-y-4">
-            {t.entries.map((e) => (
-              <div key={e.name} className="grid grid-cols-12 gap-4 py-8">
-                <dt className="col-span-12 md:col-span-4">
-                  <span className="font-display text-2xl font-semibold tracking-[-0.03em]">{e.name}</span>
-                </dt>
-                <dd className="col-span-12 text-sm leading-relaxed text-bone-dim md:col-span-5">
-                  {e.desc}
-                </dd>
-                <dd className="col-span-12 text-sm text-bone md:col-span-3 md:text-right">
-                  {e.status}
-                </dd>
-              </div>
-            ))}
-          </dl>
+      <section aria-label={t.heading} className="relative px-5 pt-14 pb-24 md:px-10 md:pt-20 md:pb-32">
+        <div className="lab-grid">
+          {t.entries.map((e, i) => (
+            <LabExperiment key={e.name} entry={e} index={i} feature={i === 0} />
+          ))}
         </div>
-      </div>
+        <p className="lab-note">{t.note}</p>
+      </section>
       <Footer t={site[locale].footer} name={site[locale].name} />
     </main>
   );
