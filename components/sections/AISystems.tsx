@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
-import { stages, visualCopy } from "./AISystemsVisuals";
+import { GrainStage } from "./AISystemsVisuals";
 import "./ai-systems.css";
 
 // AI Systems, set like the rest of the page: an editorial index on the
@@ -11,8 +11,8 @@ import "./ai-systems.css";
 // work, its description underneath as a caption. The index advances on its
 // own while the section is on screen (paused on hover or focus; off under
 // reduced motion and below desktop). The stage has a fixed size, so
-// switching systems never moves the page; the visuals live in
-// AISystemsVisuals.tsx and are pure CSS/SVG.
+// switching systems never moves the page. The visuals are drawn in grains
+// of light (AISystemsVisuals.tsx + ais-grains.ts).
 
 const CYCLE = 7000;
 
@@ -23,7 +23,6 @@ export function AISystems({ locale, t }: { locale: Locale; t: SiteContent["aiSys
   const [visible, setVisible] = useState(false);
   const [auto, setAuto] = useState(false);
   const [held, setHeld] = useState(false);
-  const c = visualCopy[locale];
   const count = t.entries.length;
 
   // Stages animate while the section is on screen; the index advances on
@@ -53,7 +52,6 @@ export function AISystems({ locale, t }: { locale: Locale; t: SiteContent["aiSys
     tabs.current[next]?.focus();
   };
 
-  const Stage = stages[active];
   return (
     <section ref={root} id="ai-systems" aria-labelledby="ai-systems-heading" className="ais-section relative z-20 px-5 md:px-10"
       data-visible={visible ? "true" : "false"} data-cycling={cycling ? "true" : "false"} data-system={active}>
@@ -79,7 +77,7 @@ export function AISystems({ locale, t }: { locale: Locale; t: SiteContent["aiSys
           </div>
         </div>
         <div className="ais-stage" id="ais-panel" role="tabpanel" aria-labelledby={`ais-tab-${active}`} data-reveal>
-          <div className="ais-visual" key={active} aria-hidden="true"><Stage c={c} /></div>
+          <div className="ais-visual" key={active} aria-hidden="true"><GrainStage system={active} locale={locale} visible={visible} /></div>
           <div className="ais-caption">
             <p key={`d-${active}`}>{t.entries[active].desc}</p>
             <span className="ais-count" aria-hidden="true">{String(active + 1).padStart(2, "0")}<i>/</i>{String(count).padStart(2, "0")}</span>
