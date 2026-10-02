@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import type { Locale } from "@/lib/i18n";
+import { mountBrain } from "./brain-beads";
 import "./ai-systems-visuals.css";
 
 // The AI Systems stage as glass objects: each system is one thick piece of
 // glass with the brand's colours floating behind it as light, kin to the
-// glass cards in Selected work. A Brand Brain disc ringed by its memory, a
+// glass cards in Selected work. A Brand Brain of lit beads ringed by its memory, a
 // fan of four role panes the light walks through, a glass browser the site
 // lights up behind, and a real magnifying lens reviewing a post.
 // Motion is CSS; only the team's relay keeps a small clock in React. With
@@ -39,17 +40,26 @@ type Copy = (typeof copy)["en"];
 
 const SCORES = [96, 100, 100, 100];
 
-function Brain({ c }: { c: Copy; visible: boolean }) {
+function Brain({ c, visible }: { c: Copy; visible: boolean }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const engine = useRef<ReturnType<typeof mountBrain> | null>(null);
   const ring = `${c.brain.nodes.join("  ·  ")}  ·  `.repeat(2);
+  useEffect(() => {
+    if (!canvas.current) return;
+    const e = mountBrain(canvas.current, { still: matchMedia("(prefers-reduced-motion: reduce)").matches });
+    engine.current = e;
+    return () => e.destroy();
+  }, []);
+  useEffect(() => engine.current?.run(visible), [visible]);
   return (
     <div className="gs gs-brain">
-      <i className="gs-light l-lime" /><i className="gs-light l-cyan" /><i className="gs-light l-bone" /><i className="gs-light l-coral" />
+      <i className="gs-aura" />
       <svg className="gs-ring" viewBox="0 0 300 300" aria-hidden="true">
         <defs><path id="gs-ring-path" d="M150 150 m-132 0 a132 132 0 1 1 264 0 a132 132 0 1 1 -264 0" /></defs>
         <text><textPath href="#gs-ring-path">{ring}</textPath></text>
       </svg>
-      <i className="gs-floor" />
-      <div className="gs-glass gs-disc"><div><b>{c.brain.core}</b><small>{c.brain.sub}</small><span className="gs-dots"><i /><i /><i /></span></div></div>
+      <canvas ref={canvas} className="gs-brain-canvas" />
+      <span className="gs-glass gs-brain-tag"><b>{c.brain.core}</b><small>{c.brain.sub}</small></span>
     </div>
   );
 }
