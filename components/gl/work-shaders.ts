@@ -96,9 +96,6 @@ void main(){
     float wave=sin(gd*26.0-uTime*4.5)*reach;
     uv+=(g/max(gd,1e-3))/vec2(uAspect,1.0)*wave*.022;
     uv-=uCursorVel*exp(-gd*5.0)*uCursorLight*.05;
-    float swirl=reach*.35*sin(uTime*.8);
-    vec2 r=uv-uCursorUv;
-    uv=uCursorUv+mat2(cos(swirl),-sin(swirl),sin(swirl),cos(swirl))*r;
     vec3 pic=nebula(uv,uAspect,uTime,uSeed,uDeep,uMid,uGlow);
     pic*=1.0+wave*.35;
     float inner=smoothstep(-.08,0.0,d);
@@ -120,20 +117,16 @@ void main(){
       float s=uv.x*.9+uv.y*.45-uSweep;
       c+=vec3(.9,1.0,1.0)*exp(-s*s*40.0)*.16;
       // Hologram title, floating a little above the glass (parallax from
-      // the view angle), split into channels, scanned and flickering.
+      // the view angle), split into channels and gently scanned.
       if(uTitleOn>.5){
         vec2 par=vec2(dot(V,uAxisX),dot(V,uAxisY))*-.03;
         vec2 tuv=(vUv+par-.5)/vec2(.84,.339)+.5;
-        float row=floor(tuv.y*18.0);
-        float tear=step(.93,h21(vec2(row,floor(uTime*6.0)+uSeed)));
-        tuv.x+=tear*(h21(vec2(row,floor(uTime*11.0)))-.5)*.05;
-        float ca=.0035+tear*.01;
+        float ca=.0035;
         vec3 ink=vec3(title(tuv+vec2(ca,0),0.0),title(tuv,0.0),title(tuv-vec2(ca,0),0.0));
         float halo=title(tuv,3.5);
-        float scan=.72+.28*sin(gl_FragCoord.y*1.25-uTime*9.0);
-        float flicker=.9+.1*sin(uTime*23.0+uSeed*9.0)*sin(uTime*7.3);
+        float scan=.86+.14*sin(gl_FragCoord.y*1.25-uTime*2.0);
         vec3 holo=mix(vec3(.62,1.0,.96),uGlow,.22);
-        c+=holo*ink*scan*flicker*1.7+holo*halo*.35;
+        c+=holo*ink*scan*1.7+holo*halo*.35;
       }
       c+=vec3(.45,.85,1.0)*fres*.55;
       vec2 q=uv-.5; c*=1.0-dot(q,q)*.7;

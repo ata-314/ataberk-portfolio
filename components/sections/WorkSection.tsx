@@ -16,6 +16,14 @@ const pad = (n: number) => String(n).padStart(2, "0");
 // input that drives it: clicks are hit-tested against the stage's cards;
 // scroll, Escape or the close button leave a card. Each card is a project
 // from content/work, painted in its slot's colour world.
+function applyHover(el: HTMLElement | null, hit: number) {
+  workState.hover = hit;
+  if (!el) return;
+  if (hit >= 0) el.dataset.cursor = "view";
+  else delete el.dataset.cursor;
+  el.style.cursor = hit >= 0 ? "pointer" : "";
+}
+
 export function WorkSection({ locale }: { locale: Locale }) {
   const tr = locale === "tr";
   const t = work[locale];
@@ -24,6 +32,7 @@ export function WorkSection({ locale }: { locale: Locale }) {
   const [open, setOpen] = useState(-1);
   const [focus, setFocus] = useState(0);
   const layer = useRef<HTMLDivElement>(null);
+  const pointer = useRef<{ x: number; y: number } | null>(null);
   const section = useRef<HTMLElement>(null);
 
   const openSlot = useCallback((i: number) => {
@@ -55,6 +64,10 @@ export function WorkSection({ locale }: { locale: Locale }) {
       if (workState.focus !== last) {
         last = workState.focus;
         setFocus(last);
+      }
+      if (pointer.current && workState.open < 0 && workState.pick) {
+        const hit = workState.pick(pointer.current.x, pointer.current.y);
+        if (hit !== workState.hover) applyHover(layer.current, hit);
       }
     };
     frame = requestAnimationFrame(tick);
@@ -99,15 +112,18 @@ export function WorkSection({ locale }: { locale: Locale }) {
     };
   }, [open, close]);
 
+  // Hover is mouse-only (a swipe must not tilt cards) and is re-picked
+  // every frame, so a scroll that turns the helix under a still pointer
+  // never leaves a stale card raised.
+  const setHover = (hit: number) => applyHover(layer.current, hit);
   const onPointerMove = (e: React.PointerEvent) => {
-    if (open >= 0 || !workState.pick) return;
-    const hit = workState.pick(e.clientX, e.clientY);
-    workState.hover = hit;
-    if (layer.current) {
-      if (hit >= 0) layer.current.dataset.cursor = "view";
-      else delete layer.current.dataset.cursor;
-      layer.current.style.cursor = hit >= 0 ? "pointer" : "";
+    if (e.pointerType !== "mouse") {
+      pointer.current = null;
+      return;
     }
+    pointer.current = { x: e.clientX, y: e.clientY };
+    if (open >= 0 || !workState.pick) return;
+    setHover(workState.pick(e.clientX, e.clientY));
   };
   const onClick = (e: React.MouseEvent) => {
     if (open >= 0 || !workState.pick) return;
@@ -150,7 +166,10 @@ export function WorkSection({ locale }: { locale: Locale }) {
         ref={layer}
         className="work-pin sticky top-0 h-svh overflow-hidden"
         onPointerMove={onPointerMove}
-        onPointerLeave={() => (workState.hover = -1)}
+        onPointerLeave={() => {
+          pointer.current = null;
+          setHover(-1);
+        }}
         onClick={onClick}
       >
         <header className="work-head pointer-events-none absolute top-24 left-5 md:top-28 md:left-10">

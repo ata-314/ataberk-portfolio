@@ -2,9 +2,9 @@
 //
 // Scroll turns the helix and carries it past the camera, so the bird reads
 // as falling (or, scrolling back, climbing) through it. The cards are real
-// glass — they refract a blurred grab of the scene behind them — and follow
-// the cursor: the helix leans toward it, a hovered card tilts under it and
-// ripples its colours in waves round the point. A particle current (the
+// glass — they refract a blurred grab of the scene behind them. Only scroll
+// turns the helix; a hovered card tilts under the cursor and ripples its
+// colours in waves round the point. A particle current (the
 // hero's data sea, stood on end) flows in the far background, and each
 // card carries its project's name as a hologram inside the glass.
 // Clicking a card flies it to the front, darkens the world and hands it to
@@ -299,10 +299,9 @@ export function createWorkHelixLayer(
   let shown = -1; // card currently opened or closing
   let focus = 0;
   const openRect = new Float32Array(4);
-  // Cursor response: the helix leans toward the pointer; the hovered card
-  // tilts under it and carries a glare at the pointed spot.
-  let leanX = 0;
-  let leanY = 0;
+  // Cursor response: the hovered card tilts under the pointer and carries
+  // a glare at the pointed spot. The helix itself only turns with scroll.
+  const restModel = new Float32Array(16);
   const cursorUv: [number, number] = [0.5, 0.5];
   const cursorVel: [number, number] = [0, 0];
   let lastHover = -1;
@@ -312,11 +311,11 @@ export function createWorkHelixLayer(
   const cardsAlong = (f: WorkFrame) => Math.min(1, f.progress / CARDS_END) * (count - 1);
   const helixPose = (i: number, f: WorkFrame) => {
     const along = cardsAlong(f);
-    const angle = (i - along) * STEP_ANGLE + leanX * 0.16;
+    const angle = (i - along) * STEP_ANGLE;
     const y = (along - i) * STEP_Y + f.enter * 6.5 + 0.05;
-    const pos: Vec3 = [Math.sin(angle) * radius, y + leanY * 0.08, Math.cos(angle) * radius];
+    const pos: Vec3 = [Math.sin(angle) * radius, y, Math.cos(angle) * radius];
     // Tangent to the cylinder, square to the axis: an even spiral stair.
-    return { pos, yaw: angle, tilt: -leanY * 0.05, y };
+    return { pos, yaw: angle, tilt: 0, y };
   };
 
   // Where an opened card sits: square to the camera, filling the frame.
@@ -398,10 +397,6 @@ export function createWorkHelixLayer(
     else openT = Math.max(0, openT - f.delta / 1.15);
     if (openT === 0 && !wantOpen) shown = -1;
 
-    const browsing = f.cursorOn * (1 - Math.min(1, openT * 3));
-    leanX = damp(leanX, f.cursor[0] * browsing, 3, f.delta);
-    leanY = damp(leanY, f.cursor[1] * browsing, 3, f.delta);
-
     const along = cardsAlong(f);
     focus = Math.max(0, Math.min(count - 1, Math.round(along)));
     const fly = smooth(openT, 0, 0.55);
@@ -446,12 +441,16 @@ export function createWorkHelixLayer(
       depths[i] = view[2];
       dims[i] = mix(0.55, 1.08, smooth(-view[2], 9.5, 4.5)) * (i === shown ? mix(1, 1.12, flyE) : 1);
       sweeps[i] = ((yaw * 0.5 + pos[1] * 0.12) % 2 + 2) % 2 - 0.3;
+      // Picking uses the card's rest pose, not the hover lift and tilt, so
+      // a card turning under the pointer can't slip out from under it and
+      // flicker between hovered and not.
+      modelMatrix(restModel, pose.pos, pose.yaw, pose.tilt, scale);
       const q = quads[i];
       const hw = CARD_W / 2, hh = CARD_H / 2;
       const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
       let behind = false;
       corners.forEach(([cx, cy], e) => {
-        const p = project(models[i], f, cx, cy);
+        const p = project(restModel, f, cx, cy);
         if (p[2] <= 0) behind = true;
         q[e * 2] = p[0];
         q[e * 2 + 1] = p[1];
