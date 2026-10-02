@@ -36,8 +36,8 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
     window.setTimeout(() => { setOpen(false); setClosing(false); }, 300);
   };
 
-  // While the sheet is open (and not folding away) the WebGL stage holds its
-  // frame, so the glass blurs a still picture (see RawStage).
+  // While the sheet is open (and not folding away) the WebGL stage draws at
+  // half rate, so the glass re-frosts less often (see RawStage).
   useEffect(() => {
     const html = document.documentElement;
     if (open && !closing) html.dataset.menuOpen = "true";

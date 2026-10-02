@@ -238,16 +238,16 @@ header[data-menu-open] .nav-capsule { visibility: hidden; }
 }
 /* Phones: the glass sheet drops in from the capsule's place, growing out of
    its top edge, and its links rise in turn; it folds back up on close. Only
-   transform and opacity animate, and the stage holds its frame while the
-   sheet is open, so the live blur frosts a still backdrop. */
+   transform and opacity animate, and the stage draws at half rate while the
+   sheet is open, so the live blur re-frosts less often. */
 .nav-sheet { transform-origin: 50% 0; will-change: transform, opacity; animation: navSheetIn 0.6s var(--spring) both; }
 .nav-sheet[data-closing] { animation: navSheetOut 0.3s var(--spring) both; }
 /* Apple-style glass on touch too (the generic touch rule thins .liquid-glass). */
 @media (hover: none) {
   .nav-sheet.liquid-glass-dense {
     background: linear-gradient(180deg, rgba(40, 40, 46, 0.52), rgba(18, 18, 22, 0.58));
-    -webkit-backdrop-filter: blur(30px) saturate(1.9);
-    backdrop-filter: blur(30px) saturate(1.9);
+    -webkit-backdrop-filter: blur(22px) saturate(1.9);
+    backdrop-filter: blur(22px) saturate(1.9);
   }
 }
 @keyframes navSheetIn {
