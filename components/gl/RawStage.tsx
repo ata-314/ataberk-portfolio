@@ -1002,8 +1002,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       workLastProgress = workProgress;
       // Phones: the narrow frame is close to the bird, so it is kept back
       // from the glass (no nearer than z 0.35) or perspective stretches the
-      // wings into spikes across the whole screen.
-      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, Math.min(flight.position[2], 0.35)] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, birdRoll, birdPitch);
+      // wings into spikes across the whole screen; sideways it stays within
+      // ±0.1 so a drift never carries it off the narrow edge.
+      compose(birdMatrix, mobile ? [Math.max(-0.1, Math.min(0.1, flight.position[0] * 0.28)), flight.position[1] * 0.75, Math.min(flight.position[2], 0.35)] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, birdRoll, birdPitch);
       // Folded wings hang below the body in the bake; in the dive they are
       // swept back along it instead (a shear of the wing axis toward the
       // tail) so the bird reads as one closed, falling dart.
