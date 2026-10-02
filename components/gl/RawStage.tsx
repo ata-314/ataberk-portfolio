@@ -152,7 +152,7 @@ function mix(a: number, b: number, amount: number) {
   return a + (b - a) * amount;
 }
 
-function flightAt(hero: number, page: number, pointer: Vec3, pointerActive: number) {
+function flightAt(hero: number, page: number, finale: number, pointer: Vec3, pointerActive: number) {
   const keys = [
     { h: 0.38, p: [1.15, 0.75, -0.6] as Vec3, s: 0.72 },
     { h: 0.58, p: [0.65, 0.92, 0] as Vec3, s: 0.92 },
@@ -183,7 +183,7 @@ function flightAt(hero: number, page: number, pointer: Vec3, pointerActive: numb
     direction = [Math.cos(t * Math.PI * 4.2), Math.cos(t * Math.PI * 2.4) * 0.25, -Math.sin(t * Math.PI * 2) * 0.25];
     scale = mix(1.38, 0.86, smoothstep(t, 0, 0.28)) + smoothstep(t, 0.86, 1) * 0.18;
   }
-  const follow = smoothstep(hero, 0.54, 0.72) * pointerActive * (1 - smoothstep(page, 0.86, 0.97));
+  const follow = smoothstep(hero, 0.54, 0.72) * pointerActive * (1 - finale);
   if (follow > 0.001) {
     // A gentle pull toward the cursor, never away from it, so the cursor
     // can reach the bird and stir its grains.
@@ -510,6 +510,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let bustElement: HTMLElement | null = null;
     let servicesElement: HTMLElement | null = null;
     let orbitElement: HTMLElement | null = null;
+    let contactElement: HTMLElement | null = null;
     let services = 0;
     const bustLoad = setTimeout(() => {
       void (async () => {
@@ -805,8 +806,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         bustState.morph = bust.morph;
       }
       readyMix = damp(readyMix, birdReady, 5, delta);
-      dissolve = damp(dissolve, smoothstep(scrollState.page.current, 0.9, 0.97), 5, delta);
-      finale = damp(finale, smoothstep(scrollState.page.current, 0.86, 0.97), 5, delta);
+      // The finale follows the contact section into view, not page
+      // progress, so the bird keeps flying through the open gaps above it.
+      contactElement ??= document.querySelector<HTMLElement>("#contact");
+      const contactTop = contactElement ? contactElement.getBoundingClientRect().top / stageH : 2;
+      dissolve = damp(dissolve, smoothstep(contactTop, 0.8, 0.35), 5, delta);
+      finale = damp(finale, smoothstep(contactTop, 1, 0.35), 5, delta);
       pointerSmooth[0] = damp(pointerSmooth[0], pointer[0], 7, delta);
       pointerSmooth[1] = damp(pointerSmooth[1], pointer[1], 7, delta);
       if (waveAge >= 0) waveAge = waveAge > 3.5 ? -1 : waveAge + delta;
@@ -845,7 +850,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         ? videoReady * (1 - smoothstep(hero, 0.1, 0.24))
         : videoReady * (1 - smoothstep(hero, 0.14, 0.38));
       videoMix = damp(videoMix, targetVideo, 12, delta);
-      const flight = flightAt(hero, scrollState.page.current, pointerSmooth, pointerActive);
+      const flight = flightAt(hero, scrollState.page.current, finale, pointerSmooth, pointerActive);
       // Behaviour: a non-repeating sequence of glides, darts, stoops, turns,
       // climbs, flutters and loops over a noise wander, eased per action —
       // fast for reflexes, slow for glides — and only once the bird has

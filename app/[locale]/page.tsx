@@ -10,6 +10,7 @@ import { WorkSection } from "@/components/sections/WorkSection";
 import { Services } from "@/components/sections/Services";
 import { Voyage } from "@/components/sections/Voyage";
 import { AISystems } from "@/components/sections/AISystems";
+import { FlightGap } from "@/components/sections/FlightGap";
 import {
   AboutPreview,
   ContactFinale,
@@ -42,10 +43,15 @@ export default async function Home({
         />
         <Voyage locale={locale} />
         <Services locale={locale} />
+        <FlightGap />
         <AboutPreview locale={locale} t={t.aboutPreview} about={t.about} />
+        <FlightGap />
         <WorkSection locale={locale} />
+        <FlightGap size="lg" />
         <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
+        <FlightGap size="lg" />
         <AISystems locale={locale} t={t.aiSystems} />
+        <FlightGap size="lg" />
         <ContactFinale t={t.contact} />
         <Footer t={t.footer} name={t.name} />
       </main>
