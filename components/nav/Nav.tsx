@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
@@ -8,7 +8,8 @@ import type { SiteContent } from "@/content/site";
 import { scrollState } from "../three/scroll-state";
 
 // Apple-style liquid glass capsule floating at the top of every page, above
-// all content layers. Always visible; the open menu is a glass sheet.
+// all content layers. Always visible; the open menu is a glass sheet that
+// grows out of the capsule (styles in globals.css under nav-).
 export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -17,13 +18,68 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const panel = useRef<HTMLDivElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
 
+  // In the order the sections appear on the home page; Lab is its own page.
   const links = [
-    { href: `/${locale}#work`, label: t.work },
-    { href: `/${locale}#services`, label: locale === "tr" ? "Hizmetler" : "Services" },
-    { href: `/${locale}/about`, label: t.about },
-    { href: `/${locale}/lab`, label: t.lab },
-    { href: `/${locale}#contact`, label: t.contact },
+    { href: `/${locale}#services`, id: "services", label: locale === "tr" ? "Hizmetler" : "Services" },
+    { href: `/${locale}#about`, id: "about", label: t.about },
+    { href: `/${locale}#work`, id: "work", label: t.work },
+    { href: `/${locale}#ai-systems`, id: "ai-systems", label: locale === "tr" ? "AI Sistemleri" : "AI Systems" },
+    { href: `/${locale}/lab`, id: "lab", label: t.lab },
+    { href: `/${locale}#contact`, id: "contact", label: t.contact },
   ];
+  // The sheet stays mounted for its closing animation.
+  const [closing, setClosing] = useState(false);
+  const close = () => {
+    if (!open || closing) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { setOpen(false); return; }
+    setClosing(true);
+    window.setTimeout(() => { setOpen(false); setClosing(false); }, 380);
+  };
+
+  // Sheet links to a section on this page wait for the sheet to fold away
+  // (the page is scroll-locked while it is open), then glide there.
+  const go = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
+    const target = pathname === `/${locale}` ? document.getElementById(id) : null;
+    if (!target) { close(); return; }
+    event.preventDefault();
+    close();
+    window.setTimeout(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      history.replaceState(null, "", `#${id}`);
+    }, 400);
+  };
+
+  // Desktop: a glass pill slides under the hovered link, and rests under the
+  // section currently on screen.
+  const navRef = useRef<HTMLElement>(null);
+  const pill = useRef<HTMLSpanElement>(null);
+  const [onScreen, setOnScreen] = useState<string | null>(null);
+  const home = pathname === `/${locale}`;
+  const current = home ? onScreen : pathname.startsWith(`/${locale}/lab`) ? "lab" : null;
+  const [hovered, setHovered] = useState<string | null>(null);
+  useEffect(() => {
+    if (!home) return;
+    const ids = ["services", "about", "work", "ai-systems", "contact"];
+    const visible = new Map<string, number>();
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => visible.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0));
+      const best = ids.reduce<[string | null, number]>((acc, id) => (visible.get(id) ?? 0) > acc[1] ? [id, visible.get(id) ?? 0] : acc, [null, 0]);
+      setOnScreen(best[0]);
+    }, { rootMargin: "-35% 0px -35% 0px", threshold: [0, 0.01, 0.1, 0.3] });
+    ids.forEach(id => { const el = document.getElementById(id); if (el) observer.observe(el); });
+    return () => observer.disconnect();
+  }, [home]);
+  useEffect(() => {
+    const nav = navRef.current;
+    const p = pill.current;
+    if (!nav || !p) return;
+    const target = hovered ?? current;
+    const link = target ? nav.querySelector<HTMLElement>(`[data-nav-id="${target}"]`) : null;
+    if (!link) { p.style.opacity = "0"; return; }
+    p.style.opacity = "1";
+    p.style.width = `${link.offsetWidth}px`;
+    p.style.transform = `translateX(${link.offsetLeft}px)`;
+  }, [hovered, current]);
 
   // Page progress feeds the WebGL stage. Event-driven so non-home routes
   // never need the GSAP/Lenis runtime just to report scroll position.
@@ -56,7 +112,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") close();
       if (e.key === "Tab" && el) {
         const items = el.querySelectorAll<HTMLElement>("a, button");
         const first = items[0];
@@ -77,26 +133,39 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
       document.body.style.overflow = previousOverflow;
       trigger?.focus();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-[100] flex justify-center px-3 pt-3 md:pt-5">
-      <div className="liquid-glass pointer-events-auto relative flex w-full max-w-[40rem] items-center justify-between rounded-full py-1.5 pr-1.5 pl-5 md:w-auto md:max-w-none md:gap-6">
+      <div className="nav-capsule liquid-glass pointer-events-auto relative flex w-full max-w-[40rem] items-center justify-between rounded-full py-1.5 pr-1.5 pl-5 md:w-auto md:max-w-none md:gap-6">
         <Link
           href={`/${locale}`}
           className="font-display text-[16px] font-semibold tracking-[-0.02em] text-bone transition-opacity hover:opacity-70"
         >
           Ataberk
         </Link>
-        <nav aria-label="Main" className="hidden items-center text-[13px] md:flex">
-          {links.map((l) => (
-            <Link key={l.label} href={l.href} className="glass-item px-3.5 py-2 text-bone/80">
+        <nav ref={navRef} aria-label="Main" className="nav-links relative hidden items-center text-[13px] md:flex" onMouseLeave={() => setHovered(null)}>
+          <span ref={pill} className="nav-pill" aria-hidden="true" />
+          {links.map((l, i) => (
+            <Link
+              key={l.label}
+              href={l.href}
+              data-nav-id={l.id}
+              aria-current={current === l.id ? "true" : undefined}
+              onMouseEnter={() => setHovered(l.id)}
+              onFocus={() => setHovered(l.id)}
+              onBlur={() => setHovered(null)}
+              className="nav-link relative z-[1] rounded-full px-3.5 py-2 text-bone/75"
+              style={{ animationDelay: `${0.32 + i * 0.05}s` }}
+            >
               {l.label}
             </Link>
           ))}
           <Link
             href={otherPath}
-            className="glass-item ml-1 bg-white/[0.07] px-3 py-2 text-[12px] text-bone/80"
+            className="nav-link glass-item relative z-[1] ml-1 bg-white/[0.07] px-3 py-2 text-[12px] text-bone/80"
+            style={{ animationDelay: `${0.32 + links.length * 0.05}s` }}
             aria-label={other === "en" ? "Switch to English" : "Türkçeye geç"}
           >
             {other.toUpperCase()}
@@ -116,32 +185,33 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
       </div>
 
       {open && (
+        <>
+          <div className="nav-scrim pointer-events-auto fixed inset-0 z-[99]" data-closing={closing || undefined} onClick={close} aria-hidden="true" />
           <div
             ref={panel}
             id="mobile-navigation"
             role="dialog"
             aria-modal="true"
             aria-label={t.menu}
-            className="liquid-glass liquid-glass-dense pointer-events-auto fixed inset-3 z-[100] flex flex-col rounded-[2rem] px-6 pt-5 pb-8 [animation:menuFade_0.25s_ease_both]"
+            data-closing={closing || undefined}
+            className="nav-sheet liquid-glass liquid-glass-dense pointer-events-auto fixed inset-3 z-[100] flex flex-col rounded-[2rem] px-6 pt-5 pb-8"
           >
-            <div className="flex items-center justify-between">
+            <div className="nav-sheet-item flex items-center justify-between" style={{ animationDelay: "0.08s" }}>
               <span className="font-display text-[17px] font-semibold tracking-[-0.02em]">Ataberk</span>
-              <button type="button" onClick={() => setOpen(false)} className="glass-item bg-white/[0.08] px-4 py-2 text-[13px] text-bone">
+              <button type="button" onClick={close} className="glass-item bg-white/[0.08] px-4 py-2 text-[13px] text-bone">
                 {t.close}
               </button>
             </div>
-            <nav aria-label="Main" className="mt-20 flex flex-col gap-2">
+            <nav aria-label="Main" className="mt-16 flex flex-col gap-1">
               {links.map((l, i) => (
-                <div
-                  key={l.label}
-                  className="[animation:menuRise_0.35s_ease_both]"
-                  style={{ animationDelay: `${0.06 * i}s` }}
-                >
+                <div key={l.label} className="nav-sheet-item" style={{ animationDelay: `${0.12 + 0.045 * i}s` }}>
                   <Link
                     href={l.href}
-                    onClick={() => setOpen(false)}
-                    className="block py-2 font-display text-5xl font-semibold tracking-[-0.04em] transition-colors hover:text-bone-dim"
+                    onClick={(event) => go(event, l.id)}
+                    aria-current={current === l.id ? "true" : undefined}
+                    className="nav-sheet-link flex items-baseline gap-3 py-2 font-display text-[2.6rem] leading-none font-semibold tracking-[-0.04em] transition-colors"
                   >
+                    <span className="font-mono text-[11px] font-normal tracking-normal text-bone-dim">{String(i + 1).padStart(2, "0")}</span>
                     {l.label}
                   </Link>
                 </div>
@@ -149,13 +219,15 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
             </nav>
             <Link
               href={otherPath}
-              onClick={() => setOpen(false)}
-              className="mt-auto w-fit text-sm text-bone-dim"
+              onClick={close}
+              className="nav-sheet-item mt-auto w-fit text-sm text-bone-dim"
+              style={{ animationDelay: `${0.12 + 0.045 * links.length}s` }}
             >
               {other === "en" ? "English" : "Türkçe"}
             </Link>
           </div>
-        )}
+        </>
+      )}
     </header>
   );
 }

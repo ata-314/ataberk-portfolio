@@ -19,6 +19,7 @@ export function AboutPreview({
 }) {
   return (
     <section
+      id="about"
       className="relative z-20 px-5 md:px-10"
       style={{ paddingBlock: "var(--space-section)" }}
     >
