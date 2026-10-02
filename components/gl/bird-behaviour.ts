@@ -65,9 +65,11 @@ const smooth = (x: number, a: number, b: number) => {
 };
 
 // On phones the picture is narrow and close: actions that bring the bird
-// at the glass or turn it over (approach, loop, barrel roll) read as a
-// shapeless blob there, so they are left out and the depth drift is calmer.
-const COMPACT_SKIP: Kind[] = ["approach", "loop", "barrel"];
+// at the glass, turn it over (approach, loop, barrel roll) or swing its
+// heading toward or away from the camera (recede, bank turn) show it
+// head-on or tail-on, where it reads as a shapeless clump of feathers, so
+// they are left out and the depth drift is calmer.
+const COMPACT_SKIP: Kind[] = ["approach", "loop", "barrel", "recede", "bankTurn"];
 
 export function createBirdBehaviour(random: () => number = Math.random, compact = false) {
   const actions = compact ? ACTIONS.filter((a) => !COMPACT_SKIP.includes(a.kind)) : ACTIONS;

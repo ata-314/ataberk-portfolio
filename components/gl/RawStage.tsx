@@ -945,12 +945,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const facing = (direction[0] >= 0 ? 1 : -1) * (turning ? -1 : 1);
       // Behaviour headings (toward the camera, away into the depth, round a
       // banked circle) are measured from the facing side and blended in.
-      const yawTarget = mix(facing * 1.07, facing * motion.yaw, eased.yawMix);
+      // Phones hold the bird nearer a clean side profile: three-quarter
+      // views foreshorten it on the small frame.
+      const yawTarget = mix(facing * (mobile ? 1.32 : 1.07), facing * motion.yaw, eased.yawMix);
       yaw = damp(yaw, yawTarget, motion.snappy ? 7 : eased.yawMix > 0.05 ? 4.5 : 2.5, delta);
       // Nose dips while gliding down.
       // Positive pitch dips the nose; loops and barrel rolls add whole turns.
-      const pitch = eased.pitch + motion.spinPitch * freeFlight;
-      const roll = Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + eased.bank + motion.spinRoll * freeFlight;
+      // Phones tilt and bank it less, for the same reason.
+      const attitude = mobile ? 0.55 : 1;
+      const pitch = (eased.pitch + motion.spinPitch * freeFlight) * attitude;
+      const roll = (Math.max(-0.25, Math.min(0.25, -direction[0] * 0.2)) + eased.bank) * attitude + motion.spinRoll * freeFlight;
       // Voyage: the bird floats in front of the condensing X, turns and
       // flies into the opened portal; once the ring has passed us it is
       // ahead of the camera in the tunnel, weaving gently.
@@ -1151,7 +1155,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // Phones: the code swarm circles the same narrow middle the bird flies
       // in, and the two merge into one shapeless mass, so it steps back
       // (faint) while the bird holds the hero and returns as the X gathers.
-      const swarmBack = mobile ? 0.92 * smoothstep(hero, 0.35, 0.55) * (1 - xGather) : 0;
+      const swarmBack = mobile ? 0.97 * smoothstep(hero, 0.35, 0.55) * (1 - xGather) : 0;
       xLayer.render(time, canvas.height, projection, smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(portalThrough, 0.8, 1)) * (1 - swarmBack));
       // The corridor rushes toward us on its own clock, and scrolling pushes
       // the flight on or back on top of it; its light cycles teal → pink →
