@@ -83,19 +83,13 @@ const grainCore = /* glsl */ `float grainRandom(uint value) {
 // most sit just under the surface. Each grain also slowly circles inside its
 // patch on its own phase, so the skin churns like sand in a current, and
 // all of them ride a slow breathing swell.
-// birdDebug (temporary, ?gldebug): 1 links off, 2 links read but each
-// grain spans its own sample only, 3 bare samples (no jitter), 4 frame 0.
-uniform float birdDebug;
 vec3 birdAnatomy(float id,float frame,float t,out vec3 normal,out float shellDepth) {
   float index=float((uint(id)*37u)%9000u);
-  if(birdDebug>3.5) frame=0.0;
   vec3 anatomy=birdSample(index,frame);
   normal=birdNormalAt(index);
   shellDepth=0.0;
-  if(birdDebug>2.5) return anatomy;
-  if(linksReady>.5 && (birdDebug<.5 || birdDebug>1.5)) {
+  if(linksReady>.5) {
     vec4 nb=birdNeighbours(index);
-    if(birdDebug>1.5) nb=vec4(index);
     float pick=floor(grainRandom(uint(id)+4441u)*3.0);
     float ia=pick<.5?nb.x:pick<1.5?nb.y:nb.z;
     float ib=pick<.5?nb.y:pick<1.5?nb.z:nb.x;
@@ -132,6 +126,10 @@ const SIM_W = 1024;
 // Scroll changes each grain's position, never its membership or visibility.
 const vertex = `#version 300 es
 precision highp float;
+// Samplers default to lowp in vertex shaders; Mali GPUs honour that and cut
+// 32-bit texels to 16 bits, which scrambled the bird's neighbour indices
+// (up to 9000) into a shapeless cloud on those phones.
+precision highp sampler2D;
 uniform vec2 resolution;
 uniform vec2 grid;
 uniform vec2 pointer;
@@ -600,6 +598,7 @@ void main() {
 }`;
 const fragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 in vec3 tint;
 in float alpha;
 in float solid;
@@ -629,6 +628,7 @@ void main() {
 // ride that current as one body of water rather than being pushed one by one.
 const flowFragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 uniform sampler2D flowTex;
 uniform vec2 flowSize;
 uniform vec2 worldSpan;
@@ -665,6 +665,7 @@ void main() {
 // drift, curl and pour back.
 const simFragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 uniform vec2 resolution;
 uniform vec2 pointer;
 uniform float fieldTime;
@@ -769,6 +770,7 @@ void main() {
 
 const canvasVertex = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 out vec2 uv;
 void main() {
   vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));
@@ -778,6 +780,7 @@ void main() {
 // packs depth into two channels; no float-render-target extension is needed.
 const surfaceFragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 in vec2 uv;
 uniform vec2 resolution;
 uniform vec2 pointer;
@@ -921,7 +924,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph","orbitRing","orbitMix","birdLinks","linksReady","simState","simReady","birdDebug"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph","orbitRing","orbitMix","birdLinks","linksReady","simState","simReady"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -1086,7 +1089,6 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       }
       gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,simLive?simTargets[simRead].disp:null);
       gl.uniform1i(uniforms.simState,7);gl.uniform1f(uniforms.simReady,simReady);
-      gl.uniform1f(uniforms.birdDebug,(globalThis as {__birdDebug?: number}).__birdDebug ?? 0);
       const bust=flight.bust;
       const morph=bust.ready?bust.morph:0;
       gl.uniform1f(uniforms.morph,morph);
