@@ -1,12 +1,45 @@
-/* AI Systems stage visuals. One language for all four: dark paper panels
-   on hairlines, Archivo for anything that reads as a title, mono only
+/* AI Systems stage visuals, projected as holograms: a beam rises from an
+   emitter at the foot of the stage, and each visual floats in it, tilted
+   back, built of light — see-through cyan panes with scanlines, a slow
+   iridescent sheen and a turning cyan → lime → violet edge. Archivo for
+   anything that reads as a title (with a faint chromatic split), mono only
    where a machine speaks (hex, log, url). Lime marks "done / active",
-   cyan carries secondary data, coral appears once, for the flagged phrase.
+   coral appears once, for the flagged phrase. Nothing flickers.
    Every keyframe animates FROM a state, so the resting state is the end of
    the story (that is what reduced motion and paused stages show). */
 
-.v-panel { border: 1px solid rgba(255,255,255,.1); background: linear-gradient(160deg, rgba(28,32,29,.92), rgba(14,16,15,.94)); box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 30px 60px -30px rgba(0,0,0,.95); }
-.ais-visual { --coral: 255 112 92; --muted: rgb(var(--bone-rgb) / .48); }
+.ais-visual { --coral: 255 112 92; --violet: 176 140 255; --holo: 150 235 255; --muted: rgb(var(--holo) / .55); }
+
+/* Projector: an emitter ellipse at the foot and a soft cone of light. */
+.v-projector { position: absolute; left: 50%; bottom: .9rem; width: min(96%, 46rem); height: 92%; translate: -50% 0; pointer-events: none; animation: v-fade 1s both; }
+.v-projector::before { content: ""; position: absolute; inset: 0 8% 0; background: linear-gradient(to top, rgb(var(--holo) / .15), rgb(var(--holo) / .045) 45%, transparent 85%); clip-path: polygon(44% 100%, 56% 100%, 100% 0, 0 0); filter: blur(10px); }
+.v-projector::after { content: ""; position: absolute; left: 33%; right: 33%; bottom: -5px; height: 12px; border-radius: 50%; background: radial-gradient(closest-side, rgb(255 255 255 / .9), rgb(var(--holo) / .55) 45%, transparent); box-shadow: 0 0 34px 6px rgb(var(--holo) / .35); }
+
+/* The projection: tilted back in the beam, drifting very slowly. */
+.v-brain, .v-team, .v-web, .v-qc { transform: perspective(1400px) rotateX(9deg); transform-origin: 50% 100%; animation: v-float 7s ease-in-out infinite alternate; }
+@keyframes v-float { to { transform: perspective(1400px) rotateX(9deg) translateY(-5px); } }
+
+/* Panes of light: see-through, scanned, edged with a turning iridescence
+   and crossed by a slow sheen. */
+@property --holo-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.v-panel { position: relative; border: 1px solid rgb(var(--holo) / .3);
+  background: repeating-linear-gradient(0deg, rgb(var(--holo) / .045) 0 1px, transparent 1px 3px), linear-gradient(160deg, rgb(var(--holo) / .13), rgb(var(--holo) / .04) 50%, rgb(var(--violet) / .08));
+  box-shadow: inset 0 0 26px rgb(var(--holo) / .1), inset 0 1px 0 rgb(var(--holo) / .3), 0 0 34px -10px rgb(var(--holo) / .45);
+  animation: v-scan 9s linear infinite; }
+@keyframes v-scan { to { background-position: 0 -60px, 0 0; } }
+.v-panel::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; opacity: .75;
+  background: conic-gradient(from var(--holo-a), rgb(var(--holo)), rgb(var(--lime-rgb)), rgb(var(--violet)), rgb(255 150 220), rgb(var(--holo)));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: v-turn 8s linear infinite; }
+@keyframes v-turn { to { --holo-a: 360deg; } }
+.v-panel::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; mix-blend-mode: screen;
+  background: linear-gradient(115deg, transparent 38%, rgb(var(--holo) / .1) 45%, rgb(var(--violet) / .12) 50%, rgb(var(--lime-rgb) / .08) 55%, transparent 62%) 0 0 / 260% 100%;
+  animation: v-sheen 7s ease-in-out infinite; }
+@keyframes v-sheen { from { background-position: 100% 0; } to { background-position: -60% 0; } }
+/* Titles carry a faint chromatic split and glow. */
+.v-card header b, .v-voice, .v-relay b, .v-package b, .v-shot p, .v-scores b, .v-checks li, .v-log li {
+  text-shadow: -.6px 0 rgb(255 90 170 / .35), .6px 0 rgb(var(--holo) / .5), 0 0 14px rgb(var(--holo) / .35); }
 @keyframes v-rise { from { opacity: 0; transform: translateY(10px); } }
 @keyframes v-fade { from { opacity: 0; } }
 @keyframes v-pop { 0% { opacity: 0; transform: scale(.5); } 65% { transform: scale(1.12); } }
@@ -16,7 +49,7 @@
 .v-stack i { position: absolute; inset: 0; border-radius: 18px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.025); }
 .v-stack i:first-child { transform: translateY(-12px) scale(.95); }
 .v-stack i:last-child { transform: translateY(-23px) scale(.9); opacity: .5; }
-.v-card { position: relative; border-radius: 18px; padding: 1rem 1.25rem .4rem; animation: v-rise .6s cubic-bezier(.2,.7,.2,1) both; }
+.v-card { position: relative; border-radius: 18px; padding: 1rem 1.25rem .4rem; animation: v-rise .6s cubic-bezier(.2,.7,.2,1) both, v-scan 9s linear infinite; }
 .v-card header { display: flex; align-items: center; gap: .75rem; padding-bottom: .85rem; border-bottom: 1px solid rgba(255,255,255,.08); }
 .v-mark { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 10px; font-family: var(--font-archivo), sans-serif; font-weight: 650; color: #0a0a0b; background: linear-gradient(135deg, rgb(var(--lime-rgb)), rgb(var(--cyan-rgb))); }
 .v-card header b { display: block; font-family: var(--font-archivo), sans-serif; font-weight: 550; font-size: 1rem; letter-spacing: -.02em; color: #fff; }
@@ -46,27 +79,27 @@
 .v-relay li { position: relative; display: grid; justify-items: center; gap: .55rem; text-align: center; }
 .v-av { position: relative; z-index: 1; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; font-family: var(--font-archivo), sans-serif; font-size: .66rem; font-weight: 650; color: #0a0a0b; background: rgb(var(--lime-rgb)); box-shadow: 0 0 0 4px rgb(14 16 15), 0 0 18px rgb(var(--lime-rgb) / .45); animation: v-av 1.2s calc(.4s + var(--i) * 1.2s) both; }
 @keyframes v-av { from { color: rgb(var(--bone-rgb) / .6); background: rgb(28 32 29); box-shadow: 0 0 0 4px rgb(14 16 15), inset 0 0 0 1px rgba(255,255,255,.2); } }
-.v-art { position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: 12px; padding: .65rem; overflow: hidden; display: grid; align-content: start; gap: .38rem; animation: v-rise .6s calc(.5s + var(--i) * 1.2s) both, v-lit 1.6s calc(.5s + var(--i) * 1.2s) both; }
+.v-art { position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: 12px; padding: .65rem; overflow: hidden; display: grid; align-content: start; gap: .38rem; animation: v-rise .6s calc(.5s + var(--i) * 1.2s) both, v-lit 1.6s calc(.5s + var(--i) * 1.2s) both, v-scan 9s linear infinite; }
 @keyframes v-lit { 0%, 40% { border-color: rgb(var(--lime-rgb) / .8); box-shadow: 0 0 34px -8px rgb(var(--lime-rgb) / .6); } }
 .v-art > i, .v-mini > i { height: .3rem; border-radius: 3px; background: rgba(255,255,255,.16); }
 .v-art > i.short, .v-mini > i.short { width: 60%; }
 .v-art > i.hl { background: rgb(var(--lime-rgb) / .85); width: 80%; }
 .v-art-0 em { height: .75rem; width: 45%; border-radius: 3px; margin-bottom: .2rem; background: rgba(255,255,255,.32); }
 .v-art-1 { grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; align-content: stretch; gap: .3rem; padding: .45rem; }
-.v-art-1 > i { height: auto; border-radius: 7px; }
+.v-art-1 > i { height: auto; border-radius: 7px; opacity: .82; box-shadow: 0 0 14px -4px currentColor; }
 .v-art-1 > i:nth-child(1) { background: linear-gradient(140deg, rgb(var(--lime-rgb)), #3d6b22); }
 .v-art-1 > i:nth-child(2) { background: linear-gradient(140deg, rgb(var(--cyan-rgb)), #2b4f66); }
 .v-art-1 > i:nth-child(3) { background: #e9e4d8; }
-.v-art-1 > i:nth-child(4) { background: radial-gradient(circle at 60% 40%, rgb(var(--lime-rgb) / .7), transparent 30%), #101512; }
+.v-art-1 > i:nth-child(4) { background: radial-gradient(circle at 60% 40%, rgb(var(--lime-rgb) / .7), transparent 30%), rgb(6 18 20 / .4); }
 .v-art-2, .v-art-3 { padding: 0; }
-.v-mini { position: absolute; inset: 0; display: grid; align-content: end; gap: .3rem; padding: .6rem; background: radial-gradient(circle at 72% 28%, rgb(var(--cyan-rgb) / .55), transparent 42%), radial-gradient(circle at 28% 62%, rgb(var(--lime-rgb) / .6), transparent 48%), #0e1310; }
+.v-mini { position: absolute; inset: 0; display: grid; align-content: end; gap: .3rem; padding: .6rem; background: radial-gradient(circle at 72% 28%, rgb(var(--cyan-rgb) / .55), transparent 42%), radial-gradient(circle at 28% 62%, rgb(var(--lime-rgb) / .6), transparent 48%), rgb(6 18 20 / .4); }
 .v-mini em { position: absolute; left: .55rem; top: .55rem; width: .55rem; height: .55rem; border-radius: 50%; background: #fff; }
 .v-mini > i { height: .38rem; background: rgba(255,255,255,.88); }
 .v-stamp { position: absolute; right: .5rem; bottom: .5rem; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: rgb(var(--lime-rgb)); box-shadow: 0 0 16px rgb(var(--lime-rgb) / .7); animation: v-pop .5s 4.3s both; }
 .v-stamp::after { content: ""; position: absolute; left: 36%; top: 22%; width: 26%; height: 44%; border: solid #0a0a0b; border-width: 0 2px 2px 0; rotate: 45deg; }
 .v-relay b { font-size: .8rem; font-weight: 550; color: #fff; }
 .v-relay small { margin-top: -.35rem; font-size: .68rem; color: var(--muted); }
-.v-package { display: flex; align-items: center; gap: .8rem; padding: .55rem 1.1rem .55rem .6rem; border-radius: 99px; border-color: rgb(var(--lime-rgb) / .35); animation: v-rise .6s 4.9s both; }
+.v-package { display: flex; align-items: center; gap: .8rem; padding: .55rem 1.1rem .55rem .6rem; border-radius: 99px; border-color: rgb(var(--lime-rgb) / .35); animation: v-rise .6s 4.9s both, v-scan 9s linear infinite; }
 .v-files { display: flex; }
 .v-files i { width: 1.5rem; height: 1.85rem; border-radius: 5px; border: 2px solid rgb(14 16 15); background: rgb(var(--lime-rgb)); }
 .v-files i + i { margin-left: -.55rem; background: rgb(var(--cyan-rgb)); }
@@ -94,7 +127,7 @@
 .v-nav { display: flex; justify-content: space-between; align-items: center; animation: v-rise .5s 1s both; }
 .v-nav > i { width: 3.2rem; height: .5rem; background: rgba(255,255,255,.5); }
 .v-nav span { display: flex; gap: .4rem; } .v-nav span i { width: 1.4rem; height: .32rem; }
-.v-hero { display: grid; align-content: end; gap: .35rem; height: 6.2rem; padding: .7rem; border-radius: 10px; background: radial-gradient(circle at 78% 30%, rgb(var(--cyan-rgb) / .45), transparent 45%), radial-gradient(circle at 30% 80%, rgb(var(--lime-rgb) / .5), transparent 50%), #0d120f; animation: v-rise .6s 1.65s both; }
+.v-hero { display: grid; align-content: end; gap: .35rem; height: 6.2rem; padding: .7rem; border-radius: 10px; background: radial-gradient(circle at 78% 30%, rgb(var(--cyan-rgb) / .45), transparent 45%), radial-gradient(circle at 30% 80%, rgb(var(--lime-rgb) / .5), transparent 50%), rgb(6 18 20 / .35); animation: v-rise .6s 1.65s both; }
 .v-hero i { height: .65rem; width: 72%; background: rgba(255,255,255,.9); } .v-hero i.short { width: 46%; }
 .v-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
 .v-cards i { height: 3rem; border-radius: 8px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.07); animation: v-rise .5s calc(2.3s + var(--n, 0) * .12s) both; }
@@ -110,8 +143,9 @@
 
 /* 04 Content intelligence: a design review with numbered marks */
 .v-qc { width: min(100%, 42rem); display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1.5rem; align-items: center; }
-.v-post { border-radius: 16px; overflow: hidden; animation: v-rise .6s .1s both; }
-.v-shot { position: relative; aspect-ratio: 1; background: radial-gradient(circle at 74% 26%, rgb(var(--cyan-rgb) / .55), transparent 40%), radial-gradient(circle at 26% 70%, rgb(var(--lime-rgb) / .6), transparent 48%), #0d120f; }
+.v-post { border-radius: 16px; overflow: hidden; animation: v-rise .6s .1s both, v-scan 9s linear infinite; }
+.v-shot { position: relative; aspect-ratio: 1; background: radial-gradient(circle at 74% 26%, rgb(var(--cyan-rgb) / .55), transparent 40%), radial-gradient(circle at 26% 70%, rgb(var(--lime-rgb) / .6), transparent 48%), rgb(6 18 20 / .4); }
+.v-shot::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgb(var(--holo) / .07) 0 1px, transparent 1px 3px); }
 .v-logo { position: absolute; left: .85rem; top: .85rem; width: .75rem; height: .75rem; border-radius: 50%; background: #fff; }
 .v-strip { position: absolute; right: .8rem; top: .8rem; display: grid; gap: .22rem; }
 .v-strip i { width: .6rem; height: .6rem; border-radius: 2px; background: rgb(var(--lime-rgb)); }
@@ -126,7 +160,7 @@
 .v-pin-1 { left: 42%; bottom: 3.6rem; } .v-pin-2 { right: 1.7rem; top: 1.75rem; } .v-pin-4 { left: 1.9rem; top: .6rem; }
 .v-pin-3 { margin-right: .3rem; vertical-align: -.2rem; animation: v-pop .45s 1.6s both, v-issue 3.9s .6s both; }
 @keyframes v-issue { 0%, 72% { background: rgb(var(--coral)); box-shadow: 0 0 0 3px rgb(var(--coral) / .25); } }
-.v-checks { display: grid; gap: .8rem; padding: 1rem 1.1rem 1.1rem; border-radius: 16px; animation: v-rise .6s .25s both; }
+.v-checks { display: grid; gap: .8rem; padding: 1rem 1.1rem 1.1rem; border-radius: 16px; animation: v-rise .6s .25s both, v-scan 9s linear infinite; }
 .v-checks > small { font-size: .7rem; color: var(--muted); }
 .v-checks ol { display: grid; }
 .v-checks li { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr) auto; align-items: start; gap: .7rem; padding: .62rem 0; border-top: 1px solid rgba(255,255,255,.07); font-size: .84rem; color: #fff; }

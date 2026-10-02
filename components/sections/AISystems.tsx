@@ -79,7 +79,7 @@ export function AISystems({ locale, t }: { locale: Locale; t: SiteContent["aiSys
           </div>
         </div>
         <div className="ais-stage" id="ais-panel" role="tabpanel" aria-labelledby={`ais-tab-${active}`} data-reveal>
-          <div className="ais-visual" key={active} aria-hidden="true"><Stage c={c} /></div>
+          <div className="ais-visual" key={active} aria-hidden="true"><span className="v-projector" /><Stage c={c} /></div>
           <div className="ais-caption">
             <p key={`d-${active}`}>{t.entries[active].desc}</p>
             <span className="ais-count" aria-hidden="true">{String(active + 1).padStart(2, "0")}<i>/</i>{String(count).padStart(2, "0")}</span>
