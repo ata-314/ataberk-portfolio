@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
-import { GrainStage } from "./AISystemsVisuals";
+import { GlassStage } from "./AISystemsVisuals";
 import "./ai-systems.css";
 
 // AI Systems, set like the rest of the page: an editorial index on the
@@ -11,8 +11,8 @@ import "./ai-systems.css";
 // work, its description underneath as a caption. The index advances on its
 // own while the section is on screen (paused on hover or focus; off under
 // reduced motion and below desktop). The stage has a fixed size, so
-// switching systems never moves the page. The visuals are drawn in grains
-// of light (AISystemsVisuals.tsx + ais-grains.ts).
+// switching systems never moves the page. Each system is shown as a glass
+// object (AISystemsVisuals.tsx).
 
 const CYCLE = 7000;
 
@@ -77,7 +77,7 @@ export function AISystems({ locale, t }: { locale: Locale; t: SiteContent["aiSys
           </div>
         </div>
         <div className="ais-stage" id="ais-panel" role="tabpanel" aria-labelledby={`ais-tab-${active}`} data-reveal>
-          <div className="ais-visual" key={active} aria-hidden="true"><GrainStage system={active} locale={locale} visible={visible} /></div>
+          <div className="ais-visual" key={active} aria-hidden="true"><GlassStage system={active} locale={locale} visible={visible} /></div>
           <div className="ais-caption">
             <p key={`d-${active}`}>{t.entries[active].desc}</p>
             <span className="ais-count" aria-hidden="true">{String(active + 1).padStart(2, "0")}<i>/</i>{String(count).padStart(2, "0")}</span>
