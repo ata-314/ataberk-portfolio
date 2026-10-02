@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isLocale, locales, type Locale } from "@/lib/i18n";
 import { site } from "@/content/site";
@@ -52,10 +53,15 @@ export default async function LabPage({
       <section aria-label={t.heading} className="relative px-5 pt-14 pb-24 md:px-10 md:pt-20 md:pb-32">
         <div className="lab-grid">
           {t.entries.map((e, i) => (
-            <LabExperiment key={e.name} entry={e} index={i} feature={i === 0} />
+            <LabExperiment key={e.name} entry={e} index={i} feature={i === 0} cta={t.cta} ctaHref={`/${locale}#contact`} useLabel={t.useLabel} />
           ))}
         </div>
         <p className="lab-note">{t.note}</p>
+        <div className="lab-close">
+          <h2>{t.close.heading}</h2>
+          <p>{t.close.line}</p>
+          <Link href={`/${locale}#contact`} className="lab-cta">{t.close.cta}<span aria-hidden="true">→</span></Link>
+        </div>
       </section>
       <Footer t={site[locale].footer} name={site[locale].name} />
     </main>

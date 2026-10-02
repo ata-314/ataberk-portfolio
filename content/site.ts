@@ -36,6 +36,9 @@ export type SiteContent = {
     lead: string;
     stats: string[];
     note: string;
+    cta: string;
+    useLabel: string;
+    close: { heading: string; line: string; cta: string };
     entries: LabEntry[];
   };
   contact: {
@@ -123,17 +126,20 @@ const tr: SiteContent = {
   },
   lab: {
     heading: "Lab",
-    label: "Lab · Deneyler",
-    lead: "Bu sitenin altında çalışan sistemler. Ana sayfada gördüğün her hareket aşağıdaki deneylerden birinden geliyor ve her biri burada, sitenin kendi verisinden canlı çiziliyor.",
-    stats: ["6 deney", "WebGL2 · Canvas", "Gerçek bake verisi", "Mobilde test edildi"],
-    note: "Bu sayfa da bir deney: kuş ve büst, ana sahnenin GPU'ya yüklediği aynı dosyalardan okunuyor.",
+    label: "Lab · Oyun alanı",
+    lead: "Bu sitede gördüğün her hareketin arkasındaki sistemler, şimdi senin elinde. Sürükle, ayarla, boz ve yeniden kur; beğendiğin her deney markan için kurulabilir.",
+    stats: ["6 canlı deney", "Sürükle · ayarla · dene", "Sitenin gerçek verisi", "Markana uyarlanır"],
+    note: "Kuş ve büst, ana sahnenin GPU'ya yüklediği aynı dosyalardan okunuyor: burada oynadığın şey bir taklit değil, sistemin kendisi.",
+    cta: "Bunu markam için iste",
+    useLabel: "Markan için",
+    close: { heading: "Aklındaki deney ne?", line: "Markan için bir hero, bir ürün lansmanı ya da hiç görülmemiş bir etkileşim. Fikrini getir, birlikte prototipleyelim.", cta: "Projeni anlat" },
     entries: [
-      { kind: "bird", name: "Tanecik Kuş", desc: "Animasyonlu bir GLB kartal, 16 kanat karesi boyunca 9.000 yüzey noktasına bake edildi. Tarayıcıda GPU her noktayı komşularıyla birleştirip yüz binlerce taneciği kuşun derisine yayıyor; kuş kendi davranışlarıyla, kaydırmaya göre uçuyor.", tech: ["WebGL2", "Half-float bake", "GPGPU", "Davranış motoru"], status: "Canlı · Ana sayfa", live: true },
-      { kind: "bust", name: "Hologram Büst", desc: "120.000 noktalık bir 3B tarama. Kuşun taneleri bölüme girerken bu yüze dönüşüyor; derinliği okuyan bir tarama çizgisi yüzeyi baştan aşağı aydınlatıyor.", tech: ["Nokta bulutu", "Morph", "Derinlik taraması"], status: "Canlı · Hakkında", live: true },
-      { kind: "brain", name: "Brand Brain", desc: "Marka hafızası boncuklardan bir beyin: ses, palet, yasaklar ve desenler kendi bölgelerine yerleşiyor. Yüzey sıvı gibi dalgalanıyor, imleç boncukları su gibi aralıyor.", tech: ["Canvas 2D", "Yay fiziği", "Derinlik sıralama"], status: "Canlı · AI Sistemleri", live: true },
-      { kind: "voyage", name: "Geçit", desc: "İsimden kopan kod karakterleri bir X'te toplanıyor, X bir portala açılıyor ve kamera vokselden bir tünele dalıyor. Hepsi tek bir kaydırma zaman çizgisinde.", tech: ["Simülasyon", "Voxel tünel", "Scroll zaman çizgisi"], status: "Canlı · Ana sayfa", live: true },
-      { kind: "helix", name: "İş Sarmalı", desc: "Seçili işler, tanelerden bir sarmal üzerinde dönen cam kartlar. Kaydırma sarmalı çeviriyor; bir karta dokununca proje kendi dünyasına açılıyor.", tech: ["Instancing", "Scroll pin", "Cam malzeme"], status: "Canlı · Seçili İşler", live: true },
-      { kind: "forensics", name: "Mobil GPU Adli İncelemesi", desc: "Kuş bir Mali GPU'lu telefonda formsuz bir buluta dönüşüyordu. Ekrana yazan bir teşhis paneli ve çizim modlarıyla bulundu: vertex shader dokuları varsayılan olarak düşük hassasiyette okunuyor, 2048'in üstündeki komşu indeksleri kayıyordu. Çözüm tek satır: precision highp sampler2D.", tech: ["Cihazda teşhis", "GLSL hassasiyeti", "Mali-G610"], status: "Çözüldü · Ekim 2026", live: false, phases: ["lowp · 16-bit indeksler", "highp · 32-bit indeksler"] },
+      { kind: "bird", name: "Tanecik Kuş", desc: "Animasyonlu bir 3B kartal, 16 kanat karesi boyunca 9.000 yüzey noktasına bake edildi; GPU bu noktaları yüz binlerce taneciğe yayıyor. Ana sayfada kaydırmaya göre uçan kuşun ta kendisi.", hint: "← sürükle →", use: "Logon, maskotun ya da ürünün tanelerden canlı bir hero'ya dönüşür: kaydırmayla hareket eder, ziyaretçiye tepki verir.", tech: ["WebGL2", "Half-float bake", "GPGPU"], status: "Canlı · Ana sayfa", live: true, controls: [{ key: "palette", label: "Renk", options: [{ value: "spectrum", label: "Spektrum" }, { value: "lime", label: "Lime" }, { value: "violet", label: "Mor" }] }, { key: "speed", label: "Kanat", options: [{ value: "1", label: "Normal" }, { value: "0.35", label: "Süzül" }, { value: "2.2", label: "Hızlı" }] }] },
+      { kind: "bust", name: "Hologram Büst", desc: "120.000 noktalık bir 3B tarama; ana sayfada kuşun taneleri bu yüze dönüşüyor. Derinliği okuyan bir tarama çizgisi yüzeyi aydınlatıyor.", hint: "← sürükle →", use: "Kurucunun, ürünün ya da mekânın 3B taramasından etkileşimli bir hologram: tanıtım sayfası, fuar ekranı ya da lansman için.", tech: ["Nokta bulutu", "3B tarama", "Derinlik"], status: "Canlı · Ana sayfa", live: true, controls: [{ key: "mode", label: "Görünüm", options: [{ value: "scan", label: "Tarama" }, { value: "depth", label: "Derinlik" }, { value: "plain", label: "Nokta" }] }] },
+      { kind: "brain", name: "Brand Brain", desc: "Marka hafızası boncuklardan bir beyin: ses, palet, yasaklar ve desenler kendi bölgelerine yerleşiyor. Yüzey sıvı gibi dalgalanıyor.", hint: "imleci gezdir", use: "Markanın kurallarını öğrenen bir AI hafızası ve onu anlatan canlı bir görsel: ekibin, ajansın ya da yatırımcın sistemi tek bakışta anlar.", tech: ["AI hafıza", "Canvas 2D", "Yay fiziği"], status: "Canlı · AI Sistemleri", live: true },
+      { kind: "voyage", name: "Geçit", desc: "Kod karakterleri bir X'te toplanıyor, X bir portala açılıyor ve kamera bir tünele dalıyor. Ana sayfada kaydırma bu sahneyi yönetiyor; burada zaman çizgisi senin elinde.", hint: "zaman çizgisini kaydır", use: "Kaydırmayla oynanan bir hikâye: ürün lansmanı, kampanya ya da marka manifestosu için ziyaretçiyi içine çeken bir geçiş.", tech: ["Simülasyon", "Scroll zaman çizgisi", "Voxel tünel"], status: "Canlı · Ana sayfa", live: true, controls: [{ key: "time", label: "Zaman", range: true }] },
+      { kind: "helix", name: "İş Sarmalı", desc: "Seçili işler, tanelerden bir sarmal üzerinde dönen cam kartlar. Ana sayfada kaydırma sarmalı çeviriyor, bir karta dokununca proje kendi dünyasına açılıyor.", hint: "← çevir →", use: "Ürün kataloğu, koleksiyon ya da portfolyo için gezilen bir 3B vitrin: her kart kendi sahnesine açılır.", tech: ["Instancing", "Scroll pin", "Cam malzeme"], status: "Canlı · Seçili İşler", live: true },
+      { kind: "forensics", name: "Mobil GPU Adli İncelemesi", desc: "Kuş bir Mali GPU'lu telefonda formsuz bir buluta dönüşüyordu. Cihazda çalışan bir teşhis paneliyle bulundu: dokular düşük hassasiyette okunuyor, 2048'in üstündeki indeksler kayıyordu. Düğmeyle hatayı kendin aç kapa.", hint: "← sürükle →", use: "Deneysel olan her şey gerçek cihazlarda test edilip düzeltilir: etkileyici görseller, müşterinin telefonunda da çalışır.", tech: ["Cihazda teşhis", "GLSL hassasiyeti", "Mali-G610"], status: "Çözüldü · Ekim 2026", live: false, phases: ["lowp · 16-bit indeksler", "highp · 32-bit indeksler"], controls: [{ key: "precision", label: "Hassasiyet", options: [{ value: "lowp", label: "lowp (hata)" }, { value: "highp", label: "highp (çözüm)" }] }] },
     ],
   },
   contact: {
@@ -202,17 +208,20 @@ const en: SiteContent = {
   },
   lab: {
     heading: "Lab",
-    label: "Lab · Experiments",
-    lead: "The systems running underneath this site. Every motion on the home page comes from one of the experiments below, and each is drawn here live from the site's own data.",
-    stats: ["6 experiments", "WebGL2 · Canvas", "Real bake data", "Tested on phones"],
-    note: "This page is an experiment too: the bird and the bust are read from the same files the home stage uploads to the GPU.",
+    label: "Lab · Playground",
+    lead: "The systems behind every motion on this site, now in your hands. Drag, tune, break and rebuild; every experiment you like can be built for your brand.",
+    stats: ["6 live experiments", "Drag · tune · play", "The site's real data", "Made for your brand"],
+    note: "The bird and the bust are read from the same files the home stage uploads to the GPU: what you play with here is the system itself, not a mock-up.",
+    cta: "Build this for my brand",
+    useLabel: "For your brand",
+    close: { heading: "What's your experiment?", line: "A hero for your brand, a product launch or an interaction nobody has seen yet. Bring the idea; we'll prototype it together.", cta: "Tell me about your project" },
     entries: [
-      { kind: "bird", name: "Grain Bird", desc: "An animated GLB eagle baked to 9,000 surface samples across 16 wing-beat frames. In the browser the GPU joins every sample to its neighbours and spreads hundreds of thousands of grains over the bird's skin; it flies with its own behaviours, driven by scroll.", tech: ["WebGL2", "Half-float bake", "GPGPU", "Behaviour engine"], status: "Live · Home", live: true },
-      { kind: "bust", name: "Hologram Bust", desc: "A 120,000-point 3D scan. As the section enters, the bird's grains become this face; a scan line that reads depth lights the surface from top to bottom.", tech: ["Point cloud", "Morph", "Depth scan"], status: "Live · About", live: true },
-      { kind: "brain", name: "Brand Brain", desc: "Brand memory as a brain of beads: voice, palette, banned phrases and patterns settle into their own regions. The surface ripples like liquid and the pointer parts the beads like water.", tech: ["Canvas 2D", "Spring physics", "Depth sorting"], status: "Live · AI Systems", live: true },
-      { kind: "voyage", name: "The Gate", desc: "Code characters torn from the name gather into an X, the X opens into a portal and the camera dives into a tunnel of voxels, all on one scroll timeline.", tech: ["Simulation", "Voxel tunnel", "Scroll timeline"], status: "Live · Home", live: true },
-      { kind: "helix", name: "Work Helix", desc: "Selected work as glass cards turning on a helix of grains. Scrolling turns the helix; tapping a card opens the project into its own world.", tech: ["Instancing", "Scroll pin", "Glass material"], status: "Live · Selected Work", live: true },
-      { kind: "forensics", name: "Mobile GPU Forensics", desc: "On a phone with a Mali GPU the bird fell apart into a shapeless cloud. An on-screen diagnostic readout and draw modes found it: vertex-shader textures default to low precision, so neighbour indices above 2048 drifted. The fix is one line: precision highp sampler2D.", tech: ["On-device diagnostics", "GLSL precision", "Mali-G610"], status: "Solved · Oct 2026", live: false, phases: ["lowp · 16-bit indices", "highp · 32-bit indices"] },
+      { kind: "bird", name: "Grain Bird", desc: "An animated 3D eagle baked to 9,000 surface samples across 16 wing-beat frames; the GPU spreads them into hundreds of thousands of grains. The very bird that flies with scroll on the home page.", hint: "← drag →", use: "Your logo, mascot or product as a living hero made of grains: it moves with scroll and responds to visitors.", tech: ["WebGL2", "Half-float bake", "GPGPU"], status: "Live · Home", live: true, controls: [{ key: "palette", label: "Colour", options: [{ value: "spectrum", label: "Spectrum" }, { value: "lime", label: "Lime" }, { value: "violet", label: "Violet" }] }, { key: "speed", label: "Wings", options: [{ value: "1", label: "Normal" }, { value: "0.35", label: "Glide" }, { value: "2.2", label: "Fast" }] }] },
+      { kind: "bust", name: "Hologram Bust", desc: "A 120,000-point 3D scan; on the home page the bird's grains become this face. A scan line that reads depth lights the surface.", hint: "← drag →", use: "An interactive hologram from a 3D scan of a founder, product or space: for a landing page, a trade-show screen or a launch.", tech: ["Point cloud", "3D scan", "Depth"], status: "Live · Home", live: true, controls: [{ key: "mode", label: "View", options: [{ value: "scan", label: "Scan" }, { value: "depth", label: "Depth" }, { value: "plain", label: "Points" }] }] },
+      { kind: "brain", name: "Brand Brain", desc: "Brand memory as a brain of beads: voice, palette, banned phrases and patterns settle into their own regions. The surface ripples like liquid.", hint: "move the pointer", use: "An AI memory that learns your brand's rules, and a living visual that explains it: your team, agency or investors get the system at a glance.", tech: ["AI memory", "Canvas 2D", "Spring physics"], status: "Live · AI Systems", live: true },
+      { kind: "voyage", name: "The Gate", desc: "Code characters gather into an X, the X opens into a portal and the camera dives into a tunnel. On the home page scroll drives the scene; here the timeline is yours.", hint: "scrub the timeline", use: "A story played by scrolling: a transition that pulls visitors in for a product launch, a campaign or a brand manifesto.", tech: ["Simulation", "Scroll timeline", "Voxel tunnel"], status: "Live · Home", live: true, controls: [{ key: "time", label: "Time", range: true }] },
+      { kind: "helix", name: "Work Helix", desc: "Selected work as glass cards turning on a helix of grains. On the home page scroll turns the helix and tapping a card opens the project into its own world.", hint: "← spin →", use: "A 3D showcase to browse a product catalogue, a collection or a portfolio: every card opens into its own scene.", tech: ["Instancing", "Scroll pin", "Glass material"], status: "Live · Selected Work", live: true },
+      { kind: "forensics", name: "Mobile GPU Forensics", desc: "On a phone with a Mali GPU the bird fell apart into a shapeless cloud. An on-device diagnostic readout found it: textures were read at low precision and indices above 2048 drifted. Flip the bug on and off yourself.", hint: "← drag →", use: "Everything experimental is tested and fixed on real devices: striking visuals that also work on your customer's phone.", tech: ["On-device diagnostics", "GLSL precision", "Mali-G610"], status: "Solved · Oct 2026", live: false, phases: ["lowp · 16-bit indices", "highp · 32-bit indices"], controls: [{ key: "precision", label: "Precision", options: [{ value: "lowp", label: "lowp (bug)" }, { value: "highp", label: "highp (fix)" }] }] },
     ],
   },
   contact: {

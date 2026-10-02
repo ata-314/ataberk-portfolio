@@ -67,7 +67,10 @@ const BUST_COUNT = 120000;
 const bustBake = () => loadBake("/models/ataberk-bake.bin", BUST_COUNT * 4);
 
 type Ctx = CanvasRenderingContext2D;
-type Draw = (ctx: Ctx, w: number, h: number, t: number) => void;
+// What the visitor does to a sketch: drag turns it (radians, with inertia),
+// and each card's controls set named params.
+export type Input = { yaw: number; pitch: number; dt: number; params: Record<string, string | number> };
+type Draw = (ctx: Ctx, w: number, h: number, t: number, io: Input) => void;
 type Sketch = { draw: Draw; ready: Promise<void>; phase?: (t: number) => number };
 
 // Colour buckets: grains are binned by tone so each bin is one fillStyle.
@@ -91,7 +94,12 @@ function birdSketch(scatter: boolean): Sketch {
   let scale = 1;
   const BINS = 14;
   const bins = buckets(BINS);
-  const styles = hueStyles(BINS, 90, 66, 0.85, 150);
+  const palettes: Record<string, string[]> = {
+    spectrum: hueStyles(BINS, 90, 66, 0.85, 150),
+    lime: Array.from({ length: BINS }, (_, i) => `rgb(${Math.round(mix(LIME[0], CYAN[0], i / BINS))} ${Math.round(mix(LIME[1], CYAN[1], i / BINS))} ${Math.round(mix(LIME[2], CYAN[2], i / BINS))} / 0.85)`),
+    violet: Array.from({ length: BINS }, (_, i) => `hsl(${250 + (i / BINS) * 70} 85% 70% / 0.85)`),
+  };
+  let flapClock = 0, broken = 1;
   // Forensics: each grain's patch corners. Correct links are the sample
   // itself (a tight patch); the 16-bit links land on unrelated samples.
   const rand = rng(7);
@@ -117,20 +125,24 @@ function birdSketch(scatter: boolean): Sketch {
   });
   // Forensics cycle: 0 scattered (lowp), 1 re-forming, 2 whole (highp).
   const cycle = (t: number) => (t % 7) / 7;
-  const draw: Draw = (ctx, w, h, t) => {
+  const draw: Draw = (ctx, w, h, t, io) => {
     if (!pos) return;
+    flapClock += io.dt * 9 * Number(io.params.speed ?? 1);
     const R = Math.min(w * 0.34, h * 0.42);
     const cx = w / 2, cy = h * 0.38;
-    const f = scatter ? 4 : (t * 9) % 16;
+    const f = scatter ? 4 : ((flapClock % 16) + 16) % 16;
     const f0 = Math.floor(f), f1 = (f0 + 1) % 16, k = f - f0;
-    const yaw = scatter ? 1.2 + Math.sin(t * 0.3) * 0.35 : 1.25 + Math.sin(t * 0.35) * 0.55;
-    const pitch = 0.32;
+    const yaw = (scatter ? 1.2 + Math.sin(t * 0.3) * 0.35 : 1.25 + Math.sin(t * 0.35) * 0.55) + io.yaw;
+    const pitch = 0.32 + io.pitch;
     const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-    let broken = 0;
     if (scatter) {
+      // Precision is the visitor's switch; until they touch it, it cycles.
       const c = cycle(t);
-      broken = c < 0.38 ? 1 : c < 0.55 ? 1 - ease((c - 0.38) / 0.17) : c < 0.9 ? 0 : ease((c - 0.9) / 0.1);
-    }
+      const auto = c < 0.38 ? 1 : c < 0.55 ? 1 - ease((c - 0.38) / 0.17) : c < 0.9 ? 0 : ease((c - 0.9) / 0.1);
+      const p = io.params.precision;
+      broken = p === "lowp" ? mix(broken, 1, Math.min(1, io.dt * 3)) : p === "highp" ? mix(broken, 0, Math.min(1, io.dt * 3)) : auto;
+    } else broken = 0;
+    const styles = palettes[String(io.params.palette ?? "spectrum")] ?? palettes.spectrum;
     const size = w < 420 ? 1.5 : 1.8;
     for (let i = 0; i < BIRD_SAMPLES; i++) {
       const a = f0 * BIRD_FRAME + i * 4, b = f1 * BIRD_FRAME + i * 4;
@@ -151,7 +163,7 @@ function birdSketch(scatter: boolean): Sketch {
     }
     flush(ctx, bins, styles, size);
   };
-  return { draw, ready, phase: scatter ? (t) => (cycle(t) < 0.47 ? 0 : 1) : undefined };
+  return { draw, ready, phase: scatter ? () => (broken > 0.5 ? 0 : 1) : undefined };
 }
 
 function bustSketch(small: boolean): Sketch {
@@ -179,22 +191,26 @@ function bustSketch(small: boolean): Sketch {
       pts[j * 3] = (pts[j * 3] - mx) * s; pts[j * 3 + 1] = (pts[j * 3 + 1] - my) * s; pts[j * 3 + 2] = (pts[j * 3 + 2] - mz) * s;
     }
   });
-  const draw: Draw = (ctx, w, h, t) => {
+  const depthStyles = Array.from({ length: 8 }, (_, i) => `hsl(${190 - i * 18} 90% ${55 + i * 3}% / 0.8)`);
+  const plainStyles = Array.from({ length: 8 }, (_, i) => `rgb(${BONE.join(" ")} / ${0.2 + i * 0.08})`);
+  const draw: Draw = (ctx, w, h, t, io) => {
     if (!pts) return;
     const R = h * 0.42;
     const cx = w / 2, cy = h * 0.53;
-    const yaw = Math.sin(t * 0.4) * 0.7;
+    const yaw = Math.sin(t * 0.4) * 0.7 + io.yaw;
     const cyw = Math.cos(yaw), syw = Math.sin(yaw);
-    const scan = 1 - ((t * 0.35) % 1.3) * 2;
+    const mode = String(io.params.mode ?? "scan");
+    const scan = mode === "scan" ? 1 - ((t * 0.35) % 1.3) * 2 : 9;
     const size = small ? 1.3 : 1.5;
     for (let j = 0; j < pts.length; j += 3) {
       const x = pts[j], y = pts[j + 1], z = pts[j + 2];
       const rx = x * cyw + z * syw, rz = -x * syw + z * cyw;
       const d = Math.abs(y - scan);
-      const bin = d < 0.015 ? 7 : d < 0.06 ? 6 : Math.max(0, Math.min(5, Math.floor((rz + 0.6) * 4)));
+      const depth = Math.max(0, Math.min(7, Math.floor((rz + 0.7) * 5.5)));
+      const bin = mode === "scan" ? (d < 0.015 ? 7 : d < 0.06 ? 6 : Math.max(0, Math.min(5, Math.floor((rz + 0.6) * 4)))) : depth;
       bins[bin].push(cx + rx * R, cy - y * R);
     }
-    flush(ctx, bins, styles, size);
+    flush(ctx, bins, mode === "depth" ? depthStyles : mode === "plain" ? plainStyles : styles, size);
   };
   return { draw, ready };
 }
@@ -205,9 +221,12 @@ function voyageSketch(small: boolean): Sketch {
   const seeds = Array.from({ length: N }, () => ({ a: rand(), b: rand(), c: rand(), d: rand() }));
   const bins = buckets(3);
   const styles = [`rgb(${BONE.join(" ")} / 0.75)`, `rgb(${CYAN.join(" ")} / 0.85)`, `rgb(${LIME.join(" ")} / 0.85)`];
-  const draw: Draw = (ctx, w, h, t) => {
+  const draw: Draw = (ctx, w, h, t, io) => {
     const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.36;
-    const c = (t % 9) / 9;
+    // The timeline slider scrubs the sequence the way scrolling does on the
+    // home page; untouched, it plays on its own.
+    const scrub = io.params.time;
+    const c = typeof scrub === "number" ? scrub : (t % 9) / 9;
     const gather = ease(clamp01(c / 0.25)), open = ease(clamp01((c - 0.42) / 0.16)), rush = clamp01((c - 0.6) / 0.4);
     for (let i = 0; i < N; i++) {
       const s = seeds[i];
@@ -244,9 +263,9 @@ function helixSketch(small: boolean): Sketch {
   const cards = ["#63e6be", "#c8ff3e", "#a78bfa", "#8ae6ff", "#ff9f6e", "#5eead4"];
   const bins = buckets(2);
   const styles = [`rgb(${LIME.join(" ")} / 0.55)`, `rgb(${CYAN.join(" ")} / 0.5)`];
-  const draw: Draw = (ctx, w, h, t) => {
+  const draw: Draw = (ctx, w, h, t, io) => {
     const cx = w / 2, cy = h / 2, R = Math.min(w * 0.36, h * 0.6);
-    const spin = t * 0.45;
+    const spin = t * 0.45 + io.yaw * 1.6;
     const proj = (a: number, y: number) => {
       const x = Math.cos(a) * R, z = Math.sin(a);
       const p = 1 / (1.4 - z * 0.35);
@@ -296,7 +315,7 @@ export function mountSketch(
   opts: { still: boolean; onPhase?: (phase: number) => void },
 ) {
   const ctx = canvas.getContext("2d");
-  if (!ctx) return { run() {}, destroy() {} };
+  if (!ctx) return { run() {}, destroy() {}, set() {} };
   let w = 0, h = 0, t = 1.5, last = 0, raf = 0, running = false, phase = -1, alive = true;
   const small = canvas.getBoundingClientRect().width < 420;
   const sketch: Sketch =
@@ -305,6 +324,11 @@ export function mountSketch(
     : kind === "bust" ? bustSketch(small)
     : kind === "voyage" ? voyageSketch(small)
     : helixSketch(small);
+  const io: Input = { yaw: 0, pitch: 0, dt: 0, params: {} };
+  // Drag to turn: horizontal drags spin, vertical ones tilt a little; a
+  // release keeps the spin going and it eases out. Vertical page scrolling
+  // still works on touch (touch-action: pan-y on the canvas).
+  const drag = { on: false, x: 0, y: 0, v: 0 };
   const size = () => {
     const r = canvas.getBoundingClientRect();
     if (r.width < 2) return false;
@@ -317,7 +341,7 @@ export function mountSketch(
   const paint = () => {
     ctx.clearRect(0, 0, w, h);
     ctx.globalCompositeOperation = "lighter";
-    sketch.draw(ctx, w, h, t);
+    sketch.draw(ctx, w, h, t, io);
     ctx.globalCompositeOperation = "source-over";
     if (sketch.phase && opts.onPhase) {
       const p = sketch.phase(t);
@@ -325,11 +349,35 @@ export function mountSketch(
     }
   };
   const frame = (now: number) => {
-    t += Math.min(1 / 20, (now - last) / 1000);
+    // rAF timestamps can predate the performance.now() taken in run(), so
+    // the first delta clamps at zero (a negative one ran the flap backwards
+    // past frame 0 and read outside the bake).
+    const dt = Math.max(0, Math.min(1 / 20, (now - last) / 1000));
     last = now;
+    t += dt;
+    io.dt = dt;
+    if (!drag.on) { io.yaw += drag.v * dt; drag.v *= Math.exp(-2.5 * dt); io.pitch *= Math.exp(-1.5 * dt); }
     paint();
     raf = requestAnimationFrame(frame);
   };
+  const down = (e: PointerEvent) => {
+    drag.on = true; drag.x = e.clientX; drag.y = e.clientY; drag.v = 0;
+    canvas.setPointerCapture(e.pointerId);
+  };
+  const move = (e: PointerEvent) => {
+    if (!drag.on) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    drag.x = e.clientX; drag.y = e.clientY;
+    io.yaw += dx * 0.012;
+    io.pitch = Math.max(-0.5, Math.min(0.5, io.pitch + dy * 0.006));
+    drag.v = dx * 0.012 * 60;
+    if (!running) paint();
+  };
+  const up = () => { drag.on = false; };
+  canvas.addEventListener("pointerdown", down);
+  canvas.addEventListener("pointermove", move);
+  canvas.addEventListener("pointerup", up);
+  canvas.addEventListener("pointercancel", up);
   size();
   // With reduced motion each sketch shows one composed frame.
   if (kind === "forensics" && opts.still) t = 1;
@@ -343,10 +391,18 @@ export function mountSketch(
       if (on) { last = performance.now(); raf = requestAnimationFrame(frame); }
       else cancelAnimationFrame(raf);
     },
+    set(key: string, value: string | number) {
+      io.params[key] = value;
+      if (!running) { io.dt = 1; paint(); }
+    },
     destroy() {
       alive = false;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      canvas.removeEventListener("pointerdown", down);
+      canvas.removeEventListener("pointermove", move);
+      canvas.removeEventListener("pointerup", up);
+      canvas.removeEventListener("pointercancel", up);
     },
   };
 }
