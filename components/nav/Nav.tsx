@@ -36,6 +36,15 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
     window.setTimeout(() => { setOpen(false); setClosing(false); }, 300);
   };
 
+  // While the sheet is open (and not folding away) the WebGL stage holds its
+  // frame, so the glass blurs a still picture (see RawStage).
+  useEffect(() => {
+    const html = document.documentElement;
+    if (open && !closing) html.dataset.menuOpen = "true";
+    else delete html.dataset.menuOpen;
+    return () => { delete html.dataset.menuOpen; };
+  }, [open, closing]);
+
   // Sheet links to a section on this page wait for the sheet to fold away
   // (the page is scroll-locked while it is open), then glide there.
   const go = (event: MouseEvent<HTMLAnchorElement>, id: string) => {

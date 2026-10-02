@@ -755,6 +755,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const render = (now: number) => {
       if (disposed) return;
       frameId = requestAnimationFrame(render);
+      // The open menu is live glass over this canvas: hold the last frame so
+      // its blur has a still backdrop instead of re-frosting every frame.
+      if (document.documentElement.dataset.menuOpen) {
+        last = now;
+        return;
+      }
       // The rAF timestamp marks the frame's start and can predate the
       // performance.now() captured at setup, so the first delta must clamp at
       // zero — a negative time once indexed PALETTES[-1] and crashed a frame.
