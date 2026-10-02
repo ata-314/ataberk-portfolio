@@ -634,7 +634,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let scanVelocity = 0;
     const onPointerMove = (event: PointerEvent) => {
       pushWake(event.clientX, event.clientY);
-      if (event.pointerType === "mouse" || event.buttons) hoverTarget = 1;
+      // Only a mouse stirs the bird's grains. A finger on a phone is almost
+      // always scrolling, and its drag across the bird blew it into a
+      // shapeless cloud (the scroll also cancels the pointer, so no pointerup
+      // ever came to let it settle).
+      if (event.pointerType === "mouse") hoverTarget = 1;
       const aspect = stageW / Math.max(stageH, 1);
       pointer[0] = (event.clientX / stageW * 2 - 1) * (aspect < 1 ? 1.7 : 3.2);
       pointer[1] = -(event.clientY / stageH * 2 - 1) * 2;
@@ -672,6 +676,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     addEventListener("pointermove", onPointerMove, { passive: true });
     addEventListener("pointerdown", onPointerDown, { passive: true });
     addEventListener("pointerup", onPointerUp, { passive: true });
+    addEventListener("pointercancel", onPointerUp, { passive: true });
     document.documentElement.addEventListener("pointerleave", onPointerLeave);
 
     const projection = new Float32Array(16);
@@ -1212,6 +1217,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       removeEventListener("pointermove", onPointerMove);
       removeEventListener("pointerdown", onPointerDown);
       removeEventListener("pointerup", onPointerUp);
+      removeEventListener("pointercancel", onPointerUp);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
       tunnel.dispose();
