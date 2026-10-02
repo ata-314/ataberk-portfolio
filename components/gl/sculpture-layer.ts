@@ -83,13 +83,19 @@ const grainCore = /* glsl */ `float grainRandom(uint value) {
 // most sit just under the surface. Each grain also slowly circles inside its
 // patch on its own phase, so the skin churns like sand in a current, and
 // all of them ride a slow breathing swell.
+// birdDebug (temporary, ?gldebug): 1 links off, 2 links read but each
+// grain spans its own sample only, 3 bare samples (no jitter), 4 frame 0.
+uniform float birdDebug;
 vec3 birdAnatomy(float id,float frame,float t,out vec3 normal,out float shellDepth) {
   float index=float((uint(id)*37u)%9000u);
+  if(birdDebug>3.5) frame=0.0;
   vec3 anatomy=birdSample(index,frame);
   normal=birdNormalAt(index);
   shellDepth=0.0;
-  if(linksReady>.5) {
+  if(birdDebug>2.5) return anatomy;
+  if(linksReady>.5 && (birdDebug<.5 || birdDebug>1.5)) {
     vec4 nb=birdNeighbours(index);
+    if(birdDebug>1.5) nb=vec4(index);
     float pick=floor(grainRandom(uint(id)+4441u)*3.0);
     float ia=pick<.5?nb.x:pick<1.5?nb.y:nb.z;
     float ib=pick<.5?nb.y:pick<1.5?nb.z:nb.x;
@@ -915,7 +921,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
   let mapWidth=0,mapHeight=0;
   const vao=gl.createVertexArray();
-  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph","orbitRing","orbitMix","birdLinks","linksReady","simState","simReady"].map(name=>[name,gl.getUniformLocation(program,name)]));
+  const uniforms=Object.fromEntries(["resolution","grid","pointer","time","fieldTime","activity","opacity","pixelScale","hero","birdReady","flap","finale","services","birdMatrix","birdView","birdProjection","birdPositions","birdNormals","edgeAges","trail","burst","glowPass","intro","bustData","bustRows","bustCount","bustRect","bustAspect","bustYaw","bustPitch","bustLift","morph","orbitRing","orbitMix","birdLinks","linksReady","simState","simReady","birdDebug"].map(name=>[name,gl.getUniformLocation(program,name)]));
   let flowTime=0,lastTime=0,lastProbe=-1;
   let sourceX=0,sourceY=0,sourceActivity=0;
   let mapDirty=true;
@@ -1080,6 +1086,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
       }
       gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,simLive?simTargets[simRead].disp:null);
       gl.uniform1i(uniforms.simState,7);gl.uniform1f(uniforms.simReady,simReady);
+      gl.uniform1f(uniforms.birdDebug,(globalThis as {__birdDebug?: number}).__birdDebug ?? 0);
       const bust=flight.bust;
       const morph=bust.ready?bust.morph:0;
       gl.uniform1f(uniforms.morph,morph);

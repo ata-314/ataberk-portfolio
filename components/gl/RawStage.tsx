@@ -284,7 +284,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let debugFrames = 0;
     if (window.location.search.includes("gldebug")) {
       debugBox = document.createElement("div");
-      debugBox.style.cssText = "position:fixed;left:8px;right:8px;bottom:70px;z-index:99999;font:11px/1.35 monospace;color:#0f0;background:rgba(0,0,0,.8);padding:6px;white-space:pre-wrap;pointer-events:none";
+      debugBox.style.cssText = "position:fixed;left:8px;right:8px;bottom:70px;z-index:99999;font:11px/1.35 monospace;color:#0f0;background:rgba(0,0,0,.8);padding:6px;white-space:pre-wrap;cursor:pointer";
+      // Tap cycles the bird's debug draw modes (see birdDebug in sculpture-layer).
+      const scope = globalThis as { __birdDebug?: number };
+      scope.__birdDebug = 0;
+      debugBox.addEventListener("click", (event) => {
+        event.stopPropagation();
+        scope.__birdDebug = ((scope.__birdDebug ?? 0) + 1) % 5;
+      });
       document.body.appendChild(debugBox);
     }
     const debugInfo = () => {
@@ -1198,7 +1205,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       if (debugBox) {
         debugFrames++;
         if (time - debugAt > 0.5) {
-          debugBox.textContent = `${debugStatic}\ncanvas ${canvas.width}x${canvas.height} stage ${stageW}x${stageH} fps ${Math.round(debugFrames / (time - debugAt))}\nhero ${hero.toFixed(3)} ready ${readyMix.toFixed(3)} services ${services.toFixed(3)} finale ${finale.toFixed(3)} work ${workAmount.toFixed(2)} morph ${bust.morph.toFixed(2)} orbit ${orbit.toFixed(2)}`;
+          debugBox.textContent = `MODE ${(globalThis as { __birdDebug?: number }).__birdDebug ?? 0} (tap to change)\n${debugStatic}\ncanvas ${canvas.width}x${canvas.height} stage ${stageW}x${stageH} fps ${Math.round(debugFrames / (time - debugAt))}\nhero ${hero.toFixed(3)} ready ${readyMix.toFixed(3)} services ${services.toFixed(3)} finale ${finale.toFixed(3)} work ${workAmount.toFixed(2)} morph ${bust.morph.toFixed(2)} orbit ${orbit.toFixed(2)}`;
           debugAt = time;
           debugFrames = 0;
         }
