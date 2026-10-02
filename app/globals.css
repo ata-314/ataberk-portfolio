@@ -206,21 +206,29 @@ header {
   }
 }
 
-/* Navigation motion, on Apple's spring curve. Desktop: the capsule opens
-   like the Dynamic Island and its links come into focus one by one; a glass
-   pill slides under the hovered link and rests under the section on screen.
-   Phones: the menu sheet grows out of the Menu button and folds back into it. */
+/* Navigation motion, on Apple's spring curve. The capsule opens like the
+   Dynamic Island once the opening has landed (header animations hold until
+   the stage reports the intro done) and its links come into focus one by
+   one; on desktop a glass pill slides under the hovered link and rests under
+   the section on screen. On phones the capsule grows into the full-screen
+   menu: an opaque sheet revealed by clip-path from the capsule's own shape,
+   with no blur, so it stays smooth over the live WebGL stage. */
 :root { --spring: cubic-bezier(0.32, 0.72, 0, 1); }
-.nav-capsule { animation: navCapsule 0.9s var(--spring) 0.1s both; transform-origin: 50% 50%; }
+html:not([data-stage-intro="done"]):not([data-stage-static="true"]) header * { animation-play-state: paused !important; }
+.nav-capsule { animation: navCapsule 1s var(--spring) both; transition: opacity 0.2s ease; }
 @keyframes navCapsule {
-  from { opacity: 0; transform: scale(0.82, 0.7); filter: blur(10px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from { opacity: 0; transform: scale(0.3, 0.8); }
+  30% { opacity: 1; }
+  to { opacity: 1; transform: none; }
 }
-.nav-link { animation: navLink 0.7s var(--spring) both; transition: color 0.3s ease; }
+header[data-menu-open] .nav-capsule { opacity: 0; }
+.nav-link, .nav-capsule > a, .nav-capsule > button { animation: navLink 0.8s var(--spring) both; }
+.nav-capsule > a, .nav-capsule > button { animation-delay: 0.25s; }
+.nav-link { transition: color 0.3s ease; }
 .nav-link:hover, .nav-link[aria-current] { color: var(--bone); }
 @keyframes navLink {
-  from { opacity: 0; transform: translateY(-6px); filter: blur(6px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from { opacity: 0; transform: translateY(-5px) scale(0.96); }
+  to { opacity: 1; transform: none; }
 }
 .nav-pill {
   position: absolute; left: 0; top: 50%; height: 2.1rem; margin-top: -1.05rem; width: 0; opacity: 0;
@@ -229,30 +237,31 @@ header {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 4px 14px -6px rgba(0, 0, 0, 0.6);
   transition: transform 0.55s var(--spring), width 0.55s var(--spring), opacity 0.3s ease;
 }
-.nav-scrim { background: rgba(4, 4, 6, 0.42); animation: menuFade 0.4s ease both; }
-.nav-scrim[data-closing] { animation: navFadeOut 0.36s ease both; }
-.nav-sheet { transform-origin: calc(100% - 3rem) 1.6rem; animation: navSheetIn 0.6s var(--spring) both; }
-.nav-sheet[data-closing] { animation: navSheetOut 0.38s var(--spring) both; }
+.nav-sheet {
+  background: linear-gradient(180deg, rgb(20 20 23), rgb(10 10 12));
+  will-change: clip-path;
+  animation: navSheetIn 0.55s var(--spring) both;
+}
+.nav-sheet[data-closing] { animation: navSheetOut 0.34s var(--spring) both; }
 @keyframes navSheetIn {
-  from { opacity: 0; transform: scale(0.18, 0.06); border-radius: 3rem; filter: blur(12px); }
-  60% { opacity: 1; }
-  to { opacity: 1; transform: none; filter: none; }
+  from { clip-path: inset(12px 12px calc(100% - 64px) 12px round 32px); }
+  to { clip-path: inset(0 0 0 0 round 0); }
 }
 @keyframes navSheetOut {
-  from { opacity: 1; transform: none; filter: none; }
-  to { opacity: 0; transform: scale(0.18, 0.06); filter: blur(12px); }
+  from { clip-path: inset(0 0 0 0 round 0); }
+  to { clip-path: inset(12px 12px calc(100% - 64px) 12px round 32px); }
+}
+.nav-sheet-item { animation: navItem 0.55s var(--spring) both; }
+.nav-sheet[data-closing] .nav-sheet-item { animation: navFadeOut 0.15s ease both; animation-delay: 0s !important; }
+@keyframes navItem {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes navFadeOut { to { opacity: 0; } }
-.nav-sheet-item { animation: navItem 0.6s var(--spring) both; }
-.nav-sheet[data-closing] .nav-sheet-item { animation: navFadeOut 0.18s ease both; animation-delay: 0s !important; }
-@keyframes navItem {
-  from { opacity: 0; transform: translateY(22px) scale(0.97); filter: blur(8px); }
-  to { opacity: 1; transform: none; filter: none; }
-}
 .nav-sheet-link[aria-current] { color: var(--bone); }
 .nav-sheet-link:not([aria-current]) { color: rgba(236, 234, 228, 0.78); }
 @media (prefers-reduced-motion: reduce) {
-  .nav-capsule, .nav-link, .nav-sheet, .nav-sheet-item, .nav-scrim { animation: none !important; }
+  .nav-capsule, .nav-link, .nav-capsule > a, .nav-capsule > button, .nav-sheet, .nav-sheet-item { animation: none !important; }
   .nav-pill { transition: none; }
 }
 

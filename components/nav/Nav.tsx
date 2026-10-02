@@ -8,8 +8,8 @@ import type { SiteContent } from "@/content/site";
 import { scrollState } from "../three/scroll-state";
 
 // Apple-style liquid glass capsule floating at the top of every page, above
-// all content layers. Always visible; the open menu is a glass sheet that
-// grows out of the capsule (styles in globals.css under nav-).
+// all content layers. Always visible; on phones the capsule itself opens
+// into the full-screen menu (styles in globals.css under nav-).
 export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -33,7 +33,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
     if (!open || closing) return;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) { setOpen(false); return; }
     setClosing(true);
-    window.setTimeout(() => { setOpen(false); setClosing(false); }, 380);
+    window.setTimeout(() => { setOpen(false); setClosing(false); }, 340);
   };
 
   // Sheet links to a section on this page wait for the sheet to fold away
@@ -46,7 +46,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
     window.setTimeout(() => {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
       history.replaceState(null, "", `#${id}`);
-    }, 400);
+    }, 360);
   };
 
   // Desktop: a glass pill slides under the hovered link, and rests under the
@@ -57,6 +57,12 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const home = pathname === `/${locale}`;
   const current = home ? onScreen : pathname.startsWith(`/${locale}/lab`) ? "lab" : null;
   const [hovered, setHovered] = useState<string | null>(null);
+  // Site chrome waits for the home stage's opening (data-stage-intro); pages
+  // without a stage have no opening, so the nav marks it done itself or the
+  // header stayed invisible there.
+  useEffect(() => {
+    if (!home && !document.documentElement.dataset.stageIntro) document.documentElement.dataset.stageIntro = "done";
+  }, [home]);
   useEffect(() => {
     if (!home) return;
     const ids = ["services", "about", "work", "ai-systems", "contact"];
@@ -137,7 +143,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   }, [open]);
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-[100] flex justify-center px-3 pt-3 md:pt-5">
+    <header data-menu-open={open || undefined} className="pointer-events-none fixed inset-x-0 top-0 z-[100] flex justify-center px-3 pt-3 md:pt-5">
       <div className="nav-capsule liquid-glass pointer-events-auto relative flex w-full max-w-[40rem] items-center justify-between rounded-full py-1.5 pr-1.5 pl-5 md:w-auto md:max-w-none md:gap-6">
         <Link
           href={`/${locale}`}
@@ -185,48 +191,45 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
       </div>
 
       {open && (
-        <>
-          <div className="nav-scrim pointer-events-auto fixed inset-0 z-[99]" data-closing={closing || undefined} onClick={close} aria-hidden="true" />
-          <div
-            ref={panel}
-            id="mobile-navigation"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t.menu}
-            data-closing={closing || undefined}
-            className="nav-sheet liquid-glass liquid-glass-dense pointer-events-auto fixed inset-3 z-[100] flex flex-col rounded-[2rem] px-6 pt-5 pb-8"
-          >
-            <div className="nav-sheet-item flex items-center justify-between" style={{ animationDelay: "0.08s" }}>
-              <span className="font-display text-[17px] font-semibold tracking-[-0.02em]">Ataberk</span>
-              <button type="button" onClick={close} className="glass-item bg-white/[0.08] px-4 py-2 text-[13px] text-bone">
-                {t.close}
-              </button>
-            </div>
-            <nav aria-label="Main" className="mt-16 flex flex-col gap-1">
-              {links.map((l, i) => (
-                <div key={l.label} className="nav-sheet-item" style={{ animationDelay: `${0.12 + 0.045 * i}s` }}>
-                  <Link
-                    href={l.href}
-                    onClick={(event) => go(event, l.id)}
-                    aria-current={current === l.id ? "true" : undefined}
-                    className="nav-sheet-link flex items-baseline gap-3 py-2 font-display text-[2.6rem] leading-none font-semibold tracking-[-0.04em] transition-colors"
-                  >
-                    <span className="font-mono text-[11px] font-normal tracking-normal text-bone-dim">{String(i + 1).padStart(2, "0")}</span>
-                    {l.label}
-                  </Link>
-                </div>
-              ))}
-            </nav>
-            <Link
-              href={otherPath}
-              onClick={close}
-              className="nav-sheet-item mt-auto w-fit text-sm text-bone-dim"
-              style={{ animationDelay: `${0.12 + 0.045 * links.length}s` }}
-            >
-              {other === "en" ? "English" : "Türkçe"}
-            </Link>
+        <div
+          ref={panel}
+          id="mobile-navigation"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.menu}
+          data-closing={closing || undefined}
+          className="nav-sheet pointer-events-auto fixed inset-0 z-[100] flex flex-col px-3 pt-3 pb-8"
+        >
+          <div className="nav-sheet-item flex items-center justify-between py-1.5 pr-1.5 pl-5" style={{ animationDelay: "0.05s" }}>
+            <span className="font-display text-[16px] font-semibold tracking-[-0.02em]">Ataberk</span>
+            <button type="button" onClick={close} className="glass-item bg-white/[0.08] px-4 py-2 text-[13px] text-bone">
+              {t.close}
+            </button>
           </div>
-        </>
+          <nav aria-label="Main" className="mt-14 flex flex-col gap-1 px-5">
+            {links.map((l, i) => (
+              <div key={l.label} className="nav-sheet-item" style={{ animationDelay: `${0.1 + 0.04 * i}s` }}>
+                <Link
+                  href={l.href}
+                  onClick={(event) => go(event, l.id)}
+                  aria-current={current === l.id ? "true" : undefined}
+                  className="nav-sheet-link flex items-baseline gap-3 border-b border-white/[0.07] py-3 font-display text-[2.1rem] leading-none font-semibold tracking-[-0.035em] transition-colors"
+                >
+                  <span className="font-mono text-[11px] font-normal tracking-normal text-bone-dim">{String(i + 1).padStart(2, "0")}</span>
+                  {l.label}
+                </Link>
+              </div>
+            ))}
+          </nav>
+          <Link
+            href={otherPath}
+            onClick={close}
+            className="nav-sheet-item mt-auto w-fit px-5 text-sm text-bone-dim"
+            style={{ animationDelay: `${0.1 + 0.04 * links.length}s` }}
+          >
+            {other === "en" ? "English" : "Türkçe"}
+          </Link>
+        </div>
       )}
     </header>
   );
