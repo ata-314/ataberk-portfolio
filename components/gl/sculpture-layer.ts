@@ -328,11 +328,9 @@ void renderGrain(float id) {
     vec3 world=(birdMatrix*vec4(anatomy,1.0)).xyz;
     // The simulation carries each grain off its skin point — cursor wakes,
     // inertia on sudden moves, loose grains on the air — and springs it home.
-    if(simReady>.01) {
+    if(simReady>.5) {
       vec4 state=texelFetch(simState,ivec2(int(mod(id,${SIM_W}.0)),int(floor(id/${SIM_W}.0))),0);
-      // simReady doubles as the displacement gain (lower on phones, where the
-      // lag on a narrow frame smears the feathers).
-      world+=state.xyz*simReady;
+      world+=state.xyz;
       // Grains light up as they leave the body on the cursor's current;
       // resting grains, and grains only lagging a sudden move, stay dark.
       birdDisturb=smoothstep(.25,1.1,length(state.xyz))*smoothstep(0.0,.3,state.w);
@@ -839,7 +837,10 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   // and velocity attachments. Without float render targets the bird simply
   // renders unsimulated.
   const simRows=Math.ceil((mobile?74000:226000)/SIM_W);
-  const simOk=!!gl.getExtension("EXT_color_buffer_float");
+  // Phones render the bird unsimulated: on real phone GPUs the simulation
+  // scattered the grains into a shapeless cloud (not reproducible in desktop
+  // Chromium), and the bird keeps its form without it.
+  const simOk=!mobile&&!!gl.getExtension("EXT_color_buffer_float");
   let simProgram: WebGLProgram|null=null;
   let simUniforms: Record<string,WebGLUniformLocation|null>={};
   const simTargets: {fbo: WebGLFramebuffer|null; disp: WebGLTexture|null; vel: WebGLTexture|null}[]=[];
@@ -1070,7 +1071,7 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
         gl.viewport(0,0,w,h);
         gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
         gl.useProgram(program);
-        simReady=sim.reset?0:mobile?.4:1;
+        simReady=sim.reset?0:1;
       }
       gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,simLive?simTargets[simRead].disp:null);
       gl.uniform1i(uniforms.simState,7);gl.uniform1f(uniforms.simReady,simReady);
