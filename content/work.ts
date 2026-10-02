@@ -34,7 +34,7 @@ const tr: WorkContent = {
   items: [
     {
       slug: "modd-ai",
-      title: "moddteam",
+      title: "ModdTeam",
       live: { url: "https://www.moddteam.com/login", label: "Sistemi aç", host: "moddteam.com" },
       category: "AI İçerik Zekâsı",
       year: "2026",
@@ -218,7 +218,7 @@ const en: WorkContent = {
   items: [
     {
       slug: "modd-ai",
-      title: "moddteam",
+      title: "ModdTeam",
       live: { url: "https://www.moddteam.com/login", label: "Open the system", host: "moddteam.com" },
       category: "AI Content Intelligence",
       year: "2026",

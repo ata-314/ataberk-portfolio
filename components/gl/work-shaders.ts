@@ -139,6 +139,9 @@ void main(){
         float ca=.0035;
         vec3 ink=vec3(title(tuv+vec2(ca,0),0.0),title(tuv,0.0),title(tuv-vec2(ca,0),0.0));
         float halo=title(tuv,3.5);
+        // Over a product's screen the beads dim behind the name so it reads
+        // in front of the picture.
+        c*=1.0-uShotOn*clamp(halo*1.6+title(tuv,1.5)*.6,0.0,.82);
         float scan=.86+.14*sin(gl_FragCoord.y*1.25-uTime*2.0);
         vec3 holo=mix(vec3(.62,1.0,.96),uGlow,.22);
         c+=holo*ink*scan*1.7+holo*halo*.35;

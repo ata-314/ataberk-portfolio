@@ -228,7 +228,9 @@ export function createWorkHelixLayer(
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     names.slice(0, count).forEach((raw, i) => {
-      const name = raw.toUpperCase();
+      // Capitals for the hologram, except camel-cased brand names (ModdTeam)
+      // whose own casing is the mark.
+      const name = /[a-z][A-Z]/.test(raw) ? raw : raw.toUpperCase();
       let size = 112;
       const font = () => `400 ${size}px ${family}`;
       ctx.font = font();
@@ -552,11 +554,10 @@ export function createWorkHelixLayer(
       gl.uniform1f(card.u("uHover"), hovers[i]);
       gl.uniform1f(card.u("uRow"), i);
       gl.uniform1f(card.u("uRows"), count);
-      // A card made of its product's screen carries the name in the screen.
       gl.activeTexture(gl.TEXTURE11);
       gl.bindTexture(gl.TEXTURE_2D, screens[i]);
       gl.uniform1f(card.u("uShotOn"), screens[i] ? 1 : 0);
-      gl.uniform1f(card.u("uTitleOn"), screens[i] ? 0 : titleReady);
+      gl.uniform1f(card.u("uTitleOn"), titleReady);
       gl.uniform3f(card.u("uAxisX"), models[i][0] / s0(i), models[i][1] / s0(i), models[i][2] / s0(i));
       gl.uniform3f(card.u("uAxisY"), models[i][4] / s0(i), models[i][5] / s0(i), models[i][6] / s0(i));
       gl.uniform1f(card.u("uDim"), dims[i]);
