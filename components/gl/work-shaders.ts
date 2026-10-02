@@ -105,7 +105,9 @@ void main(){
       // following the pixel's brightness, a faint wash of the screen under.
       vec2 cells=vec2(118.0*uAspect,118.0);
       vec2 cell=floor(uv*cells);
-      vec3 px=texture(uShot,vec2((cell.x+.5)/cells.x,1.0-(cell.y+.5)/cells.y)).rgb;
+      // Read a slightly softened level so thin strokes (glyphs, small type)
+      // become the shape's light rather than noise.
+      vec3 px=textureLod(uShot,vec2((cell.x+.5)/cells.x,1.0-(cell.y+.5)/cells.y),1.2).rgb*1.35;
       float br=dot(px,vec3(.3,.55,.15));
       float r=length(fract(uv*cells)-.5);
       float bead=1.0-smoothstep(.22+br*.26,.3+br*.3,r);

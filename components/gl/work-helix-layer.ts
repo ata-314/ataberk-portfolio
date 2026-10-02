@@ -16,6 +16,7 @@ import {
   fullscreenVertex,
   veilFragment,
 } from "./work-shaders";
+import { createGlyphFace } from "./glyph-face";
 import { createWorkInside } from "./work-inside";
 import { createSeaLayer } from "./sea-layer";
 
@@ -156,7 +157,7 @@ export type WorkFrame = {
 export function createWorkHelixLayer(
   gl: WebGL2RenderingContext,
   mobile: boolean,
-  slots: { deep: Vec3; mid: Vec3; glow: Vec3; screen?: string }[],
+  slots: { deep: Vec3; mid: Vec3; glow: Vec3; screen?: string; face?: string }[],
   titles: () => string[],
 ) {
   const count = slots.length;
@@ -211,6 +212,33 @@ export function createWorkHelixLayer(
     };
     img.src = s.screen;
   });
+  // Living faces: the canvas is redrawn and re-uploaded while its card is on
+  // screen, at most ~24 fps (15 on phones).
+  const faces = slots.map((s, i) => {
+    if (!s.face) return null;
+    const face = createGlyphFace(s.face, mobile);
+    const tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE11);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([5, 8, 6, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    screens[i] = tex;
+    return { face, tex, at: -1 };
+  });
+  const refreshFace = (i: number, time: number) => {
+    const f = faces[i];
+    if (!f || time - f.at < (mobile ? 1 / 15 : 1 / 24)) return;
+    f.at = time;
+    f.face.draw(time);
+    gl.activeTexture(gl.TEXTURE11);
+    gl.bindTexture(gl.TEXTURE_2D, f.tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, f.face.canvas);
+    gl.generateMipmap(gl.TEXTURE_2D);
+  };
   // Hologram titles: one 4:1 canvas cell per card, redrawn when the names
   // (or the display font) change.
   const titleTex = gl.createTexture();
@@ -542,6 +570,7 @@ export function createWorkHelixLayer(
         beginCards(f);
       }
       const s = slots[i];
+      refreshFace(i, f.time);
       gl.activeTexture(gl.TEXTURE12);
       gl.bindTexture(gl.TEXTURE_2D, grab!.tex);
       gl.uniform1f(card.u("uGlass"), 1);
@@ -628,6 +657,7 @@ export function createWorkHelixLayer(
 
     const assemble = smooth(openT, 0.45, 0.95);
     if (assemble < 0.002) return;
+    refreshFace(shown, f.time);
     inside.render({
       rect: openRect, width: f.width, height: f.height, time: f.time, assemble,
       seed: shown * 1.37 + 0.4, deep: s.deep, mid: s.mid, glow: s.glow,

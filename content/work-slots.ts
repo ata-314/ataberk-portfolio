@@ -4,10 +4,12 @@
 // `screen` is a capture of the project's live product (see
 // scripts/shoot-live.mjs): the card face and the particle interior are then
 // made of its pixels instead of the colour world.
-export type WorkSlot = { colors: [string, string, string]; screen?: string };
+// `face` swaps the screen for a living glyph face drawn every frame
+// (components/gl/glyph-face.ts), shaped by the given luminance map.
+export type WorkSlot = { colors: [string, string, string]; screen?: string; face?: string };
 
 export const workSlots: WorkSlot[] = [
-  { colors: ["#12300a", "#a3e635", "#c8ff3e"], screen: "/work/moddteam-login.jpg" },
+  { colors: ["#12300a", "#a3e635", "#c8ff3e"], face: "/work/moddteam-face.png" },
   { colors: ["#3a0b2e", "#ff4fa3", "#ffb36b"] },
   { colors: ["#12300a", "#c8ff3e", "#3ee6c4"] },
   { colors: ["#0d1240", "#4b6bff", "#ff7ad9"] },

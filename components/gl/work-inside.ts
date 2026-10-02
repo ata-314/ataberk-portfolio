@@ -105,7 +105,7 @@ void main(){
   for(int i=0;i<2;i++){vec2 dc=home+off-uComet[i].xy;hot+=exp(-dot(dc,dc)*45.0)*uCometOn;}
   gl_PointSize=uCellPx*(1.1+disturb*.55+min(hot,1.0)*.45)*persp*vStretch;
   // A live product's screen: every grain is one of its pixels.
-  vec3 pic=uShotOn>.5?texture(uShot,vec2(uv.x,1.0-uv.y)).rgb*1.2+uDeep*.05:nebula(uv,uAspect,uTime,uSeed,uDeep,uMid,uGlow);
+  vec3 pic=uShotOn>.5?textureLod(uShot,vec2(uv.x,1.0-uv.y),.8).rgb*1.45+uDeep*.05:nebula(uv,uAspect,uTime,uSeed,uDeep,uMid,uGlow);
   vec3 col=pic*(1.0+disturb*.7+min(speed,2.0)*.25);
   col=mix(col,col*vec3(.75,.95,1.15)+vec3(.04,.09,.13),disturb*.5);
   col=mix(col,vec3(.85,.97,1.0)*1.6,min(hot,1.0)*.45);

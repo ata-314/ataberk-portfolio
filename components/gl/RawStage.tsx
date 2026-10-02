@@ -313,6 +313,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       mid: slotRgb(slot.colors[1]),
       glow: slotRgb(slot.colors[2]),
       screen: slot.screen,
+      face: slot.face,
     })), () => workState.titles);
     // How far the voyage has slid in: 0 with its top at the screen's foot,
     // 1 once the X has had room to rejoin.
