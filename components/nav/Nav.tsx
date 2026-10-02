@@ -8,8 +8,8 @@ import type { SiteContent } from "@/content/site";
 import { scrollState } from "../three/scroll-state";
 
 // Apple-style liquid glass capsule floating at the top of every page, above
-// all content layers. Always visible; on phones the capsule itself opens
-// into the full-screen menu (styles in globals.css under nav-).
+// all content layers. Always visible; the open menu is a glass sheet
+// (motion in globals.css under nav-).
 export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -33,7 +33,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
     if (!open || closing) return;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) { setOpen(false); return; }
     setClosing(true);
-    window.setTimeout(() => { setOpen(false); setClosing(false); }, 340);
+    window.setTimeout(() => { setOpen(false); setClosing(false); }, 300);
   };
 
   // Sheet links to a section on this page wait for the sheet to fold away
@@ -198,24 +198,22 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
           aria-modal="true"
           aria-label={t.menu}
           data-closing={closing || undefined}
-          className="nav-sheet pointer-events-auto fixed inset-0 z-[100] flex flex-col px-3 pt-3 pb-8"
+          className="nav-sheet liquid-glass liquid-glass-dense pointer-events-auto fixed inset-3 z-[100] flex flex-col rounded-[2rem] px-6 pt-5 pb-8"
         >
-          <div className="nav-sheet-item flex items-center justify-between py-1.5 pr-1.5 pl-5" style={{ animationDelay: "0.05s" }}>
-            <span className="font-display text-[16px] font-semibold tracking-[-0.02em]">Ataberk</span>
+          <div className="flex items-center justify-between">
+            <span className="font-display text-[17px] font-semibold tracking-[-0.02em]">Ataberk</span>
             <button type="button" onClick={close} className="glass-item bg-white/[0.08] px-4 py-2 text-[13px] text-bone">
               {t.close}
             </button>
           </div>
-          <nav aria-label="Main" className="mt-14 flex flex-col gap-1 px-5">
+          <nav aria-label="Main" className="mt-20 flex flex-col gap-2">
             {links.map((l, i) => (
-              <div key={l.label} className="nav-sheet-item" style={{ animationDelay: `${0.1 + 0.04 * i}s` }}>
+              <div key={l.label} className="nav-sheet-item" style={{ animationDelay: `${0.08 + 0.05 * i}s` }}>
                 <Link
                   href={l.href}
                   onClick={(event) => go(event, l.id)}
-                  aria-current={current === l.id ? "true" : undefined}
-                  className="nav-sheet-link flex items-baseline gap-3 border-b border-white/[0.07] py-3 font-display text-[2.1rem] leading-none font-semibold tracking-[-0.035em] transition-colors"
+                  className="block py-2 font-display text-5xl font-semibold tracking-[-0.04em] transition-colors hover:text-bone-dim"
                 >
-                  <span className="font-mono text-[11px] font-normal tracking-normal text-bone-dim">{String(i + 1).padStart(2, "0")}</span>
                   {l.label}
                 </Link>
               </div>
@@ -224,8 +222,8 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
           <Link
             href={otherPath}
             onClick={close}
-            className="nav-sheet-item mt-auto w-fit px-5 text-sm text-bone-dim"
-            style={{ animationDelay: `${0.1 + 0.04 * links.length}s` }}
+            className="nav-sheet-item mt-auto w-fit text-sm text-bone-dim"
+            style={{ animationDelay: `${0.08 + 0.05 * links.length}s` }}
           >
             {other === "en" ? "English" : "Türkçe"}
           </Link>

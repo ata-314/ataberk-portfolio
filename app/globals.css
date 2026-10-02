@@ -210,9 +210,7 @@ header {
    Dynamic Island once the opening has landed (header animations hold until
    the stage reports the intro done) and its links come into focus one by
    one; on desktop a glass pill slides under the hovered link and rests under
-   the section on screen. On phones the capsule grows into the full-screen
-   menu: an opaque sheet revealed by clip-path from the capsule's own shape,
-   with no blur, so it stays smooth over the live WebGL stage. */
+   the section on screen. */
 :root { --spring: cubic-bezier(0.32, 0.72, 0, 1); }
 html:not([data-stage-intro="done"]):not([data-stage-static="true"]) header * { animation-play-state: paused !important; }
 .nav-capsule { animation: navCapsule 1s var(--spring) both; transition: opacity 0.2s ease; }
@@ -221,7 +219,8 @@ html:not([data-stage-intro="done"]):not([data-stage-static="true"]) header * { a
   30% { opacity: 1; }
   to { opacity: 1; transform: none; }
 }
-header[data-menu-open] .nav-capsule { opacity: 0; }
+/* Hidden under the open menu (visibility, since the entrance animation holds opacity). */
+header[data-menu-open] .nav-capsule { visibility: hidden; }
 .nav-link, .nav-capsule > a, .nav-capsule > button { animation: navLink 0.8s var(--spring) both; }
 .nav-capsule > a, .nav-capsule > button { animation-delay: 0.25s; }
 .nav-link { transition: color 0.3s ease; }
@@ -237,29 +236,35 @@ header[data-menu-open] .nav-capsule { opacity: 0; }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 4px 14px -6px rgba(0, 0, 0, 0.6);
   transition: transform 0.55s var(--spring), width 0.55s var(--spring), opacity 0.3s ease;
 }
-.nav-sheet {
-  background: linear-gradient(180deg, rgb(20 20 23), rgb(10 10 12));
-  will-change: clip-path;
-  animation: navSheetIn 0.55s var(--spring) both;
-}
-.nav-sheet[data-closing] { animation: navSheetOut 0.34s var(--spring) both; }
+/* Phones: the glass sheet drops in from the capsule's place with a slight
+   scale, its links rising in turn, and folds back up on close. Transform and
+   opacity only (no blur animation) so it stays smooth over the live stage. */
+.nav-sheet { transform-origin: 50% 0; will-change: transform, opacity; animation: navSheetIn 0.5s var(--spring) both; }
+.nav-sheet[data-closing] { animation: navSheetOut 0.3s var(--spring) both; }
 @keyframes navSheetIn {
-  from { clip-path: inset(12px 12px calc(100% - 64px) 12px round 32px); }
-  to { clip-path: inset(0 0 0 0 round 0); }
+  from { opacity: 0; transform: translateY(-12px) scale(0.95); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes navSheetOut {
-  from { clip-path: inset(0 0 0 0 round 0); }
-  to { clip-path: inset(12px 12px calc(100% - 64px) 12px round 32px); }
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-12px) scale(0.95); }
 }
-.nav-sheet-item { animation: navItem 0.55s var(--spring) both; }
+.nav-sheet-item { animation: navItem 0.6s var(--spring) both; }
 .nav-sheet[data-closing] .nav-sheet-item { animation: navFadeOut 0.15s ease both; animation-delay: 0s !important; }
 @keyframes navItem {
-  from { opacity: 0; transform: translateY(-14px); }
+  from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: none; }
 }
 @keyframes navFadeOut { to { opacity: 0; } }
-.nav-sheet-link[aria-current] { color: var(--bone); }
-.nav-sheet-link:not([aria-current]) { color: rgba(236, 234, 228, 0.78); }
+/* A live 40px blur over the animated stage is what made the sheet stutter on
+   phones; touch screens get the same tone as a dense painted pane. */
+@media (hover: none) {
+  .nav-sheet.liquid-glass-dense {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: linear-gradient(180deg, rgb(30 30 34), rgb(14 14 16));
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .nav-capsule, .nav-link, .nav-capsule > a, .nav-capsule > button, .nav-sheet, .nav-sheet-item { animation: none !important; }
   .nav-pill { transition: none; }
