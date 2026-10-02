@@ -233,6 +233,12 @@ export function WorkSection({ locale }: { locale: Locale }) {
                 className="work-swatch mt-5"
                 style={{ background: `linear-gradient(90deg, ${workSlots[open].colors.join(", ")})` }}
               />
+              {items[open].live && (
+                <a href={items[open].live.url} target="_blank" rel="noopener noreferrer" className="work-live mt-6">
+                  {items[open].live.label} <span aria-hidden="true">↗</span>
+                  <em>{items[open].live.host}</em>
+                </a>
+              )}
               <div className="mt-6 flex items-baseline gap-6">
                 <Link href={`/${locale}/work/${items[open].slug}`} className="link-draw text-base text-bone">
                   {t.open} →

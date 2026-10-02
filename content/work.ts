@@ -21,6 +21,8 @@ export type WorkItem = {
   idea: string; // one-line creative idea
   layout: "featured" | "wide" | "split" | "typographic" | "system";
   visual: "field" | "agents" | "studio" | "spatial" | "web" | "film";
+  // The working product, when it is public: opened in a new tab.
+  live?: { url: string; label: string; host: string };
   sections: CaseSection[];
 };
 
@@ -33,6 +35,7 @@ const tr: WorkContent = {
     {
       slug: "modd-ai",
       title: "MODD-AI",
+      live: { url: "https://www.moddteam.com/login", label: "Sistemi aç", host: "moddteam.com" },
       category: "AI İçerik Zekâsı",
       year: "2026",
       role: "Kurucu · Sistem Tasarımı · Creative Direction",
@@ -216,6 +219,7 @@ const en: WorkContent = {
     {
       slug: "modd-ai",
       title: "MODD-AI",
+      live: { url: "https://www.moddteam.com/login", label: "Open the system", host: "moddteam.com" },
       category: "AI Content Intelligence",
       year: "2026",
       role: "Founder · System Design · Creative Direction",

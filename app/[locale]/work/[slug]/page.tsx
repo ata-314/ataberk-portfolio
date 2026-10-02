@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/components/sections/work.css";
 import { notFound } from "next/navigation";
 import { isLocale, locales } from "@/lib/i18n";
 import { work, getWorkItem } from "@/content/work";
@@ -92,6 +93,12 @@ export default async function CasePage({
               </div>
             </dl>
           </div>
+          {item.live && (
+            <a href={item.live.url} target="_blank" rel="noopener noreferrer" className="case-live mt-10">
+              {item.live.label} <span aria-hidden="true">↗</span>
+              <em>{item.live.host}</em>
+            </a>
+          )}
         </div>
       </header>
 

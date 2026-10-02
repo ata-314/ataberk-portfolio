@@ -212,3 +212,33 @@ html[data-stage-static] .work-static li {
 html[data-stage-static] .work-rail {
   display: none;
 }
+
+/* Link to a project's live product (opens in a new tab). */
+.work-live,
+.case-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.05rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #0a0a0b;
+  background: var(--lime);
+  box-shadow: 0 0 1.6rem rgb(200 255 62 / 0.28);
+  text-shadow: none;
+  transition: box-shadow 0.4s ease, transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.work-live em,
+.case-live em {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 400;
+  opacity: 0.65;
+}
+.work-live:hover,
+.case-live:hover {
+  box-shadow: 0 0 2.4rem rgb(200 255 62 / 0.5);
+  transform: translateY(-1px);
+}
