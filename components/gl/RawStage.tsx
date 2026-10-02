@@ -277,6 +277,28 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let stageW = innerWidth;
     let stageH = innerHeight;
     const sculpture = createSculptureLayer(gl, mobile);
+    // Temporary device diagnostics (?gldebug): the phone bird bug only shows
+    // on real phone GPUs, so this reads the device out on screen.
+    let debugBox: HTMLDivElement | null = null;
+    let debugAt = 0;
+    let debugFrames = 0;
+    if (window.location.search.includes("gldebug")) {
+      debugBox = document.createElement("div");
+      debugBox.style.cssText = "position:fixed;left:8px;right:8px;bottom:70px;z-index:99999;font:11px/1.35 monospace;color:#0f0;background:rgba(0,0,0,.8);padding:6px;white-space:pre-wrap;pointer-events:none";
+      document.body.appendChild(debugBox);
+    }
+    const debugInfo = () => {
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      const vf = gl.getShaderPrecisionFormat(gl.VERTEX_SHADER, gl.HIGH_FLOAT);
+      const vi = gl.getShaderPrecisionFormat(gl.VERTEX_SHADER, gl.HIGH_INT);
+      return [
+        `gpu ${ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)}`,
+        `vendor ${ext ? gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) : "?"}`,
+        `vtx highp float ${vf?.precision}/${vf?.rangeMax} int ${vi?.rangeMax} vtxTex ${gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)}`,
+        `cbf ${!!gl.getExtension("EXT_color_buffer_float")} fl ${!!gl.getExtension("OES_texture_float_linear")} mobile ${mobile} dpr ${devicePixelRatio}`,
+      ].join("\n");
+    };
+    const debugStatic = debugBox ? debugInfo() : "";
     // Voyage: after the opening, the bird on black, then the voxel tunnel.
     const tunnel = createTunnelLayer(gl, mobile);
     let workElement: HTMLElement | null = null;
@@ -1173,6 +1195,14 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
       const sculptureAlpha = smoothstep(intro, 0, 0.04);
+      if (debugBox) {
+        debugFrames++;
+        if (time - debugAt > 0.5) {
+          debugBox.textContent = `${debugStatic}\ncanvas ${canvas.width}x${canvas.height} stage ${stageW}x${stageH} fps ${Math.round(debugFrames / (time - debugAt))}\nhero ${hero.toFixed(3)} ready ${readyMix.toFixed(3)} services ${services.toFixed(3)} finale ${finale.toFixed(3)} work ${workAmount.toFixed(2)} morph ${bust.morph.toFixed(2)} orbit ${orbit.toFixed(2)}`;
+          debugAt = time;
+          debugFrames = 0;
+        }
+      }
       sculpture.render(canvas.width, canvas.height, time, sculptureAlpha,
         scanSmooth[0] / (8.2 * Math.tan(Math.PI / 8) * (stageW / stageH)),
         scanSmooth[1] / (8.2 * Math.tan(Math.PI / 8)),

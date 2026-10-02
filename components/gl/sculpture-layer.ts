@@ -46,20 +46,25 @@ vec3 normalAt(vec3 p) {
 
 // Animated bird surface: baked sample positions (16 flap frames, 5 rows
 // each) and rest-pose normals, both sampled with NEAREST filtering.
-const birdSampling = /* glsl */ `vec3 birdSample(float index,float frame) {
-  float row=floor(index/2048.0);
-  float column=(mod(index,2048.0)+.5)/2048.0;
-  vec3 a=texture(birdPositions,vec2(column,(floor(frame)*5.0+row+.5)/80.0)).xyz;
-  vec3 b=texture(birdPositions,vec2(column,(mod(floor(frame)+1.0,16.0)*5.0+row+.5)/80.0)).xyz;
+const birdSampling = /* glsl */ `// Integer texel reads: some phone GPUs resolve normalised coordinates on
+// this 2048-wide texture to a neighbouring texel or row, which mixed points
+// from other parts of the body (and other flap frames) into a shapeless cloud.
+ivec2 birdTexel(float index) {
+  int i=int(index+.5);
+  return ivec2(i%2048,i/2048);
+}
+vec3 birdSample(float index,float frame) {
+  ivec2 c=birdTexel(index);
+  int f=int(floor(frame))%16;
+  vec3 a=texelFetch(birdPositions,ivec2(c.x,f*5+c.y),0).xyz;
+  vec3 b=texelFetch(birdPositions,ivec2(c.x,((f+1)%16)*5+c.y),0).xyz;
   return mix(a,b,fract(frame));
 }
 vec3 birdNormalAt(float index) {
-  float row=floor(index/2048.0);
-  float column=(mod(index,2048.0)+.5)/2048.0;
-  return texture(birdNormals,vec2(column,(row+.5)/5.0)).xyz;
+  return texelFetch(birdNormals,birdTexel(index),0).xyz;
 }
 vec4 birdNeighbours(float index) {
-  return texelFetch(birdLinks,ivec2(int(mod(index,2048.0)),int(floor(index/2048.0))),0);
+  return texelFetch(birdLinks,birdTexel(index),0);
 }
 `;
 
@@ -79,7 +84,7 @@ const grainCore = /* glsl */ `float grainRandom(uint value) {
 // patch on its own phase, so the skin churns like sand in a current, and
 // all of them ride a slow breathing swell.
 vec3 birdAnatomy(float id,float frame,float t,out vec3 normal,out float shellDepth) {
-  float index=mod(id*37.0,9000.0);
+  float index=float((uint(id)*37u)%9000u);
   vec3 anatomy=birdSample(index,frame);
   normal=birdNormalAt(index);
   shellDepth=0.0;
