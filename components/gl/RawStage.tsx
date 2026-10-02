@@ -728,7 +728,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let finale = 0;
     let flap = 0;
     let flapPhase = 0;
-    const behaviour = createBirdBehaviour();
+    const behaviour = createBirdBehaviour(Math.random, mobile);
     // Eased behaviour outputs (see bird-behaviour.ts).
     const eased = { x: 0, y: 0, z: 0, bank: 0, pitch: 0, beat: 1, hold: 0, holdFrame: 0, yawMix: 0 };
     // Grain simulation inputs: last frame's body and the cursor as a 3D ray.
@@ -996,7 +996,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         birdRoll = mix(roll, Math.sin(time * 0.5) * 0.08, w);
       }
       workLastProgress = workProgress;
-      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, flight.position[2]] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, birdRoll, birdPitch);
+      // Phones: the narrow frame is close to the bird, so it is kept back
+      // from the glass (no nearer than z 0.35) or perspective stretches the
+      // wings into spikes across the whole screen.
+      compose(birdMatrix, mobile ? [flight.position[0] * 0.28, flight.position[1] * 0.75, Math.min(flight.position[2], 0.35)] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, birdRoll, birdPitch);
       // Folded wings hang below the body in the bake; in the dive they are
       // swept back along it instead (a shear of the wing axis toward the
       // tail) so the bird reads as one closed, falling dart.
@@ -1145,7 +1148,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const sceneTarget = post ? post.begin(canvas.width, canvas.height) : null;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       const tunnelExit = smoothstep(voyage, 0.86, 0.99);
-      xLayer.render(time, canvas.height, projection, smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(portalThrough, 0.8, 1)));
+      // Phones: the code swarm circles the same narrow middle the bird flies
+      // in, and the two merge into one shapeless mass, so it steps back
+      // (faint) while the bird holds the hero and returns as the X gathers.
+      const swarmBack = mobile ? 0.92 * smoothstep(hero, 0.35, 0.55) * (1 - xGather) : 0;
+      xLayer.render(time, canvas.height, projection, smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(portalThrough, 0.8, 1)) * (1 - swarmBack));
       // The corridor rushes toward us on its own clock, and scrolling pushes
       // the flight on or back on top of it; its light cycles teal → pink →
       // blue and back over the ride.

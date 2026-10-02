@@ -64,7 +64,13 @@ const smooth = (x: number, a: number, b: number) => {
   return t * t * (3 - 2 * t);
 };
 
-export function createBirdBehaviour(random: () => number = Math.random) {
+// On phones the picture is narrow and close: actions that bring the bird
+// at the glass or turn it over (approach, loop, barrel roll) read as a
+// shapeless blob there, so they are left out and the depth drift is calmer.
+const COMPACT_SKIP: Kind[] = ["approach", "loop", "barrel"];
+
+export function createBirdBehaviour(random: () => number = Math.random, compact = false) {
+  const actions = compact ? ACTIONS.filter((a) => !COMPACT_SKIP.includes(a.kind)) : ACTIONS;
   const seed = random() * 1000;
   const recent: Kind[] = [];
   let action: Action = { kind: "cruise", start: 0, length: 4, side: 1, amount: 1, phase: 0 };
@@ -75,7 +81,7 @@ export function createBirdBehaviour(random: () => number = Math.random) {
       action = { kind: "cruise", start: time, length: 1.4 + random() * 3.2, side: 1, amount: 1, phase: 0 };
       return;
     }
-    const pool = ACTIONS.filter((a) => !recent.includes(a.kind));
+    const pool = actions.filter((a) => !recent.includes(a.kind));
     let pick = random() * pool.reduce((sum, a) => sum + a.weight, 0);
     const chosen = pool.find((a) => (pick -= a.weight) <= 0) ?? pool[0];
     recent.push(chosen.kind);
@@ -218,7 +224,7 @@ export function createBirdBehaviour(random: () => number = Math.random) {
       motion.x += w(0) * 0.32;
       motion.y += w(40) * 0.24;
       // Depth drifts slowly too, so the bird is never at one distance.
-      motion.z += w(80) * 0.2 + noise1(time * 0.07 + seed + 300) * 0.7;
+      motion.z += (w(80) * 0.2 + noise1(time * 0.07 + seed + 300) * 0.7) * (compact ? 0.35 : 1);
       motion.bank += w(120) * 0.08;
       motion.beat *= 1 + w(160) * 0.12;
       return motion;
