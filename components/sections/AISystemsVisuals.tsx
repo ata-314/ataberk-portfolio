@@ -7,7 +7,7 @@ import "./ai-systems-visuals.css";
 
 // The AI Systems stage as glass objects: each system is one thick piece of
 // glass with the brand's colours floating behind it as light, kin to the
-// glass cards in Selected work. A Brand Brain of lit beads ringed by its memory, a
+// glass cards in Selected work. A fluid Brand Brain of lit beads with its memory called out, a
 // fan of four role panes the light walks through, a glass browser the site
 // lights up behind, and a real magnifying lens reviewing a post.
 // Motion is CSS; only the team's relay keeps a small clock in React. With
@@ -18,7 +18,7 @@ const v = (vars: Record<string, string | number>) => vars as CSSProperties;
 
 const copy = {
   tr: {
-    brain: { nodes: ["Ses", "Palet", "Yasaklı", "Desenler"], core: "Brand Brain", sub: "marka hafızası" },
+    brain: { core: "Brand Brain", sub: "Marka hafızası", labels: [["Ses", "Net, sıcak, asla bağırmayan"], ["Desenler", "Kanıtlanmış 3 desen"], ["Yasaklı", "çığır açan"], ["Palet", "#C8FF3E · #8AE6FF"]] },
     team: { roles: ["Stratejist", "Art direktör", "Üretim", "QA"], artifacts: ["brief", "moodboard", "post", "onaylı post"], out: "final teslim paketi" },
     web: { url: "ataberksoylu.com", live: "Canlı", scores: ["Performans", "Erişilebilirlik", "En iyi pratik", "SEO"] },
     qc: {
@@ -27,7 +27,7 @@ const copy = {
     },
   },
   en: {
-    brain: { nodes: ["Voice", "Palette", "Banned", "Patterns"], core: "Brand Brain", sub: "brand memory" },
+    brain: { core: "Brand Brain", sub: "Brand memory", labels: [["Voice", "Clear, warm, never loud"], ["Patterns", "3 proven patterns"], ["Banned", "game-changing"], ["Palette", "#C8FF3E · #8AE6FF"]] },
     team: { roles: ["Strategist", "Art director", "Production", "QA"], artifacts: ["brief", "moodboard", "post", "approved post"], out: "final delivery package" },
     web: { url: "ataberksoylu.com", live: "Live", scores: ["Performance", "Accessibility", "Best practices", "SEO"] },
     qc: {
@@ -40,13 +40,19 @@ type Copy = (typeof copy)["en"];
 
 const SCORES = [96, 100, 100, 100];
 
+// Labels sit in the stage's corners; the engine draws a live leader line
+// from each to its region (voice → frontal, patterns → parietal, banned →
+// temporal, palette → occipital).
+const BRAIN_REGIONS = ["voice", "patterns", "banned", "palette"] as const;
+
 function Brain({ c, visible }: { c: Copy; visible: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const labels = useRef<(HTMLElement | null)[]>([]);
   const engine = useRef<ReturnType<typeof mountBrain> | null>(null);
-  const ring = `${c.brain.nodes.join("  ·  ")}  ·  `.repeat(2);
   useEffect(() => {
     if (!canvas.current) return;
-    const e = mountBrain(canvas.current, { still: matchMedia("(prefers-reduced-motion: reduce)").matches });
+    const items = BRAIN_REGIONS.map((region, i) => ({ el: labels.current[i]!, region }));
+    const e = mountBrain(canvas.current, items, { still: matchMedia("(prefers-reduced-motion: reduce)").matches });
     engine.current = e;
     return () => e.destroy();
   }, []);
@@ -54,12 +60,15 @@ function Brain({ c, visible }: { c: Copy; visible: boolean }) {
   return (
     <div className="gs gs-brain">
       <i className="gs-aura" />
-      <svg className="gs-ring" viewBox="0 0 300 300" aria-hidden="true">
-        <defs><path id="gs-ring-path" d="M150 150 m-132 0 a132 132 0 1 1 264 0 a132 132 0 1 1 -264 0" /></defs>
-        <text><textPath href="#gs-ring-path">{ring}</textPath></text>
-      </svg>
       <canvas ref={canvas} className="gs-brain-canvas" />
-      <span className="gs-glass gs-brain-tag"><b>{c.brain.core}</b><small>{c.brain.sub}</small></span>
+      {c.brain.labels.map(([name, detail], i) => (
+        <span key={name} ref={(el) => { labels.current[i] = el; }} className={`gs-blabel gs-blabel-${i}${i === 2 ? " is-banned" : ""}`} style={v({ "--i": i })}>
+          <small>{String(i + 1).padStart(2, "0")}</small>
+          <b>{name}</b>
+          {i === 2 ? <s>{detail}</s> : <em>{detail}</em>}
+        </span>
+      ))}
+      <p className="gs-btitle"><b>{c.brain.core}</b><span>{c.brain.sub}</span></p>
     </div>
   );
 }
