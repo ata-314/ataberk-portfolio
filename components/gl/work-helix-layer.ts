@@ -156,7 +156,7 @@ export type WorkFrame = {
 export function createWorkHelixLayer(
   gl: WebGL2RenderingContext,
   mobile: boolean,
-  slots: { deep: Vec3; mid: Vec3; glow: Vec3 }[],
+  slots: { deep: Vec3; mid: Vec3; glow: Vec3; screen?: string }[],
   titles: () => string[],
 ) {
   const count = slots.length;
@@ -187,6 +187,30 @@ export function createWorkHelixLayer(
 
   const emptyVao = gl.createVertexArray();
   gl.bindVertexArray(null);
+  // Live-product screens: loaded per card once; until (or unless) one lands
+  // the card keeps its colour world.
+  const screens: (WebGLTexture | null)[] = slots.map(() => null);
+  let disposed = false;
+  slots.forEach((s, i) => {
+    if (!s.screen) return;
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      if (disposed) return;
+      const tex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE11);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      screens[i] = tex;
+    };
+    img.src = s.screen;
+  });
   // Hologram titles: one 4:1 canvas cell per card, redrawn when the names
   // (or the display font) change.
   const titleTex = gl.createTexture();
@@ -491,6 +515,7 @@ export function createWorkHelixLayer(
     gl.activeTexture(gl.TEXTURE15);
     gl.bindTexture(gl.TEXTURE_2D, titleTex);
     gl.uniform1i(card.u("uTitles"), 15);
+    gl.uniform1i(card.u("uShot"), 11);
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
     gl.enable(gl.CULL_FACE);
@@ -527,7 +552,11 @@ export function createWorkHelixLayer(
       gl.uniform1f(card.u("uHover"), hovers[i]);
       gl.uniform1f(card.u("uRow"), i);
       gl.uniform1f(card.u("uRows"), count);
-      gl.uniform1f(card.u("uTitleOn"), titleReady);
+      // A card made of its product's screen carries the name in the screen.
+      gl.activeTexture(gl.TEXTURE11);
+      gl.bindTexture(gl.TEXTURE_2D, screens[i]);
+      gl.uniform1f(card.u("uShotOn"), screens[i] ? 1 : 0);
+      gl.uniform1f(card.u("uTitleOn"), screens[i] ? 0 : titleReady);
       gl.uniform3f(card.u("uAxisX"), models[i][0] / s0(i), models[i][1] / s0(i), models[i][2] / s0(i));
       gl.uniform3f(card.u("uAxisY"), models[i][4] / s0(i), models[i][5] / s0(i), models[i][6] / s0(i));
       gl.uniform1f(card.u("uDim"), dims[i]);
@@ -601,6 +630,7 @@ export function createWorkHelixLayer(
     inside.render({
       rect: openRect, width: f.width, height: f.height, time: f.time, assemble,
       seed: shown * 1.37 + 0.4, deep: s.deep, mid: s.mid, glow: s.glow,
+      screen: screens[shown],
     });
   };
 
@@ -620,6 +650,8 @@ export function createWorkHelixLayer(
     dispose() {
       [card, atmosphere, veil].forEach((x) => gl.deleteProgram(x.p));
       sea.dispose();
+      disposed = true;
+      screens.forEach((t) => t && gl.deleteTexture(t));
       gl.deleteTexture(titleTex);
       inside.dispose();
       if (grab) {

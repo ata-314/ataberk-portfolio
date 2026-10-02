@@ -29,6 +29,7 @@ vec3 nebula(vec2 uv,float aspect,float t,float seed,vec3 deep,vec3 mid,vec3 glow
 
 export const cardVertex = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 in vec3 aPos; in vec3 aNormal; in vec2 aUv; in float aFace;
 uniform mat4 uModel,uView,uProj;
 out vec3 vWorld; out vec3 vNormal; out vec3 vNormalV; out vec2 vUv; out vec3 vLocal; flat out int vFace;
@@ -48,11 +49,13 @@ void main(){
 // in the glass as a flickering, channel-split hologram.
 export const cardFragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 in vec3 vWorld; in vec3 vNormal; in vec3 vNormalV; in vec2 vUv; in vec3 vLocal; flat in int vFace;
 uniform vec3 uCam; uniform vec3 uDeep,uMid,uGlow;
 uniform vec2 uHalf; uniform float uRadius,uAspect;
 uniform float uTime,uSeed,uAlpha,uHover,uDim,uSweep,uSolid;
 uniform sampler2D uTitles; uniform float uRow,uRows,uTitleOn;
+uniform sampler2D uShot; uniform float uShotOn;
 uniform vec3 uAxisX,uAxisY;
 uniform sampler2D uScene; uniform vec2 uResolution; uniform float uGlass;
 uniform vec2 uCursorUv,uCursorVel; uniform float uCursorLight;
@@ -97,6 +100,18 @@ void main(){
     uv+=(g/max(gd,1e-3))/vec2(uAspect,1.0)*wave*.022;
     uv-=uCursorVel*exp(-gd*5.0)*uCursorLight*.05;
     vec3 pic=nebula(uv,uAspect,uTime,uSeed,uDeep,uMid,uGlow);
+    if(uShotOn>.5){
+      // The product's screen as grains: one lit bead per cell, its size
+      // following the pixel's brightness, a faint wash of the screen under.
+      vec2 cells=vec2(118.0*uAspect,118.0);
+      vec2 cell=floor(uv*cells);
+      vec3 px=texture(uShot,vec2((cell.x+.5)/cells.x,1.0-(cell.y+.5)/cells.y)).rgb;
+      float br=dot(px,vec3(.3,.55,.15));
+      float r=length(fract(uv*cells)-.5);
+      float bead=1.0-smoothstep(.22+br*.26,.3+br*.3,r);
+      vec3 wash=texture(uShot,vec2(uv.x,1.0-uv.y),2.0).rgb;
+      pic=px*bead*1.55+wash*.22+uDeep*.12;
+    }
     pic*=1.0+wave*.35;
     float inner=smoothstep(-.08,0.0,d);
     float rim=exp(-abs(d+.006)*240.0);
@@ -140,6 +155,7 @@ void main(){
 // Fullscreen passes share one vertex stage.
 export const fullscreenVertex = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 out vec2 uv;
 void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));uv=p;gl_Position=vec4(p*2.0-1.0,0.0,1.0);}`;
 
@@ -147,6 +163,7 @@ void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));uv=p;gl_
 // faint shaft of light down the axis the bird falls along.
 export const atmosphereFragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 in vec2 uv;
 uniform float uAmount,uTime,uAspect;
 uniform vec2 uAxis;
@@ -174,6 +191,7 @@ void main(){
 // snapping between stamps.
 export const dataVertex = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 uniform mat4 uView,uProj;
 uniform vec2 uGrid;
 uniform float uTime,uTravel,uAmount,uDpr,uReveal,uAspect;
@@ -271,6 +289,7 @@ void main(){
 
 export const dataFragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 in vec3 vColor; in float vAlpha; in vec2 vLight;
 out vec4 color;
 void main(){
@@ -289,6 +308,7 @@ void main(){
 // calms them and curl noise swirls them in proportion to their speed.
 export const seaSimFragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 uniform sampler2D uState;
 uniform vec2 uGrid;
 uniform float uDt,uTime,uReset,uWidth,uSpan;
@@ -323,6 +343,7 @@ void main(){
 // horizontal smoke, like the scene smeared out of focus.
 export const veilFragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 in vec2 uv;
 uniform float uAmount,uTime,uAspect;
 uniform vec3 uTint;

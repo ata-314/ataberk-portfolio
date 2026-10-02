@@ -116,7 +116,7 @@ const tr: SiteContent = {
     ],
     ventures: [
       { name: "Oneavex", desc: "Kurucusu olduğum yaratıcı teknoloji ve dijital iletişim stüdyosu — AI video, motion ve sinematik reklam işleri." },
-      { name: "MODD-AI", desc: "Geliştirdiğim çok markalı içerik zekâsı: Brand Brain, agent tabanlı üretim ve kalite kontrol sistemleri." },
+      { name: "moddteam", desc: "Geliştirdiğim çok markalı içerik zekâsı: Brand Brain, agent tabanlı üretim ve kalite kontrol sistemleri." },
     ],
     thesis: "Akademik altyapım; üretken sanat, yapay zekâ yaratıcılığı ve NFT dönüşümü üzerine tamamladığım yüksek lisans tezine dayanıyor.",
     collaboration: {
@@ -198,7 +198,7 @@ const en: SiteContent = {
     ],
     ventures: [
       { name: "Oneavex", desc: "The creative technology and digital communication studio I founded — AI video, motion and cinematic advertising work." },
-      { name: "MODD-AI", desc: "The multi-brand content intelligence I build: Brand Brain, agent-based production and quality-control systems." },
+      { name: "moddteam", desc: "The multi-brand content intelligence I build: Brand Brain, agent-based production and quality-control systems." },
     ],
     thesis: "My academic background is a master's thesis on generative art, AI creativity and the NFT transformation.",
     collaboration: {

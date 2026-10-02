@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit --incremental false",
     "bake:bird": "node scripts/bake-bird.mjs",
     "bake:model": "node scripts/bake-model.mjs",
-    "qa": "node scripts/qa.mjs /private/tmp/ataberk-portfolio-qa"
+    "qa": "node scripts/qa.mjs /private/tmp/ataberk-portfolio-qa",
+    "shoot:live": "node scripts/shoot-live.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

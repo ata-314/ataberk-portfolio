@@ -10,10 +10,12 @@ import { nebulaChunk } from "./work-shaders";
 
 const fullscreen = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.0-1.0,0.0,1.0);}`;
 
 const simFragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 uniform sampler2D uState;
 uniform vec2 uGrid;
 uniform float uDt,uTime,uAspect,uReset;
@@ -61,6 +63,7 @@ void main(){
 
 const renderVertex = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 uniform sampler2D uState;
 uniform vec2 uGrid,uResolution;
 uniform vec4 uRect;
@@ -68,6 +71,7 @@ uniform float uTime,uAssemble,uAspect,uSeed,uCellPx;
 uniform vec3 uDeep,uMid,uGlow;
 uniform vec4 uComet[2];
 uniform float uCometOn;
+uniform sampler2D uShot; uniform float uShotOn;
 out vec3 vColor; out float vAlpha; out float vBead; out vec2 vDir; out float vStretch;
 ${nebulaChunk}
 void main(){
@@ -100,7 +104,8 @@ void main(){
   float hot=0.0;
   for(int i=0;i<2;i++){vec2 dc=home+off-uComet[i].xy;hot+=exp(-dot(dc,dc)*45.0)*uCometOn;}
   gl_PointSize=uCellPx*(1.1+disturb*.55+min(hot,1.0)*.45)*persp*vStretch;
-  vec3 pic=nebula(uv,uAspect,uTime,uSeed,uDeep,uMid,uGlow);
+  // A live product's screen: every grain is one of its pixels.
+  vec3 pic=uShotOn>.5?texture(uShot,vec2(uv.x,1.0-uv.y)).rgb*1.2+uDeep*.05:nebula(uv,uAspect,uTime,uSeed,uDeep,uMid,uGlow);
   vec3 col=pic*(1.0+disturb*.7+min(speed,2.0)*.25);
   col=mix(col,col*vec3(.75,.95,1.15)+vec3(.04,.09,.13),disturb*.5);
   col=mix(col,vec3(.85,.97,1.0)*1.6,min(hot,1.0)*.45);
@@ -111,6 +116,7 @@ void main(){
 
 const renderFragment = `#version 300 es
 precision highp float;
+precision highp sampler2D;
 in vec3 vColor; in float vAlpha; in float vBead; in vec2 vDir; in float vStretch;
 out vec4 color;
 void main(){
@@ -267,6 +273,7 @@ export function createWorkInside(gl: WebGL2RenderingContext, mobile: boolean, as
       deep: [number, number, number];
       mid: [number, number, number];
       glow: [number, number, number];
+      screen?: WebGLTexture | null;
     }) {
       gl.viewport(0, 0, opts.width, opts.height);
       gl.useProgram(draw.p);
@@ -287,6 +294,10 @@ export function createWorkInside(gl: WebGL2RenderingContext, mobile: boolean, as
       gl.uniform3fv(draw.u("uDeep"), opts.deep);
       gl.uniform3fv(draw.u("uMid"), opts.mid);
       gl.uniform3fv(draw.u("uGlow"), opts.glow);
+      gl.activeTexture(gl.TEXTURE11);
+      gl.bindTexture(gl.TEXTURE_2D, opts.screen ?? null);
+      gl.uniform1i(draw.u("uShot"), 11);
+      gl.uniform1f(draw.u("uShotOn"), opts.screen ? 1 : 0);
       gl.uniform4fv(draw.u("uComet"), comets);
       gl.uniform1f(draw.u("uCometOn"), cometOn);
       gl.drawArrays(gl.POINTS, 0, cols * rows);
