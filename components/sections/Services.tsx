@@ -47,7 +47,12 @@ export function Services({ locale }: { locale: Locale }) {
       section.dataset.active = String(entry.isIntersecting);
     }, { rootMargin: "100px" });
     observer.observe(section);
-    return () => observer.disconnect();
+    // Per card too, so on phones only the vignettes on screen keep animating.
+    const cards = new IntersectionObserver(entries => {
+      entries.forEach(entry => { (entry.target as HTMLElement).dataset.visible = String(entry.isIntersecting); });
+    });
+    section.querySelectorAll(".service-card").forEach(card => cards.observe(card));
+    return () => { observer.disconnect(); cards.disconnect(); };
   }, []);
 
   // Entrance: cards surface out of the page's depth — pushed back in Z,

@@ -150,7 +150,10 @@ function Film({ t }: { t: T }) {
 function Brand({ t }: { t: T }) {
   return (
     <Scene w={34} className="sa-brand">
-      <div className="sa-glass sa-logo"><span className="sa-mark">A</span><small>{t.brand}</small></div>
+      <div className="sa-glass sa-logo">
+        <svg viewBox="0 0 100 100" className="sa-guides"><circle cx="50" cy="44" r="30" pathLength="100" /><circle cx="50" cy="44" r="18" pathLength="100" className="g2" /><path d="M8 44H92M50 4V84" pathLength="100" className="g3" /></svg>
+        <span className="sa-mark">A</span><small>{t.brand}</small>
+      </div>
       <div className="sa-glass sa-palette"><small>{t.palette}</small><div>{[0, 1, 2, 3, 4].map(i => <i key={i} />)}</div></div>
       <div className="sa-glass sa-type"><b>Aa</b><div><small>{t.type}</small><span>Archivo</span></div></div>
       <div className="sa-glass sa-toggle"><small>{t.dark}</small><span className="sa-switch"><i /></span></div>
