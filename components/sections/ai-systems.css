@@ -44,16 +44,16 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 40px 90px -40px rgba(0,0,0,.9); }
 .ais-stage::before { content: ""; position: absolute; z-index: -1; left: var(--gx); top: var(--gy); width: 75%; aspect-ratio: 1; translate: -50% -50%; pointer-events: none; border-radius: 50%;
   background: radial-gradient(closest-side, rgb(var(--lime-rgb) / .16), rgb(var(--cyan-rgb) / .06) 60%, transparent); filter: blur(30px); transition: left 1.4s cubic-bezier(.4,0,.2,1), top 1.4s cubic-bezier(.4,0,.2,1); }
-.ais-visual { position: relative; display: grid; place-items: center; padding: 2.5rem 2.5rem 2.6rem; min-height: 0; animation: ais-in .7s cubic-bezier(.2,.7,.2,1) both; }
+.ais-visual { position: relative; display: grid; place-items: center; padding: 2.5rem 2.5rem 1rem; min-height: 0; animation: ais-in .7s cubic-bezier(.2,.7,.2,1) both; }
 .ais-caption { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin: 0 1.75rem; padding: 1.3rem 0 1.6rem; border-top: 1px solid rgb(var(--bone-rgb) / .1); }
 .ais-caption p { max-width: 48ch; color: #c6c2b9; font-size: 1rem; line-height: 1.6; animation: ais-in .7s .08s cubic-bezier(.2,.7,.2,1) both; }
 .ais-count { flex: none; font-family: var(--font-archivo), sans-serif; font-weight: 550; font-size: clamp(1.6rem, 2.4vw, 2.3rem); letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; color: #fff; }
 .ais-count i { font-style: normal; margin-inline: .2em; color: rgb(var(--bone-rgb) / .25); }
 @keyframes ais-in { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } }
 
-.ais-section:not([data-visible="true"]) :is(.ais-visual *, .ais-visual *::before, .ais-visual *::after) { animation-play-state: paused; }
+.ais-section:not([data-visible="true"]) .ais-visual * { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
-  .ais-visual, .ais-caption p, .ais-visual *, .ais-visual *::before, .ais-visual *::after { animation: none !important; }
+  .ais-visual, .ais-caption p, .ais-visual * { animation: none !important; }
   .ais-stage::before, .ais-tab b { transition: none; }
 }
 
@@ -65,7 +65,7 @@
   .ais-heading { order: 0; margin-bottom: 2rem; }
   .ais-stage { order: 1; height: auto; min-height: 30rem; }
   .ais-index { order: 2; margin-top: 1.5rem; }
-  .ais-visual { padding: 1.6rem 1.1rem 1.9rem; height: 22rem; }
+  .ais-visual { padding: 2rem 1.25rem .75rem; height: 22rem; }
   .ais-caption { margin: 0 1.3rem; padding: 1.1rem 0 1.3rem; }
   .ais-tab { padding: 1rem 0; }
 }
