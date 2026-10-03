@@ -1,12 +1,17 @@
-// The showreel inside the voxel tunnel: one screen per film, set along the
+// The showreel inside the voxel tunnel: one sheet per film, set along the
 // corridor and alternating sides. The reel advances by stops (see reelStops):
-// at every stop the flight hangs in front of a screen, which faces the
-// camera at a comfortable viewing distance, sized to the frame (half the
-// height on desktop, about half the width on phones) and kept clear of the
-// walls. Screens are bezelled in the tunnel's current light, come out of the
-// corridor's haze as they approach and brighten in focus. A screen shows its
-// poster until its clip is near; only the clips within a stop of the camera
-// are decoded and uploaded, and with reduced motion only posters are shown.
+// at every stop the flight hangs in front of a sheet, which faces the camera
+// at a comfortable viewing distance, sized to the frame (half the height on
+// desktop, about half the width on phones) and kept clear of the walls.
+// Each sheet is glass worked like paper: thin and bowed, one outer corner
+// curling, a slow ripple running through it (fluttering harder while the
+// reel rushes between stops). The film sits inside the glass, lensed a
+// little by its bend; a clear margin shows the tunnel through it; the edge
+// is a thin bright line with a colour fringe, and reflections, fresnel and
+// a travelling glint follow the sheet's curvature. Sheets surface from the
+// corridor's haze and brighten in focus. A sheet shows its poster until its
+// clip is near; only the clips within a stop of the camera are decoded and
+// uploaded, and with reduced motion only posters are shown.
 import type { ReelItem } from "@/content/reel";
 
 const vertex = `#version 300 es
@@ -15,14 +20,34 @@ layout(location=0) in vec2 corner;
 uniform mat4 view;
 uniform mat4 projection;
 uniform vec3 centre;
-uniform vec2 size; // screen size including the bezel
+uniform vec2 size; // sheet size including the clear margin
 uniform float yaw;
+uniform float curlSide; // which outer corner curls (+1 right, -1 left)
+uniform float flutter;
+uniform float time;
 out vec2 vLocal;
+out vec3 vWorld;
+out vec3 vNormal;
 out float vDepth;
+// Out-of-plane lift of the sheet at a local point, in world units.
+float lift(vec2 p) {
+  vec2 q=p/size;
+  float s=max(size.x,size.y);
+  float bow=(.25-q.x*q.x)*size.x*.22;
+  float wave=sin(q.y*3.4+q.x*2.2-time*1.25)*s*(.018+.035*flutter)*(.35+abs(q.x+.5*curlSide));
+  float c=smoothstep(.2,.95,q.x*curlSide+q.y);
+  return bow+wave+c*c*s*.22;
+}
 void main() {
   vec2 p=corner*size;
-  vec3 world=centre+vec3(p.x*cos(yaw),p.y,-p.x*sin(yaw));
+  float e=max(size.x,size.y)*.01;
+  float z=lift(p);
+  vec3 n=normalize(vec3(-(lift(p+vec2(e,0.0))-lift(p-vec2(e,0.0)))/(2.0*e),-(lift(p+vec2(0.0,e))-lift(p-vec2(0.0,e)))/(2.0*e),1.0));
+  float cy=cos(yaw), sy=sin(yaw);
+  vec3 world=centre+vec3(p.x*cy+z*sy,p.y,-p.x*sy+z*cy);
+  vNormal=vec3(n.x*cy+n.z*sy,n.y,-n.x*sy+n.z*cy);
   vLocal=p;
+  vWorld=world;
   vec4 v=view*vec4(world,1.0);
   vDepth=-v.z;
   gl_Position=projection*v;
@@ -32,10 +57,13 @@ const fragment = `#version 300 es
 precision highp float;
 precision highp sampler2D;
 in vec2 vLocal;
+in vec3 vWorld;
+in vec3 vNormal;
 in float vDepth;
 uniform sampler2D picture;
+uniform vec2 size;
 uniform vec2 screen; // picture size (world units)
-uniform float bezel;
+uniform vec3 eye;
 uniform float presence;
 uniform float focus;
 uniform float hue;
@@ -51,28 +79,48 @@ vec3 palette(float t,float s) {
 float box(vec2 p,vec2 b,float r){vec2 q=abs(p)-b+r;return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r;}
 void main() {
   vec3 tint=palette(hue,.3);
-  vec2 half_=screen*.5;
-  float outer=box(vLocal,half_+bezel,bezel*1.2);
-  if(outer>0.0) discard;
-  float inner=box(vLocal,half_,bezel*.5);
-  vec2 uv=vLocal/screen+.5;
-  uv.y=1.0-uv.y;
-  // A touch of contrast against the post pass's bloom and haze.
-  vec3 pic=pow(texture(picture,uv).rgb,vec3(1.18));
-  // Fine scan lines and a soft vignette keep it a screen in the corridor.
-  float scan=.94+.06*sin(vLocal.y*420.0);
-  vec2 e=abs(uv-.5)*2.0;
-  float vignette=1.0-.35*pow(max(e.x,e.y),3.0);
-  vec3 c=pic*scan*vignette*(.5+.42*focus);
-  // Bezel: dark metal with a lit inner edge and a travelling glint.
-  float rim=smoothstep(.006,0.0,abs(inner));
-  float glint=exp(-pow(fract((vLocal.x+vLocal.y)*.18-time*.25)*2.0-1.0,2.0)*40.0);
-  vec3 frame=vec3(.03,.04,.05)+tint*(.25+.75*focus)*(rim*1.4+glint*.35);
-  c=inner>0.0?frame:c+tint*rim*.6;
-  // Aerial perspective, as on the walls: the screens surface from the haze.
+  float s=max(size.x,size.y);
+  float sheet=box(vLocal,size*.5,s*.012);
+  if(sheet>0.0) discard;
+  vec3 n=normalize(vNormal);
+  vec3 v=normalize(eye-vWorld);
+  if(dot(n,v)<0.0) n=-n;
+  float facing=max(dot(n,v),0.0);
+  float fresnel=pow(1.0-facing,3.0);
+  // A fake surround for the reflection: the portal's glow down the corridor
+  // and the lit ceiling, both in the tunnel's light.
+  vec3 r=reflect(-v,n);
+  vec3 env=tint*(smoothstep(.55,1.0,-r.z)*.55+pow(max(r.y,0.0),3.0)*.35)+vec3(1.0)*pow(max(-r.z,0.0),24.0)*.6;
+  float glint=exp(-pow(fract((vLocal.x*.7+vLocal.y)/s*.9-time*.16)*2.0-1.0,2.0)*90.0)*(.4+fresnel*2.0);
+  // Edge: a thin glass edge with a colour fringe, lit where it turns
+  // toward the light rather than drawn as a frame.
+  float w=s*.0035;
+  vec3 edge=vec3(smoothstep(w*1.6,0.0,abs(sheet+w*.4)),smoothstep(w*1.6,0.0,abs(sheet)),smoothstep(w*1.6,0.0,abs(sheet-w*.4)));
+  edge=edge*mix(vec3(1.0),tint,.4)*(.15+fresnel*1.6+glint*1.4)*(.5+.5*focus);
+  float inside=box(vLocal,screen*.5,s*.006);
+  vec3 c;
+  float alpha;
+  if(inside<0.0) {
+    // The film behind the glass, lensed slightly by the bend.
+    vec2 uv=vLocal/screen+.5+n.xy*vec2(-.018,.018);
+    uv.y=1.0-uv.y;
+    vec3 pic=pow(texture(picture,clamp(uv,0.0,1.0)).rgb,vec3(1.15));
+    vec2 e=abs(uv-.5)*2.0;
+    pic*=1.0-.25*pow(max(e.x,e.y),4.0);
+    c=pic*(.55+.4*focus)*(1.0-fresnel*.45)+env*(.18+fresnel*.6)+vec3(glint)*.35+tint*smoothstep(s*.008,0.0,abs(inside))*.15;
+    alpha=1.0;
+  } else {
+    // Clear margin: frosted, see-through glass catching the light.
+    c=tint*.07+env*(.3+fresnel)+vec3(glint)*.5;
+    alpha=.2+fresnel*.4+glint*.3;
+  }
+  c+=edge;
+  alpha=max(alpha,max(edge.g,max(edge.r,edge.b)));
+  // Aerial perspective, as on the walls: the sheets surface from the haze.
   float fog=exp(-max(vDepth-6.0,0.0)*.03);
   float near=smoothstep(.4,2.0,vDepth);
-  color=vec4(mix(tint*.16,c,fog)*near*presence,1.0);
+  float k=near*presence;
+  color=vec4(mix(tint*.16*alpha,c,fog)*k,alpha*k);
 }`;
 
 export type ReelStops = { position: number; index: number; focus: number };
@@ -101,14 +149,24 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
   }
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "Reel link failed");
-  const u = Object.fromEntries(["view", "projection", "centre", "size", "yaw", "picture", "screen", "bezel", "presence", "focus", "hue", "time"]
+  const u = Object.fromEntries(["view", "projection", "centre", "size", "yaw", "curlSide", "flutter", "picture", "screen", "eye", "presence", "focus", "hue", "time"]
     .map((n) => [n, gl.getUniformLocation(program, n)]));
 
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
+  // A finely divided sheet, so it can bend.
+  const COLS = 28, ROWS = 40;
+  const grid: number[] = [];
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const x0 = x / COLS - 0.5, x1 = (x + 1) / COLS - 0.5, y0 = y / ROWS - 0.5, y1 = (y + 1) / ROWS - 0.5;
+      grid.push(x0, y0, x1, y0, x1, y1, x0, y0, x1, y1, x0, y1);
+    }
+  }
+  const vertexCount = grid.length / 2;
   const quad = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, quad);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5]), gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(grid), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
   gl.bindVertexArray(null);
@@ -177,13 +235,14 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
     let h = Math.min(0.95 * hh, ((mobile || aspect < 1 ? 1.05 : 0.6) * hw) / a);
     let w = h * a;
     const wallRoom = WALL - 0.6 - w * 0.48;
-    let x = Math.min(wallRoom, hw - w / 2 - 0.06 * hw);
+    // Room for the clear glass margin and the curling corner too.
+    let x = Math.min(wallRoom, hw - w * 0.55 - 0.08 * hw);
     if (x < 0) {
       // Very narrow frames: shrink rather than cross the flight line.
       const k = Math.max(0.5, (hw * 0.94) / w);
       w *= k;
       h *= k;
-      x = Math.max(0, hw - w / 2 - 0.06 * hw);
+      x = Math.max(0, hw - w * 0.55 - 0.08 * hw);
     }
     return { x: s.side * x, w, h, yaw: Math.atan2(-s.side * x, VIEW) };
   };
@@ -208,7 +267,7 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
       return { position, index, focus };
     },
     render(view: Float32Array, projection: Float32Array, camera: [number, number, number], time: number,
-      presence: number, hue: number, position: number, fovY: number, aspect: number) {
+      presence: number, hue: number, position: number, fovY: number, aspect: number, flutter: number) {
       // Decode only near the camera; pause everything else.
       for (let i = 0; i < screens.length; i++) {
         const s = screens[i];
@@ -233,33 +292,38 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
       gl.enable(gl.DEPTH_TEST);
       gl.depthFunc(gl.LEQUAL);
       gl.depthMask(true);
-      gl.disable(gl.BLEND);
+      // Premultiplied glass over the tunnel; colour only, the target's alpha is kept.
+      gl.enable(gl.BLEND);
+      gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
       gl.uniformMatrix4fv(u.view, false, view);
       gl.uniformMatrix4fv(u.projection, false, projection);
       gl.uniform1f(u.presence, presence);
       gl.uniform1f(u.hue, hue);
       gl.uniform1f(u.time, time);
+      gl.uniform1f(u.flutter, Math.min(1, flutter));
+      gl.uniform3f(u.eye, camera[0], camera[1], camera[2]);
       gl.uniform1i(u.picture, 12);
       gl.activeTexture(gl.TEXTURE12);
       const zFocus = camera[2] - VIEW;
-      for (let i = 0; i < screens.length; i++) {
+      // Far to near, so nearer glass blends over the sheets behind it.
+      for (let i = screens.length - 1; i >= 0; i--) {
         const s = screens[i];
         const z = zFocus - (i + 1 - position) * SPACING;
         if (z > camera[2] - 0.4 || z < -95) continue;
         const p = place(s, fovY, aspect);
-        const bezel = Math.max(p.w, p.h) * 0.018;
+        const margin = Math.max(p.w, p.h) * 0.045;
         const near = 1 - Math.min(1, Math.abs(position - (i + 1)) / 0.6);
         gl.uniform3f(u.centre, p.x, 0.06 + Math.sin(time * 0.5 + i) * 0.04, z);
-        gl.uniform2f(u.size, p.w + bezel * 2, p.h + bezel * 2);
+        gl.uniform2f(u.size, p.w + margin * 2, p.h + margin * 2);
         gl.uniform2f(u.screen, p.w, p.h);
-        gl.uniform1f(u.bezel, bezel);
         gl.uniform1f(u.yaw, p.yaw);
+        gl.uniform1f(u.curlSide, s.side);
         gl.uniform1f(u.focus, near * near * (3 - 2 * near));
         gl.bindTexture(gl.TEXTURE_2D, s.texture);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
       }
       gl.disable(gl.DEPTH_TEST);
-      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.bindVertexArray(null);
     },
     dispose() {
