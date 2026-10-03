@@ -1219,7 +1219,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       tunnel.render(view, projection, time, tunnelClock + scrollTravel + reelTravel + tunnelExit * tunnelExit * 140, tunnelIn,
         tunnelHue, smoothstep(voyage, 0.3, 0.5), Math.max(tunnelExit, warp * 0.45, Math.min(1, Math.abs(reelVelocity) / 50) * 0.5));
       reel.render(view, projection, camera, time, tunnelIn * (1 - tunnelExit), tunnelHue, reelPosition,
-        (Math.PI / 4) * (1 + warp * 0.32), stageW / Math.max(stageH, 1), reelVelocity);
+        (Math.PI / 4) * (1 + warp * 0.32), stageW / Math.max(stageH, 1));
       work.renderBack(sceneTarget);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
