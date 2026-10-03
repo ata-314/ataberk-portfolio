@@ -1,15 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "@/components/sections/work.css";
+import "@/components/work/case.css";
 import { notFound } from "next/navigation";
 import { isLocale, locales } from "@/lib/i18n";
 import { work, getWorkItem } from "@/content/work";
 import { Footer } from "@/components/sections/HomeSections";
 import { site } from "@/content/site";
+import { galleries } from "@/content/work-gallery";
 
 const labels = {
-  tr: { role: "Rol", year: "Yıl", category: "Kategori", next: "Sonraki proje", back: "Tüm işler" },
-  en: { role: "Role", year: "Year", category: "Category", next: "Next project", back: "All work" },
+  tr: {
+    role: "Rol", year: "Yıl", category: "Kategori", next: "Sonraki proje", back: "Tüm işler",
+    built: "Kullanılanlar", screens: "Ekranlar", desktop: "Masaüstü", phone: "Mobil", app: "Uygulama ekranları",
+    ask: "Markan için benzerini birlikte kuralım.", askBody: "Bir site, bir uygulama ya da bir lansman deneyimi: fikrini anlat, nasıl kurulacağını birlikte çıkaralım.", askCta: "İletişime geç",
+  },
+  en: {
+    role: "Role", year: "Year", category: "Category", next: "Next project", back: "All work",
+    built: "Built with", screens: "Screens", desktop: "Desktop", phone: "Mobile", app: "App screens",
+    ask: "Let's build something like this for your brand.", askBody: "A site, an app or a launch experience: tell me the idea and we'll work out how to build it together.", askCta: "Get in touch",
+  },
 };
 
 export function generateStaticParams() {
@@ -50,6 +60,10 @@ export default async function CasePage({
   const l = labels[locale];
   const items = work[locale].items;
   const next = items[(items.findIndex((w) => w.slug === slug) + 1) % items.length];
+  const gallery = galleries[slug];
+  const stack = item.sections.find((s) => s.kind === "technical")?.body.join(" · ").split(/\s*·\s*/).map((t) => t.replace(/\.$/, "")).filter(Boolean) ?? [];
+  const story = item.sections.filter((s) => s.kind !== "technical");
+  const host = item.live?.host;
 
   const schema = {
     "@context": "https://schema.org",
@@ -57,12 +71,13 @@ export default async function CasePage({
     name: item.title,
     description: item.idea,
     author: { "@type": "Person", name: "Ataberk Soylu" },
+    ...(item.live ? { url: item.live.url } : {}),
   };
 
   return (
     <main id="content" className="relative z-10 bg-ink">
       {/* Case hero */}
-      <header className="px-6 pt-32 md:px-10 md:pt-44">
+      <header className="case-hero px-6 pt-32 md:px-10 md:pt-44">
         <div className="mx-auto max-w-7xl">
           <Link
             href={`/${locale}#work`}
@@ -70,9 +85,10 @@ export default async function CasePage({
           >
             ← {l.back}
           </Link>
+          <p className="case-kicker mt-10">{item.category} · {item.year}</p>
           <h1
-            className="font-display mt-10 leading-[0.9] font-semibold tracking-[-0.05em]"
-            style={{ fontSize: "clamp(3.4rem, 10vw, 10rem)" }}
+            className="font-display case-title mt-4 leading-[0.9] font-semibold tracking-[-0.05em]"
+            style={{ fontSize: "clamp(3.2rem, 9vw, 9rem)" }}
           >
             {item.title}
           </h1>
@@ -102,7 +118,7 @@ export default async function CasePage({
         </div>
       </header>
 
-      {/* The product itself: a capture of it, or its film */}
+      {/* The product itself: a capture of it in a browser frame, or its film */}
       {item.media && (
         <div className="px-6 pt-16 md:px-10 md:pt-24">
           <div className="mx-auto max-w-7xl">
@@ -120,25 +136,26 @@ export default async function CasePage({
                 aria-label={item.title}
               />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                className="case-film"
-                src={item.media.image}
-                alt={item.title}
-                style={{ aspectRatio: String(item.media.aspect), width: `min(100%, calc(82svh * ${item.media.aspect}))` }}
-                loading="lazy"
-                decoding="async"
-              />
+              <figure className="case-browser">
+                {host && (
+                  <figcaption className="case-browser-bar" aria-hidden="true">
+                    <i /><i /><i />
+                    <span>{host}</span>
+                  </figcaption>
+                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.media.image} alt={item.title} style={{ aspectRatio: String(item.media.aspect) }} decoding="async" />
+              </figure>
             )}
           </div>
         </div>
       )}
 
-      {/* Sections — editorial tempo: alternating column starts */}
-      <div className="px-6 pb-24 md:px-10" style={{ paddingTop: "var(--space-section)" }}>
+      {/* Story — editorial tempo: alternating column starts */}
+      <div className="px-6 md:px-10" style={{ paddingTop: "var(--space-section)" }}>
         <div className="mx-auto max-w-7xl space-y-20">
-          {item.sections.map((s, i) => (
-            <section key={s.title} className="grid grid-cols-12 gap-6">
+          {story.map((s, i) => (
+            <section key={s.title} className="case-rise grid grid-cols-12 gap-6">
               <h2
                 className={`font-display col-span-12 text-2xl font-semibold tracking-tight md:col-span-4 ${
                   i % 2 ? "md:col-start-2" : ""
@@ -152,15 +169,67 @@ export default async function CasePage({
                 }`}
               >
                 {s.body.map((p) => (
-                  <p key={p.slice(0, 24)} className="leading-relaxed text-bone-dim">
+                  <p key={p.slice(0, 24)} className="text-lg leading-relaxed text-bone-dim">
                     {p}
                   </p>
                 ))}
               </div>
             </section>
           ))}
+          {stack.length > 0 && (
+            <section className="case-rise grid grid-cols-12 gap-6">
+              <h2 className="font-display col-span-12 text-2xl font-semibold tracking-tight md:col-span-4">{l.built}</h2>
+              <ul className="case-stack col-span-12 md:col-span-6 md:col-start-6">
+                {stack.map((t) => <li key={t}>{t}</li>)}
+              </ul>
+            </section>
+          )}
         </div>
       </div>
+
+      {/* Screens: chapters of the live product on desktop and on a phone */}
+      {gallery && (gallery.desktop.length > 0 || gallery.phone.length > 0) && (
+        <section className="px-6 md:px-10" style={{ paddingTop: "var(--space-section)" }} aria-label={l.screens}>
+          <div className="mx-auto max-w-7xl">
+            <p className="case-kicker">{l.screens}</p>
+            {gallery.desktop.length > 0 && (
+              <>
+                <h2 className="case-label font-display">{l.desktop}</h2>
+                <div className="case-shots">
+                  {gallery.desktop.map((src, i) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={src} src={src} alt={`${item.title} — ${l.desktop} ${i + 1}`} className="case-shot case-rise" loading="lazy" decoding="async" />
+                  ))}
+                </div>
+              </>
+            )}
+            {gallery.phone.length > 0 && (
+              <>
+                <h2 className="case-label font-display">{gallery.desktop.length ? l.phone : l.app}</h2>
+                <div className="case-phones" data-count={gallery.phone.length}>
+                  {gallery.phone.map((src, i) => (
+                    <div key={src} className="case-phone case-rise">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt={`${item.title} — ${l.phone} ${i + 1}`} loading="lazy" decoding="async" />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* The offer: a brief for the visitor's own project */}
+      <section className="px-6 md:px-10" style={{ paddingTop: "var(--space-section)" }}>
+        <div className="case-ask case-rise mx-auto max-w-7xl">
+          <h2 className="font-display">{l.ask}</h2>
+          <p>{l.askBody}</p>
+          <Link href={`/${locale}#contact`} className="case-live">
+            {l.askCta} <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+      </section>
 
       {/* Next project */}
       <Link
@@ -168,13 +237,17 @@ export default async function CasePage({
         data-cursor="view"
         className="group block px-6 py-20 md:px-10 md:py-28"
       >
-        <div className="mx-auto flex max-w-7xl flex-wrap items-baseline justify-between gap-4">
-          <span className="text-sm text-bone-dim">
-            {l.next}
-          </span>
-          <span className="font-display text-4xl font-semibold tracking-[-0.04em] transition-transform duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-x-2 md:text-7xl">
-            {next.title} →
-          </span>
+        <div className="case-next mx-auto max-w-7xl">
+          <div>
+            <span className="text-sm text-bone-dim">{l.next}</span>
+            <span className="font-display mt-3 block text-4xl font-semibold tracking-[-0.04em] transition-transform duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:translate-x-2 md:text-7xl">
+              {next.title} →
+            </span>
+          </div>
+          {next.media && "image" in next.media && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={next.media.image} alt="" className="case-next-shot" loading="lazy" decoding="async" />
+          )}
         </div>
       </Link>
       <Footer t={site[locale].footer} name={site[locale].name} />
