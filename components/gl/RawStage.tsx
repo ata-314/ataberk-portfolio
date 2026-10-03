@@ -1239,16 +1239,18 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       if (sceneTarget) gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget);
       gl.viewport(0, 0, canvas.width, canvas.height);
       work.renderFront(sceneTarget);
+      // A film in focus on the reel is kept clear: less bloom and fringing.
+      const reelClear = reel.focus(reelPosition).focus * tunnelIn;
       post?.finish(time, {
-        bloom: 0.8 + warp * 0.35,
-        threshold: 0.72,
+        bloom: (0.8 + warp * 0.35) * (1 - reelClear * 0.45),
+        threshold: 0.72 + reelClear * 0.2,
         // The work backdrop is fine grains: colour fringing and film grain
         // would smear them into static, so both ease off there.
-        aberration: (0.02 + warp * 0.05) * (1 - workAmount * 0.85),
+        aberration: (0.02 + warp * 0.05) * (1 - workAmount * 0.85) * (1 - reelClear * 0.8),
         grain: 0.04 * (1 - workAmount * 0.75),
         grade: [0.0, 0.25, 0.3],
         amount: Math.max(tunnelIn, xOpen * voyageHold, workAmount * 0.9),
-        ring: tunnelIn,
+        ring: tunnelIn * (1 - reelClear * 0.85),
       });
       prevBird.set(birdMatrix);
       simPrimed = birdVisible;

@@ -81,38 +81,41 @@ void main(){
   if(f>reveal) discard;
   float front=smoothstep(.06,0.0,reveal-f)*step(appear,.999);
   float fog=exp(-max(vDepth-6.0,0.0)*.03)*smoothstep(.4,2.0,vDepth)*presence;
-  if(pass<.5){ color=vec4(0.0,0.0,0.0,.7*fog*(1.0-front)); return; }
+    // In focus the effects step back so the film reads clearly; they come
+  // back while it unfolds and wherever the cursor plays.
+  float calm=focus*(1.0-cursor.z*.6);
+  if(pass<.5){ color=vec4(0.0,0.0,0.0,mix(.7,1.0,focus)*fog*(1.0-front)); return; }
   vec2 uv=vUv;
   // Drift, torn lines (more of them near the cursor) and the click's slices.
-  uv.x+=sin(vUv.y*22.0+time*2.6)*.0016;
+  uv.x+=sin(vUv.y*22.0+time*2.6)*.0016*(1.0-calm);
   float line=floor(vUv.y*90.0);
   vec2 aspect=vec2(size.x/size.y,1.0);
   vec2 toCursor=(vUv-cursor.xy)*aspect;
   float d=length(toCursor);
   float near=exp(-d*7.0)*cursor.z;
-  float tearOdds=.965-near*.25;
+  float tearOdds=mix(.965,.995,calm)-near*.25;
   uv.x+=step(tearOdds,h11(line+floor(time*9.0)))*(h11(line*3.1)-.5)*(.04+near*.08);
   float slice=floor(vUv.y*26.0);
   uv.x+=(h11(slice+floor(burstAge*18.0))-.5)*.22*burst;
   // Ripple running out from the cursor.
   uv+=toCursor/max(d,1e-3)/aspect*sin(d*42.0-time*9.0)*.012*near;
-  float split=.003+near*.012+burst*.02;
+  float split=.003*(1.0-calm*.8)+near*.012+burst*.02;
   vec2 tuv=vec2(uv.x,1.0-uv.y);
   vec3 pic=vec3(texture(picture,tuv+vec2(split,0.0)).r,texture(picture,tuv).g,texture(picture,tuv-vec2(split,0.0)).b);
   float lum=dot(pic,vec3(.3,.59,.11));
   // Scan lines running down, and an interference band now and then.
-  float scan=.8+.2*sin(vUv.y*size.y*160.0+time*6.0);
+  float scan=1.0-mix(.2,.05,calm)*(.5+.5*sin(vUv.y*size.y*160.0+time*6.0));
   float band=exp(-pow((fract(vUv.y*.6+time*.11)-.5)*14.0,2.0));
-  float flicker=.93+.07*sin(time*47.0)*sin(time*13.0);
+  float flicker=1.0-mix(.07,.015,calm)*(.5+.5*sin(time*47.0)*sin(time*13.0));
   vec2 e=abs(vUv-.5)*2.0;
   float rim=smoothstep(.97,1.0,max(e.x,e.y));
   vec3 c;
   if(layer<.5){
-    c=mix(pic,tint*lum*1.5,.18)*scan*flicker*(.65+.4*focus)*(1.0+band*.3+burst*.45);
-    c+=tint*(rim*.5+front*1.4+band*.05+near*.12);
+    c=mix(pic,tint*lum*1.5,mix(.18,.03,calm))*scan*flicker*(.65+.3*focus)*(1.0+band*.3*(1.0-calm)+burst*.45);
+    c+=tint*(rim*mix(.5,.3,calm)+front*1.4+band*.05*(1.0-calm)+near*.12);
   } else {
     // Ghosts: the picture's light only, thinner the further back.
-    c=tint*lum*(layer<1.5?.22:.1)*scan+tint*rim*.2;
+    c=(tint*lum*(layer<1.5?.22:.1)*scan+tint*rim*.2)*(1.0-calm*.5);
   }
   color=vec4(c*fog,0.0);
 }`;
@@ -345,7 +348,7 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
     const tanV = Math.tan(fovY / 2);
     const hw = tanV * aspect * VIEW, hh = tanV * VIEW;
     const a = s.item.aspect;
-    let h = Math.min(0.95 * hh, ((mobile || aspect < 1 ? 1.05 : 0.6) * hw) / a);
+    let h = Math.min(0.95 * hh, ((mobile || aspect < 1 ? 1.05 : 0.68) * hw) / a);
     let w = h * a;
     const wallRoom = WALL - 0.6 - w * 0.48;
     let x = Math.min(wallRoom, hw - w * 0.55 - 0.08 * hw);
@@ -471,16 +474,21 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
         gl.activeTexture(gl.TEXTURE12);
         gl.bindTexture(gl.TEXTURE_2D, s.texture);
         gl.bindVertexArray(quadVao);
+        // Ghosts first, so the veil hides them behind the picture and they
+        // show only where the turn parts them from it.
+        gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE);
+        gl.uniform1f(u.pass, 1);
+        for (const layer of [2, 1]) {
+          gl.uniform1f(u.layer, layer);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
         gl.blendFuncSeparate(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
         gl.uniform1f(u.pass, 0);
         gl.uniform1f(u.layer, 0);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
         gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE);
         gl.uniform1f(u.pass, 1);
-        for (const layer of [2, 1, 0]) {
-          gl.uniform1f(u.layer, layer);
-          gl.drawArrays(gl.TRIANGLES, 0, 6);
-        }
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
 
         // The fan: from a slit in the wall, behind the picture, to its
         // unfolded part; and the dust drifting through it.
@@ -501,7 +509,7 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
           fanData.set([v[0], v[1], v[2], v === sTop || v === sBot ? 0 : 1], o);
           o += 4;
         }
-        const strength = presence * Math.min(1, appear * 3) * (1.2 - 0.75 * focus) * (1 + s.over * 0.25 + burst * 1.2);
+        const strength = presence * Math.min(1, appear * 3) * (1.2 - 1.0 * focus) * (1 + s.over * 0.25 + burst * 1.2);
         gl.useProgram(fan.program);
         gl.uniformMatrix4fv(fan.u.view, false, view);
         gl.uniformMatrix4fv(fan.u.projection, false, projection);
