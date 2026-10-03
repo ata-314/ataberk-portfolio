@@ -113,8 +113,8 @@ void main(){
       float bead=1.0-smoothstep(.22+br*.26,.3+br*.3,r);
       vec3 wash=texture(uShot,vec2(uv.x,1.0-uv.y),2.0).rgb;
       pic=px*bead*1.55+wash*.22+uDeep*.12;
-      // A project film reads as itself: its picture shows through the
-      // beads, which stay as a fine lit grain over it.
+      // A project's own picture (a capture or its film) reads as itself:
+      // it shows through the beads, which stay as a fine lit grain over it.
       if(uClear>.5){
         vec3 film=textureLod(uShot,vec2(uv.x,1.0-uv.y),.3).rgb*1.12;
         pic=mix(pic,film*(.86+.22*bead),.72);

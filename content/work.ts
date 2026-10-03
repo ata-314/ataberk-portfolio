@@ -23,8 +23,8 @@ export type WorkItem = {
   visual: "field" | "agents" | "studio" | "spatial" | "web" | "film";
   // The working product, when it is public: opened in a new tab.
   live?: { url: string; label: string; host: string };
-  // The project's own film, shown at the top of its case study.
-  media?: { video: string; poster: string; aspect: number };
+  // Shown at the top of its case study: a capture of the product, or its film.
+  media?: { image: string; aspect: number } | { video: string; poster: string; aspect: number };
   sections: CaseSection[];
 };
 
@@ -78,25 +78,26 @@ const tr: WorkContent = {
       ],
     },
     {
-      slug: "piyes-levent",
-      title: "Piyes Levent",
-      category: "AI Tanıtım Filmi",
+      slug: "ala-cekmekoy",
+      title: "A'lâ Çekmeköy Nefes",
+      live: { url: "https://www.alacekmekoynefes.com", label: "Siteyi aç", host: "alacekmekoynefes.com" },
+      category: "Web Deneyimi",
       year: "2026",
-      role: "AI Film Üretimi",
+      role: "Tasarım · Geliştirme",
       personal: false,
-      idea: "İstanbul siluetinden bir eskizin binaya dönüşmesine: bir konut projesini şehrin içinden anlatan dikey tanıtım filmi.",
+      idea: "Çekmeköy'ün orman dokusunun yanında 72 konutluk bir projeyi, kaydırdıkça oynayan bir film gibi anlatan lansman sitesi.",
       layout: "featured",
-      visual: "film",
-      media: { video: "/reel/piyes-levent.mp4", poster: "/reel/piyes-levent.jpg", aspect: 9 / 16 },
+      visual: "web",
+      media: { image: "/work/ala-cekmekoy.jpg", aspect: 1600 / 992 },
       sections: [
         {
           kind: "approach",
-          title: "Film",
+          title: "Yaratıcı yaklaşım",
           body: [
-            "Film Boğaz Köprüsü ve şehir siluetiyle açılıyor. Elle çizilen bir eskiz gerçek binaya dönüşüyor; ardından vaziyet planı, cephe detayları, giriş ve bir sanat eseriyle projenin karakteri kuruluyor ve gece şehir manzarasıyla kapanıyor.",
+            "Tek ekranlık bir kaydırma deneyimi: proje videosu kaydırmayla ilerliyor, cam paneller projenin rakamlarını (14.300 m² arazi, 9 blok, 72 konut) ve yaşam alanlarını taşıyor, bilgi formu her an elinizin altında.",
           ],
         },
-        { kind: "technical", title: "Format", body: ["Dikey 9:16 · yaklaşık 60 sn · yapay zekâ ile üretilmiş sahneler, kurgu ve marka kapanışı."] },
+        { kind: "technical", title: "Teknik", body: ["Next.js · Tailwind CSS · GSAP · Lenis · kaydırmayla kontrol edilen video · lead formu."] },
       ],
     },
     {
@@ -110,7 +111,7 @@ const tr: WorkContent = {
       idea: "İklimlendirme, enerji ve e-mobiliteyi tek noktadan sunan bir marka için kaydırmayla oynayan sinematik bir site.",
       layout: "wide",
       visual: "web",
-      media: { video: "/reel/ucay-360.mp4", poster: "/reel/ucay-360.jpg", aspect: 16 / 9 },
+      media: { image: "/work/ucay-360.jpg", aspect: 1600 / 992 },
       sections: [
         {
           kind: "approach",
@@ -123,30 +124,9 @@ const tr: WorkContent = {
       ],
     },
     {
-      slug: "elega-gunesli",
-      title: "Elega Güneşli",
-      category: "AI Tanıtım Filmi",
-      year: "2026",
-      role: "AI Film Üretimi",
-      personal: false,
-      idea: "“Herkes için Elega Güneşli”: binadan pencereye, pencereden evin içine geçerek yaşamın kendisini anlatan dikey film.",
-      layout: "split",
-      visual: "film",
-      media: { video: "/reel/elega-gunesli.mp4", poster: "/reel/elega-gunesli.jpg", aspect: 9 / 16 },
-      sections: [
-        {
-          kind: "approach",
-          title: "Film",
-          body: [
-            "Kamera binanın cephesinden bir pencereye, oradan evin içine giriyor. Aile, mutfak, spor ve çalışma anları tek bir gün gibi akıyor; film marka kapanışıyla bitiyor.",
-          ],
-        },
-        { kind: "technical", title: "Format", body: ["Dikey 9:16 · yaklaşık 28 sn · yapay zekâ ile üretilmiş sahneler, kurgu ve marka kapanışı."] },
-      ],
-    },
-    {
       slug: "dbh-group",
       title: "DBH Group",
+      live: { url: "https://dbh-group-site.vercel.app", label: "Siteyi aç", host: "dbh-group-site.vercel.app" },
       category: "Web Deneyimi",
       year: "2026",
       role: "Tasarım · Geliştirme",
@@ -154,38 +134,85 @@ const tr: WorkContent = {
       idea: "İnşaat, gayrimenkul, maden, teknoloji, enerji ve turizmde faaliyet gösteren bir grup için sinematik bir ana sayfa.",
       layout: "wide",
       visual: "web",
-      media: { video: "/reel/dbh-group.mp4", poster: "/reel/dbh-group.jpg", aspect: 16 / 9 },
+      media: { image: "/work/dbh-group.jpg", aspect: 1600 / 992 },
       sections: [
         {
           kind: "approach",
           title: "Yaratıcı yaklaşım",
           body: [
-            "Grubun altı alanı tek bir film akışında birleşiyor: kuleler, taş ocağı, konut projeleri, ışıklı bir şehir maketi, otel ve rüzgâr türbinleri. Ana sayfa bu filmin temposuyla açılıyor.",
+            "Açılışta grubun logosu bir mozaikten kurulup sahneye dönüşüyor; ardından kaydırdıkça grubun altı alanı tam ekran bölümler halinde akıyor: inşaat, gayrimenkul, maden, teknoloji, enerji ve turizm.",
           ],
         },
         { kind: "technical", title: "Teknik", body: ["Next.js · Tailwind CSS · GSAP · Lenis."] },
       ],
     },
     {
-      slug: "en-bostanci",
-      title: "eN Bostancı",
-      category: "AI Tanıtım Filmi",
+      slug: "the-lock",
+      title: "The Lock Adres Barbarossa",
+      live: { url: "https://www.thelock.com.tr", label: "Siteyi aç", host: "thelock.com.tr" },
+      category: "Web Deneyimi",
       year: "2026",
-      role: "AI Film Üretimi",
+      role: "Tasarım · Geliştirme",
       personal: false,
-      idea: "“Stil Sahibi Yaşam”: aynı salon, kesintisiz tek bir planda farklı iç mimari stillere bürünüyor.",
-      layout: "typographic",
-      visual: "film",
-      media: { video: "/reel/en-bostanci.mp4", poster: "/reel/en-bostanci.jpg", aspect: 9 / 16 },
+      idea: "“Zamanın İçinde Zamansız Mimari”: İstanbul'da 4 blok, 286 konut ve 100 ticari alandan oluşan bir proje için kurumsal tanıtım sitesi.",
+      layout: "wide",
+      visual: "web",
+      media: { image: "/work/the-lock.jpg", aspect: 1600 / 992 },
       sections: [
         {
           kind: "approach",
-          title: "Film",
+          title: "Yaratıcı yaklaşım",
           body: [
-            "Kamera aynı salonda kalırken mekân stilden stile geçiyor: sade, modern, klasik ve renkli dokular birbirine dönüşüyor. Daire tek, yaşam biçimleri çok; film marka kapanışıyla bitiyor.",
+            "Projenin taş, ışık ve suyla kurulan mimari dili sitenin tonunu belirliyor: gün batımında bir açılış, ölçülü tipografi ve projeyi, konumu, tanıtım filmlerini ve e-kataloğu taşıyan sade bir akış.",
           ],
         },
-        { kind: "technical", title: "Format", body: ["Dikey 9:16 · yaklaşık 32 sn · yapay zekâ ile üretilmiş sahneler, kurgu ve marka kapanışı."] },
+        { kind: "technical", title: "Teknik", body: ["Next.js."] },
+      ],
+    },
+    {
+      slug: "fidan-property",
+      title: "Fidan Property",
+      live: { url: "https://www.fidanproperty.com", label: "Siteyi aç", host: "fidanproperty.com" },
+      category: "Gayrimenkul Platformu",
+      year: "2026",
+      role: "Tasarım · Geliştirme",
+      personal: false,
+      idea: "İstanbul ve Bodrum'da gayrimenkul ve gayrimenkul yoluyla Türk vatandaşlığı arayan yabancı yatırımcılar için portföy sitesi.",
+      layout: "split",
+      visual: "web",
+      media: { image: "/work/fidan-property.jpg", aspect: 1600 / 992 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Yaratıcı yaklaşım",
+          body: [
+            "Uluslararası bir kitleye yönelik çok dilli bir site: konum, durum, tür ve fiyatla filtrelenen proje araması, bölge rehberleri, blog ve yatırım odaklı bir anlatım.",
+          ],
+        },
+        { kind: "technical", title: "Teknik", body: ["WordPress · Elementor · gayrimenkul arama ve filtreleme."] },
+      ],
+    },
+    {
+      slug: "patika",
+      title: "Patika",
+      category: "Mobil Uygulama",
+      year: "2026",
+      role: "Ürün Tasarımı · Geliştirme",
+      personal: true,
+      idea: "Odak seanslarını sanal dostların büyümesi, görevler, istatistikler ve yaşayan bir yuvayla birleştiren mobil uygulama.",
+      layout: "system",
+      visual: "agents",
+      media: { image: "/work/patika.jpg", aspect: 1600 / 992 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Yaratıcı yaklaşım",
+          body: [
+            "Odaklanmak bir dostu beslemek demek: her seans dostunu büyütür ve yuvasına yeni eşyalar kazandırır. Yuva, dostların çim ve gölet sınırları içinde kendi hareketleriyle dolaştığı izometrik bir dünya.",
+            "Görevler seanslara bağlanır, özet ekranı seriyi, haftalık ritmi ve neye odaklanıldığını gösterir; ambiyans sesleri ve dokunsal geri bildirim deneyimi tamamlar.",
+          ],
+        },
+        { kind: "technical", title: "Teknik", body: ["Expo · React Native · TypeScript · AsyncStorage · Jest · iOS ve Android sürüm derlemeleri."] },
       ],
     },
     {
@@ -373,25 +400,26 @@ const en: WorkContent = {
       ],
     },
     {
-      slug: "piyes-levent",
-      title: "Piyes Levent",
-      category: "AI Brand Film",
+      slug: "ala-cekmekoy",
+      title: "A'lâ Çekmeköy Nefes",
+      live: { url: "https://www.alacekmekoynefes.com", label: "Open the site", host: "alacekmekoynefes.com" },
+      category: "Web Experience",
       year: "2026",
-      role: "AI Film Production",
+      role: "Design · Development",
       personal: false,
-      idea: "From the Istanbul skyline to a sketch that turns into a building: a vertical film telling a residential project from inside the city.",
+      idea: "A launch site that tells a 72-home project beside Çekmeköy's forest like a film played by scrolling.",
       layout: "featured",
-      visual: "film",
-      media: { video: "/reel/piyes-levent.mp4", poster: "/reel/piyes-levent.jpg", aspect: 9 / 16 },
+      visual: "web",
+      media: { image: "/work/ala-cekmekoy.jpg", aspect: 1600 / 992 },
       sections: [
         {
           kind: "approach",
-          title: "Film",
+          title: "Creative approach",
           body: [
-            "The film opens on the Bosphorus Bridge and the skyline. A hand-drawn sketch becomes the real building; the site plan, facade details, the entrance and an artwork build the project's character, and it closes on the city at night.",
+            "A single-screen scroll experience: the project film advances with the scroll, glass panels carry the project's figures (14,300 m² of land, 9 blocks, 72 homes) and its living spaces, and the enquiry form is always at hand.",
           ],
         },
-        { kind: "technical", title: "Format", body: ["Vertical 9:16 · about 60 s · AI-generated scenes, edit and brand end card."] },
+        { kind: "technical", title: "Technical", body: ["Next.js · Tailwind CSS · GSAP · Lenis · scroll-driven video · lead form."] },
       ],
     },
     {
@@ -405,7 +433,7 @@ const en: WorkContent = {
       idea: "A cinematic, scroll-played site for a brand that brings climate control, energy and e-mobility together.",
       layout: "wide",
       visual: "web",
-      media: { video: "/reel/ucay-360.mp4", poster: "/reel/ucay-360.jpg", aspect: 16 / 9 },
+      media: { image: "/work/ucay-360.jpg", aspect: 1600 / 992 },
       sections: [
         {
           kind: "approach",
@@ -418,30 +446,9 @@ const en: WorkContent = {
       ],
     },
     {
-      slug: "elega-gunesli",
-      title: "Elega Güneşli",
-      category: "AI Brand Film",
-      year: "2026",
-      role: "AI Film Production",
-      personal: false,
-      idea: "“Elega Güneşli for everyone”: a vertical film moving from the building to a window and into the home to show life itself.",
-      layout: "split",
-      visual: "film",
-      media: { video: "/reel/elega-gunesli.mp4", poster: "/reel/elega-gunesli.jpg", aspect: 9 / 16 },
-      sections: [
-        {
-          kind: "approach",
-          title: "Film",
-          body: [
-            "The camera travels from the facade to a window and into the home. Family, kitchen, workout and work moments flow like a single day; the film ends on the brand.",
-          ],
-        },
-        { kind: "technical", title: "Format", body: ["Vertical 9:16 · about 28 s · AI-generated scenes, edit and brand end card."] },
-      ],
-    },
-    {
       slug: "dbh-group",
       title: "DBH Group",
+      live: { url: "https://dbh-group-site.vercel.app", label: "Open the site", host: "dbh-group-site.vercel.app" },
       category: "Web Experience",
       year: "2026",
       role: "Design · Development",
@@ -449,38 +456,85 @@ const en: WorkContent = {
       idea: "A cinematic homepage for a group working across construction, real estate, mining, technology, energy and tourism.",
       layout: "wide",
       visual: "web",
-      media: { video: "/reel/dbh-group.mp4", poster: "/reel/dbh-group.jpg", aspect: 16 / 9 },
+      media: { image: "/work/dbh-group.jpg", aspect: 1600 / 992 },
       sections: [
         {
           kind: "approach",
           title: "Creative approach",
           body: [
-            "The group's six fields meet in one film: towers, a quarry, residences, a lit city model, a hotel and wind turbines. The homepage opens at the film's tempo.",
+            "The opening builds the group's logo from a mosaic that opens into the scene; scrolling then runs through its six fields as full-screen chapters: construction, real estate, mining, technology, energy and tourism.",
           ],
         },
         { kind: "technical", title: "Technical", body: ["Next.js · Tailwind CSS · GSAP · Lenis."] },
       ],
     },
     {
-      slug: "en-bostanci",
-      title: "eN Bostancı",
-      category: "AI Brand Film",
+      slug: "the-lock",
+      title: "The Lock Adres Barbarossa",
+      live: { url: "https://www.thelock.com.tr", label: "Open the site", host: "thelock.com.tr" },
+      category: "Web Experience",
       year: "2026",
-      role: "AI Film Production",
+      role: "Design · Development",
       personal: false,
-      idea: "“A life with style”: one living room turns through different interior styles in a single continuous shot.",
-      layout: "typographic",
-      visual: "film",
-      media: { video: "/reel/en-bostanci.mp4", poster: "/reel/en-bostanci.jpg", aspect: 9 / 16 },
+      idea: "“Timeless architecture within time”: a corporate site for an Istanbul project of 4 blocks, 286 homes and 100 commercial units.",
+      layout: "wide",
+      visual: "web",
+      media: { image: "/work/the-lock.jpg", aspect: 1600 / 992 },
       sections: [
         {
           kind: "approach",
-          title: "Film",
+          title: "Creative approach",
           body: [
-            "The camera stays in the same room while the space moves from style to style: pared-back, modern, classic and colourful textures turn into one another. One flat, many ways of living; the film ends on the brand.",
+            "The project's architecture of stone, light and water sets the site's tone: an opening at sunset, measured typography and a quiet flow through the project, its location, films and e-catalogue.",
           ],
         },
-        { kind: "technical", title: "Format", body: ["Vertical 9:16 · about 32 s · AI-generated scenes, edit and brand end card."] },
+        { kind: "technical", title: "Technical", body: ["Next.js."] },
+      ],
+    },
+    {
+      slug: "fidan-property",
+      title: "Fidan Property",
+      live: { url: "https://www.fidanproperty.com", label: "Open the site", host: "fidanproperty.com" },
+      category: "Real Estate Platform",
+      year: "2026",
+      role: "Design · Development",
+      personal: false,
+      idea: "A portfolio site for foreign investors looking for property in Istanbul and Bodrum, and for Turkish citizenship through real estate.",
+      layout: "split",
+      visual: "web",
+      media: { image: "/work/fidan-property.jpg", aspect: 1600 / 992 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Creative approach",
+          body: [
+            "A multilingual site for an international audience: project search filtered by location, status, type and price, area guides, a blog and an investment-led story.",
+          ],
+        },
+        { kind: "technical", title: "Technical", body: ["WordPress · Elementor · property search and filtering."] },
+      ],
+    },
+    {
+      slug: "patika",
+      title: "Patika",
+      category: "Mobile App",
+      year: "2026",
+      role: "Product Design · Development",
+      personal: true,
+      idea: "A mobile app that joins focus sessions with growing virtual companions, tasks, statistics and a living home.",
+      layout: "system",
+      visual: "agents",
+      media: { image: "/work/patika.jpg", aspect: 1600 / 992 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Creative approach",
+          body: [
+            "Focusing means feeding a companion: every session grows it and earns new things for its home. The home is an isometric world where companions wander on their own within the grass and pond.",
+            "Tasks are tied to sessions, and the summary shows the streak, the weekly rhythm and what you focused on; ambient sounds and haptics complete the experience.",
+          ],
+        },
+        { kind: "technical", title: "Technical", body: ["Expo · React Native · TypeScript · AsyncStorage · Jest · iOS and Android release builds."] },
       ],
     },
     {

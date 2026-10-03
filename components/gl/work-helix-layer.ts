@@ -631,7 +631,7 @@ export function createWorkHelixLayer(
       gl.activeTexture(gl.TEXTURE11);
       gl.bindTexture(gl.TEXTURE_2D, screens[i]);
       gl.uniform1f(card.u("uShotOn"), screens[i] ? 1 : 0);
-      gl.uniform1f(card.u("uClear"), videos[i] ? 1 : 0);
+      gl.uniform1f(card.u("uClear"), videos[i] || slots[i].screen ? 1 : 0);
       gl.uniform1f(card.u("uTitleOn"), titleReady);
       gl.uniform3f(card.u("uAxisX"), models[i][0] / s0(i), models[i][1] / s0(i), models[i][2] / s0(i));
       gl.uniform3f(card.u("uAxisY"), models[i][4] / s0(i), models[i][5] / s0(i), models[i][6] / s0(i));

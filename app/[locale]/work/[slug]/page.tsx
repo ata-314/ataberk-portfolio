@@ -102,22 +102,34 @@ export default async function CasePage({
         </div>
       </header>
 
-      {/* The project's own film */}
+      {/* The product itself: a capture of it, or its film */}
       {item.media && (
         <div className="px-6 pt-16 md:px-10 md:pt-24">
           <div className="mx-auto max-w-7xl">
-            <video
-              className="case-film"
-              src={item.media.video}
-              poster={item.media.poster}
-              style={{ aspectRatio: String(item.media.aspect), width: `min(100%, calc(82svh * ${item.media.aspect}))` }}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              aria-label={item.title}
-            />
+            {"video" in item.media ? (
+              <video
+                className="case-film"
+                src={item.media.video}
+                poster={item.media.poster}
+                style={{ aspectRatio: String(item.media.aspect), width: `min(100%, calc(82svh * ${item.media.aspect}))` }}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                aria-label={item.title}
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                className="case-film"
+                src={item.media.image}
+                alt={item.title}
+                style={{ aspectRatio: String(item.media.aspect), width: `min(100%, calc(82svh * ${item.media.aspect}))` }}
+                loading="lazy"
+                decoding="async"
+              />
+            )}
           </div>
         </div>
       )}
