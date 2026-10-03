@@ -214,205 +214,235 @@
   }
 }
 
-/* ── Product-page scenes (CaseShow) ───────────────────────────────── */
-.show-mac { height: calc(100svh + var(--chapters) * 80svh); position: relative; }
-.show-phones { height: 330svh; position: relative; }
-.show-stage {
+/* ── Fly-through case (CaseShow) ─────────────────────────────────── */
+.fly { position: relative; height: calc(100svh + var(--count) * 85svh); }
+.fly-stage {
   position: sticky;
   top: 0;
   height: 100svh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
+  perspective: 1100px;
 }
-.show-glow {
-  position: absolute;
-  inset: 10% 15% 25%;
-  background: radial-gradient(50% 50% at 50% 55%, rgb(200 255 62 / 0.16), transparent 70%);
-  filter: blur(30px);
-  pointer-events: none;
-}
-
-/* Laptop, built in CSS: a lid with a black bezel and notch, and a space
-   black base with a lip. The lid hinges at its foot. */
-.show-stage-mac { perspective: 2400px; }
-.mac {
-  position: relative;
-  transform-style: preserve-3d;
-  width: min(82vw, 1080px, calc((100svh - 13rem) * 1.5));
-  perspective: 2600px;
-  transform-origin: 50% 80%;
-}
-.mac-lid {
-  position: relative;
-  transform-origin: 50% 100%;
-  transform-style: preserve-3d;
-}
-/* The lid's back: anodised space black with a soft light across it. */
-.mac-back {
+.fly-space {
   position: absolute;
   inset: 0;
-  border-radius: 2.2% / 3.4%;
-  background: radial-gradient(70% 60% at 50% 40%, #4a4e55, #26282c 70%), #26282c;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18), inset 0 2px 0 rgb(255 255 255 / 0.12);
-  transform: rotateX(180deg);
-  backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
-.mac-sheen,
-.iphone-sheen {
+/* Each screen is centred a little above the middle; the script places it
+   in depth and sets --near (1 in front, 0 far). */
+.fly-screen {
+  --w: min(64vw, 880px);
+  --near: 0;
   position: absolute;
-  inset: 0;
-  background: linear-gradient(115deg, rgb(255 255 255 / 0.1) 0%, rgb(255 255 255 / 0.03) 28%, transparent 42%);
-  pointer-events: none;
-  z-index: 3;
-}
-.mac-bezel {
-  position: relative;
-  padding: 2.1% 2.1% 2.6%;
-  border-radius: 2.2% / 3.4%;
-  background: #0b0b0d;
-  border: 1px solid rgb(255 255 255 / 0.12);
-  box-shadow: inset 0 0 0 1px #000, 0 -1px 0 rgb(255 255 255 / 0.08);
-  backface-visibility: hidden;
-}
-.mac-camera {
-  position: absolute;
-  top: 0;
   left: 50%;
-  translate: -50% 0;
-  width: 9%;
-  height: 2.6%;
-  min-height: 9px;
-  border-radius: 0 0 0.7rem 0.7rem;
-  background: #0b0b0d;
-  z-index: 2;
-}
-.mac-screen {
-  position: relative;
+  top: 45%;
+  width: var(--w);
   aspect-ratio: 1.6;
+  margin: calc(var(--w) / -3.2) 0 0 calc(var(--w) / -2);
+  border-radius: 14px;
   overflow: hidden;
-  border-radius: 0.5% / 0.8%;
   background: #000;
+  border: 1px solid rgb(200 255 62 / calc(0.08 + var(--near) * 0.45));
+  box-shadow: 0 0 0 1px #000, 0 40px 120px -30px rgb(200 255 62 / calc(var(--near) * 0.35));
+  filter: brightness(calc(0.5 + var(--near) * 0.5));
+  will-change: transform;
 }
-.mac-strip { will-change: transform; }
-.mac-strip img { display: block; width: 100%; aspect-ratio: 1.6; object-fit: cover; }
-.mac-off {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(160deg, #15171a, #050506);
-}
-.mac-base {
-  position: relative;
-  width: 114%;
-  margin-left: -7%;
-  height: clamp(10px, 2.2vw, 22px);
-  border-radius: 0 0 1.6rem 1.6rem / 0 0 100% 100%;
-  background: linear-gradient(180deg, #3a3c40 0%, #1d1e21 35%, #0c0c0e 100%);
-  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.9);
-}
-.mac-base span {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  translate: -50% 0;
-  width: 16%;
-  height: 45%;
-  border-radius: 0 0 0.8rem 0.8rem;
-  background: #111214;
-}
-.show-meta {
-  display: flex;
-  align-items: center;
-  gap: 1.2rem;
-  margin-top: 2rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--bone-dim);
-}
-.show-dots { display: inline-flex; gap: 0.45rem; }
-.show-dots i {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.2);
-  transition: width 0.5s cubic-bezier(0.32, 0.72, 0, 1), background 0.5s;
-}
-.show-dots i[data-on="true"] { width: 1.4rem; background: var(--lime); }
-
-/* The idea, lit word by word. */
-.show-statement {
-  padding: clamp(6rem, 18vh, 12rem) clamp(1.5rem, 6vw, 6rem);
-}
-.show-statement p {
-  max-width: 20ch;
-  margin-inline: auto;
-  font-size: clamp(2.2rem, 5.6vw, 5.4rem);
-  font-weight: 600;
-  line-height: 1.04;
-  letter-spacing: -0.045em;
-  text-align: center;
-  color: var(--bone);
-  text-wrap: balance;
-}
-
-/* Phones, built in CSS: titanium edge, black bezel, dynamic island. */
-.phones-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(0.8rem, 3vw, 3rem);
-  perspective: 2000px;
-}
-.iphone {
-  width: min(19rem, 24vw, calc((100svh - 6rem) * 0.46));
-  padding: 0.55rem;
-  border-radius: 3rem;
-  background: linear-gradient(145deg, #3b3d42, #17181b 40%, #2c2e33);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12), 0 50px 90px -40px rgb(0 0 0 / 0.95);
-  transform-style: preserve-3d;
-}
-.iphone[data-centre="true"] { z-index: 2; }
-.iphone-screen {
-  position: relative;
+.fly[data-portrait="true"] .fly-screen {
+  --h: min(66svh, 640px);
+  width: calc(var(--h) * 0.462);
   aspect-ratio: 390 / 844;
-  overflow: hidden;
-  border-radius: 2.5rem;
-  background: #000;
-  border: 0.3rem solid #000;
+  margin: calc(var(--h) / -2) 0 0 calc(var(--h) * -0.231);
+  border-radius: 2.2rem;
+  border-width: 4px;
+  border-color: #1b1c1f;
+  outline: 1px solid rgb(200 255 62 / calc(0.08 + var(--near) * 0.45));
 }
-.iphone-screen img {
+.fly-screen img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: top;
 }
-.iphone-extra { position: absolute; inset: 0; opacity: 0; }
-.iphone-island {
+.fly-screen::after {
+  content: "";
   position: absolute;
-  top: 2.2%;
+  inset: 0;
+  background: linear-gradient(115deg, rgb(255 255 255 / 0.12), transparent 35%);
+  pointer-events: none;
+}
+.fly-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: radial-gradient(80% 70% at 50% 45%, transparent 40%, var(--ink) 100%), linear-gradient(180deg, transparent 60%, rgb(10 10 11 / 0.85));
+}
+.fly-top {
+  position: absolute;
+  z-index: 5;
+  top: 6.2rem;
+  left: clamp(1.5rem, 5vw, 4rem);
+  right: clamp(1.5rem, 5vw, 4rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.fly-title {
+  position: absolute;
+  z-index: 5;
+  left: clamp(1.5rem, 5vw, 4rem);
+  bottom: clamp(2rem, 7vh, 4.5rem);
+  max-width: 70vw;
+  pointer-events: none;
+}
+.fly-title h1 {
+  margin-top: 0.8rem;
+  font-size: clamp(2.8rem, 7.4vw, 7.6rem);
+  font-weight: 650;
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+.fly-hud {
+  position: absolute;
+  z-index: 5;
+  right: clamp(1.5rem, 5vw, 4rem);
+  bottom: clamp(2rem, 7vh, 4.5rem);
+  text-align: right;
+}
+.fly-hud b {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: clamp(2rem, 4.4vw, 4.4rem);
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Figures the product states, outlined until they light. */
+.fly-facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(2.5rem, 9vw, 9rem);
+  padding: clamp(8rem, 22vh, 14rem) clamp(1.5rem, 5vw, 4rem);
+  text-align: center;
+}
+.fly-facts b {
+  display: block;
+  font-size: clamp(4rem, 9vw, 9.5rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.07em;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--lime);
+  transition: color 0.8s ease, text-shadow 0.8s ease;
+}
+.fly-facts b.on {
+  color: var(--lime);
+  -webkit-text-stroke: 0;
+  text-shadow: 0 0 40px rgb(200 255 62 / 0.4);
+}
+.fly-facts span { display: block; margin-top: 0.8rem; }
+
+/* Phones on a ring that turns with the scroll. */
+.fly-ring { position: relative; height: 300svh; }
+.fly-ring-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  perspective: 1600px;
+}
+.fly-ring h2 {
+  position: absolute;
+  top: 12vh;
+  left: 0;
+  right: 0;
+  padding-inline: 1.5rem;
+  text-align: center;
+  font-size: clamp(2rem, 4.4vw, 4rem);
+  font-weight: 600;
+  letter-spacing: -0.05em;
+}
+.fly-floor {
+  position: absolute;
+  bottom: 9vh;
+  width: 60vw;
+  height: 120px;
+  background: radial-gradient(50% 50% at 50% 50%, rgb(200 255 62 / 0.22), transparent 70%);
+  filter: blur(20px);
+}
+.fly-carousel {
+  --pw: min(15rem, 30vw, calc((100svh - 14rem) * 0.462));
+  --r: calc(var(--pw) * 0.62 / tan(180deg / var(--ring)) + 1.5rem);
+  position: relative;
+  top: 4vh;
+  width: var(--pw);
+  aspect-ratio: 390 / 844;
+  transform-style: preserve-3d;
+}
+.fly-phone {
+  position: absolute;
+  inset: 0;
+  padding: 6px;
+  border-radius: 2.4rem;
+  background: linear-gradient(145deg, #3b3d42, #141518);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14);
+  transform: rotateY(calc(var(--i) * 360deg / var(--ring))) translateZ(var(--r));
+}
+.fly-phone div {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 2rem;
+  border: 3px solid #000;
+}
+.fly-phone div::after {
+  content: "";
+  position: absolute;
+  top: 2.4%;
   left: 50%;
   translate: -50% 0;
   width: 32%;
-  height: 3.6%;
+  height: 3.4%;
   border-radius: 999px;
   background: #000;
-  z-index: 2;
+}
+.fly-phone img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
 }
 
-/* Reduced motion: scenes at rest, no runways. */
-.show[data-still="true"] .show-mac,
-.show[data-still="true"] .show-phones { height: auto; padding: 4rem 0; }
-.show[data-still="true"] .show-stage { position: relative; height: auto; }
-.show[data-still="true"] .mac-off { display: none; }
+/* Reduced motion: the screens as a plain column, the ring as a row. */
+.fly-case[data-still="true"] .fly { height: auto; }
+.fly-case[data-still="true"] .fly-stage { position: relative; height: auto; overflow: visible; perspective: none; padding: 9rem 0 4rem; }
+.fly-case[data-still="true"] .fly-space { position: relative; display: grid; gap: 1.5rem; justify-items: center; padding-bottom: 14rem; }
+.fly-case[data-still="true"] .fly-screen { position: relative; left: auto; top: auto; margin: 0; filter: none; }
+.fly-case[data-still="true"] .fly-ring { height: auto; }
+.fly-case[data-still="true"] .fly-ring-stage { position: relative; height: auto; padding: 8rem 1rem 4rem; perspective: none; }
+.fly-case[data-still="true"] .fly-ring h2 { position: relative; top: auto; margin-bottom: 2rem; }
+.fly-case[data-still="true"] .fly-carousel { display: flex; gap: 1rem; width: auto; aspect-ratio: auto; top: 0; }
+.fly-case[data-still="true"] .fly-phone { position: relative; width: var(--pw); aspect-ratio: 390 / 844; transform: none; }
 
 @media (max-width: 767px) {
-  .mac { width: 94vw; }
-  .show-mac { height: calc(100svh + var(--chapters) * 65svh); }
-  .iphone { width: 42vw; padding: 0.35rem; border-radius: 1.8rem; }
-  .iphone-screen { border-radius: 1.5rem; border-width: 0.2rem; }
-  .phones-row { gap: 0; }
-  .phones-row .iphone:not([data-centre="true"]) { width: 34vw; margin-inline: -4vw; }
+  .fly-screen { --w: 88vw; top: 40%; }
+  .fly-top { top: 5.2rem; }
+  .fly-top .case-live em { display: none; }
+  .fly-title { max-width: 62vw; }
+  .fly-carousel { --pw: 34vw; }
+}
+.case-lead {
+  max-width: 24ch;
+  font-size: clamp(2rem, 4.2vw, 3.8rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
 }
