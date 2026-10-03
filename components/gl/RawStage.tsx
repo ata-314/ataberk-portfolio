@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { leanFragment, leanVertex } from "./lean-field-shaders";
 import { createSculptureLayer } from "./sculpture-layer";
 import { createTunnelLayer } from "./tunnel-layer";
+import { createReelLayer, reelStops } from "./reel-layer";
 import { createXLayer } from "./x-layer";
 import { makeGlyphAtlas } from "./matrix-layer";
 import { createPost } from "./post";
@@ -13,6 +14,7 @@ import { createWorkHelixLayer } from "./work-helix-layer";
 import { bustState, scrollState, workState } from "../three/scroll-state";
 import { slotRgb, workSlots } from "@/content/work-slots";
 import { work as workContent } from "@/content/work";
+import { reelItems } from "@/content/reel";
 
 const workItemCount = Math.min(workSlots.length, workContent.tr.items.length);
 
@@ -279,6 +281,15 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const sculpture = createSculptureLayer(gl, mobile);
     // Voyage: after the opening, the bird on black, then the voxel tunnel.
     const tunnel = createTunnelLayer(gl, mobile);
+    // The showreel: screens along the tunnel, advanced stop by stop by the
+    // reel span of the voyage scroll ([data-reel]).
+    const reel = createReelLayer(gl, mobile, reelItems);
+    let reelElement: HTMLElement | null = null;
+    let reelProgress = 0;
+    let reelPosition = 0;
+    let reelVelocity = 0;
+    let reelDodge = 0;
+    let reelShown = "";
     let workElement: HTMLElement | null = null;
     let workAmount = 0;
     let workProgress = 0;
@@ -871,8 +882,18 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       voyageElement ??= document.querySelector<HTMLElement>("[data-voyage]");
       if (voyageElement) {
         const r = voyageElement.getBoundingClientRect();
-        voyage = Math.max(0, Math.min(1, -r.top / Math.max(r.height - stageH, 1)));
-        xPath = Math.max(0, Math.min(1, (stageH - r.top) / (stageH + 0.18 * (r.height - stageH))));
+        // The reel's span is cut out of the runway: while it scrolls the
+        // voyage holds (inside the tunnel) and the reel advances instead.
+        reelElement ??= voyageElement.querySelector<HTMLElement>("[data-reel]");
+        const reelSpan = reelElement ? reelElement.offsetHeight : 0;
+        const reelStart = reelElement ? reelElement.offsetTop : 0;
+        const scrolled = -r.top;
+        const runway = Math.max(r.height - stageH - reelSpan, 1);
+        const along = scrolled < reelStart ? scrolled : scrolled < reelStart + reelSpan ? reelStart : scrolled - reelSpan;
+        voyage = Math.max(0, Math.min(1, along / runway));
+        reelProgress = reelSpan ? Math.max(0, Math.min(1, (scrolled - reelStart) / reelSpan)) : 1;
+        if (r.top < stageH * 3) reel.prepare();
+        xPath = Math.max(0, Math.min(1, (stageH - r.top) / (stageH + 0.18 * runway)));
         // Starts taking the bird as the section slides in, so it is centred
         // by the time the words have risen.
         voyageHold = damp(voyageHold, smoothstep(r.top / stageH, 1.0, 0.25) * smoothstep(r.bottom / stageH, 0.3, 1), 5, delta);
@@ -889,10 +910,28 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // steady pace for a beat, then accelerates hard into a sustained rush,
       // whatever the page is doing. Scrolling back out of the tunnel resets
       // the ride.
+      // The showreel comes first: while its span scrolls, the flight hangs
+      // at each screen (the scroll moves it between them) and the walls only
+      // drift; the rush and the exit wait until the last screen is passed.
       const riding = portalThrough > 0.5 && tunnelIn > 0.05;
-      rideTime = riding ? rideTime + delta : portalThrough < 0.3 ? 0 : rideTime;
+      const reelDone = reelProgress > 0.999;
+      const inReel = riding && reelProgress > 0.001 && !reelDone;
+      rideTime = riding && reelDone ? rideTime + delta : portalThrough < 0.3 || !reelDone ? 0 : rideTime;
       const surge = smoothstep(rideTime, 1.1, 2.8);
-      tunnelSpeed = damp(tunnelSpeed, riding ? 12 + 78 * surge * surge : 0, 3, delta);
+      tunnelSpeed = damp(tunnelSpeed, riding ? (inReel ? 1.2 : 12 + 78 * surge * surge) : 0, 3, delta);
+      const reelTarget = reelStops(reelProgress, reel.count);
+      const reelBefore = reelPosition;
+      reelPosition = Math.abs(reelTarget - reelPosition) > reel.count ? reelTarget : damp(reelPosition, reelTarget, 4.5, delta);
+      reelVelocity = damp(reelVelocity, Math.abs(reelPosition - reelBefore) * reel.spacing / Math.max(delta, 1 / 240), 6, delta);
+      reelDodge = damp(reelDodge, reel.dodge(reelPosition) * tunnelIn, 4, delta);
+      if (voyageElement) {
+        const f = reel.focus(reelPosition);
+        const shown = f.focus > 0.01 && tunnelIn > 0.3 ? `${f.index}:${f.focus.toFixed(2)}` : "";
+        if (shown !== reelShown) {
+          reelShown = shown;
+          voyageElement.dataset.reel = shown;
+        }
+      }
       tunnelClock += delta * tunnelSpeed;
       warp = Math.max(0, Math.min(1, (tunnelSpeed - 12) / 78)) * tunnelIn;
       // After a stretch at full rush the flight carries the page on to the
@@ -974,7 +1013,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         const sway = Math.sin(time * 0.6) * 0.18 * portalThrough;
         const inPortal = birdEnter * birdEnter * (3 - 2 * birdEnter);
         flight.position = [
-          mix(flight.position[0], sway, voyageHold),
+          mix(flight.position[0], sway + (mobile ? 0 : reelDodge * 0.75), voyageHold),
           mix(flight.position[1], mix(-0.35, 0.12, inPortal) - portalThrough * 0.15 + Math.sin(time * 0.8) * 0.05 * (1 - inPortal * (1 - portalThrough)), voyageHold),
           mix(flight.position[2], mix(-2.6 * inPortal, -0.8 + warp * 0.35, portalThrough), voyageHold),
         ];
@@ -1016,7 +1055,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // from the glass (no nearer than z 0.35) or perspective stretches the
       // wings into spikes across the whole screen; sideways it stays within
       // ±0.1 so a drift never carries it off the narrow edge.
-      compose(birdMatrix, mobile ? [Math.max(-0.1, Math.min(0.1, flight.position[0] * 0.28)), flight.position[1] * 0.75, Math.min(flight.position[2], 0.35)] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, birdRoll, birdPitch);
+      // Phones pin the bird near the middle; only a reel screen moves it aside.
+      compose(birdMatrix, mobile ? [Math.max(-0.1, Math.min(0.1, flight.position[0] * 0.28)) + reelDodge * 0.6 * voyageHold, flight.position[1] * 0.75, Math.min(flight.position[2], 0.35)] : flight.position, flight.scale * (mobile ? 0.55 : 1), yaw, birdRoll, birdPitch);
       // Folded wings hang below the body in the bake; in the dive they are
       // swept back along it instead (a shear of the wing axis toward the
       // tail) so the bird reads as one closed, falling dart.
@@ -1174,8 +1214,12 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // the flight on or back on top of it; its light cycles teal → pink →
       // blue and back over the ride.
       const scrollTravel = Math.max(0, voyage - 0.5) * 160;
-      tunnel.render(view, projection, time, tunnelClock + scrollTravel + tunnelExit * tunnelExit * 140, tunnelIn,
-        0.5 - 0.5 * Math.cos(tunnelClock * 0.004), smoothstep(voyage, 0.3, 0.5), Math.max(tunnelExit, warp * 0.45));
+      const tunnelHue = 0.5 - 0.5 * Math.cos(tunnelClock * 0.004);
+      const reelTravel = reelPosition * reel.spacing;
+      tunnel.render(view, projection, time, tunnelClock + scrollTravel + reelTravel + tunnelExit * tunnelExit * 140, tunnelIn,
+        tunnelHue, smoothstep(voyage, 0.3, 0.5), Math.max(tunnelExit, warp * 0.45, Math.min(1, reelVelocity / 50) * 0.5));
+      reel.render(view, projection, camera, time, tunnelIn * (1 - tunnelExit), tunnelHue, reelPosition,
+        (Math.PI / 4) * (1 + warp * 0.32), stageW / Math.max(stageH, 1));
       work.renderBack(sceneTarget);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
@@ -1228,6 +1272,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       sculpture.dispose();
       tunnel.dispose();
+      reel.dispose();
       work.dispose();
       workState.pick = null;
       gl.deleteTexture(glyphAtlas);
