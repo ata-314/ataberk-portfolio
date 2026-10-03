@@ -4,10 +4,12 @@
 // at a comfortable viewing distance, sized to the frame (half the height on
 // desktop, about half the width on phones) and kept clear of the walls.
 // Each sheet is glass worked like paper: thin and bowed, one outer corner
-// curling, a slow ripple running through it. It answers motion like paper
-// in moving air: as the reel rushes between stops the sheets billow from
-// their outer edge and flutter, and when it stops they swing back and settle
-// on a spring. The cursor (or a touch) plays on the glass: moving over a
+// curling. It answers the flight like paper in the air it pushes: the
+// edge toward the flight line is held, and the free outer edge is blown back
+// like a sail while a slow, heavy wave runs from the held edge to the free
+// one, growing and quickening with speed, the very edge fluttering only at
+// a rush. When the reel stops the sheet swings forward past rest on a soft
+// spring and its wave dies away over a few seconds. The cursor (or a touch) plays on the glass: moving over a
 // sheet presses a soft dent under it and sends rings across the surface in
 // proportion to its speed, and a click or tap sends a strong one. The film sits inside the glass, lensed a
 // little by its bend; a clear margin shows the tunnel through it; the edge
@@ -27,7 +29,9 @@ uniform vec3 centre;
 uniform vec2 size; // sheet size including the clear margin
 uniform float yaw;
 uniform float curlSide; // which outer corner curls (+1 right, -1 left)
-uniform float billow; // signed air push from the reel's motion (spring)
+uniform float billow; // signed push of the air from the reel's motion (spring)
+uniform float energy; // how much wave is still running through the paper
+uniform float phase; // the wave's travel, advanced with the wind
 uniform float time;
 uniform vec4 ripples[6]; // local xy, start time, strength
 uniform vec4 press; // local xy, depth, radius
@@ -39,13 +43,16 @@ out float vDepth;
 float lift(vec2 p) {
   vec2 q=p/size;
   float s=max(size.x,size.y);
-  float bow=(.25-q.x*q.x)*size.x*.22;
-  float air=min(abs(billow),1.5);
-  float wave=sin(q.y*3.4+q.x*2.2-time*(1.25+air*5.0))*s*(.018+.04*air)*(.35+abs(q.x+.5*curlSide));
-  float c=smoothstep(.2,.95,q.x*curlSide+q.y);
-  // Billow: the outer edge lifts with the air and flaps as it goes.
-  float outer=q.x*curlSide+.5;
-  float gust=billow*s*.2*outer*outer*(1.0+.35*sin(q.y*5.0+time*7.0));
+  float bow=(.25-q.x*q.x)*size.x*.16;
+  // Distance from the held (inner) edge to the free (outer) one, 0..1.
+  float u=q.x*curlSide+.5;
+  float c=smoothstep(.25,.95,u-.5+q.y);
+  // Sail: the free edge blown back by the air of the flight.
+  float sail=-billow*s*.24*u*u;
+  // Flag wave from the held edge to the free one, slightly diagonal.
+  float flag=s*(.008+.075*energy)*pow(u,1.4)*sin(6.2832*(u*.85-phase)+q.y*1.6);
+  // At a rush, only the very edge flutters.
+  float edge=s*.012*min(energy,1.0)*smoothstep(.65,1.0,u)*sin(q.y*9.0-phase*14.0);
   // Rings sent by the cursor: packets running outward and fading.
   float rings=0.0;
   for(int i=0;i<6;i++) {
@@ -57,7 +64,7 @@ float lift(vec2 p) {
     rings+=r.w*s*.05*sin(front*30.0/s)*exp(-front*front/(s*s*.025))*exp(-age*1.1);
   }
   float dent=-press.z*s*.07*exp(-dot(p-press.xy,p-press.xy)/(press.w*press.w+1e-4));
-  return bow+wave+c*c*s*.22+gust+rings+dent;
+  return bow+c*c*s*(.16+.08*min(energy,1.0))+sail+flag+edge+rings+dent;
 }
 void main() {
   vec2 p=corner*size;
@@ -170,7 +177,7 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
   }
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "Reel link failed");
-  const u = Object.fromEntries(["view", "projection", "centre", "size", "yaw", "curlSide", "billow", "ripples", "press", "picture", "screen", "eye", "presence", "focus", "hue", "time"]
+  const u = Object.fromEntries(["view", "projection", "centre", "size", "yaw", "curlSide", "billow", "energy", "phase", "ripples", "press", "picture", "screen", "eye", "presence", "focus", "hue", "time"]
     .map((n) => [n, gl.getUniformLocation(program, n)]));
 
   const vao = gl.createVertexArray();
@@ -261,6 +268,8 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
   document.documentElement.addEventListener("pointerleave", onLeave);
   let billow = 0;
   let billowVel = 0;
+  let energy = 0;
+  let phase = 0;
   let lastTime = -1;
   const spawn = (s: Screen, x: number, y: number, time: number, strength: number) => {
     s.ripples.set([x, y, time, strength], s.nextRipple * 4);
@@ -336,9 +345,15 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
       // billow while it rushes and swing back past rest when it stops.
       const delta = lastTime < 0 ? 1 / 60 : Math.min(0.05, Math.max(0, time - lastTime));
       lastTime = time;
-      const pull = Math.max(-1.4, Math.min(1.4, velocity / 30));
-      billowVel += ((pull - billow) * 38 - billowVel * 5.5) * delta;
+      // Heavy and soft: low stiffness, light damping, so it swings once past
+      // rest and settles. The wave's energy rises with the wind and dies
+      // slowly; its travel advances with it, so speed never jumps the phase.
+      const wind = Math.min(1.3, Math.abs(velocity) / 28);
+      const pull = Math.sign(velocity) * wind;
+      billowVel += ((pull - billow) * 14 - billowVel * 3.2) * delta;
       billow += billowVel * delta;
+      energy = Math.max(energy * Math.exp(-delta * 0.9), energy + (wind - energy) * Math.min(1, delta * 3));
+      phase += delta * (0.22 + energy * 0.9);
       // Decode only near the camera; pause everything else.
       for (let i = 0; i < screens.length; i++) {
         const s = screens[i];
@@ -372,6 +387,8 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
       gl.uniform1f(u.hue, hue);
       gl.uniform1f(u.time, time);
       gl.uniform1f(u.billow, billow);
+      gl.uniform1f(u.energy, energy);
+      gl.uniform1f(u.phase, phase);
       // The pointer's ray, from the camera's basis in the view matrix.
       const tanV = Math.tan(fovY / 2);
       const rx = pointer.x * tanV * aspect, ry = pointer.y * tanV;
