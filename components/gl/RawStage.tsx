@@ -922,7 +922,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const reelTarget = reelStops(reelProgress, reel.count);
       const reelBefore = reelPosition;
       reelPosition = Math.abs(reelTarget - reelPosition) > reel.count ? reelTarget : damp(reelPosition, reelTarget, 4.5, delta);
-      reelVelocity = damp(reelVelocity, Math.abs(reelPosition - reelBefore) * reel.spacing / Math.max(delta, 1 / 240), 6, delta);
+      reelVelocity = damp(reelVelocity, (reelPosition - reelBefore) * reel.spacing / Math.max(delta, 1 / 240), 6, delta);
       reelDodge = damp(reelDodge, reel.dodge(reelPosition) * tunnelIn, 4, delta);
       if (voyageElement) {
         const f = reel.focus(reelPosition);
@@ -1217,9 +1217,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       const tunnelHue = 0.5 - 0.5 * Math.cos(tunnelClock * 0.004);
       const reelTravel = reelPosition * reel.spacing;
       tunnel.render(view, projection, time, tunnelClock + scrollTravel + reelTravel + tunnelExit * tunnelExit * 140, tunnelIn,
-        tunnelHue, smoothstep(voyage, 0.3, 0.5), Math.max(tunnelExit, warp * 0.45, Math.min(1, reelVelocity / 50) * 0.5));
+        tunnelHue, smoothstep(voyage, 0.3, 0.5), Math.max(tunnelExit, warp * 0.45, Math.min(1, Math.abs(reelVelocity) / 50) * 0.5));
       reel.render(view, projection, camera, time, tunnelIn * (1 - tunnelExit), tunnelHue, reelPosition,
-        (Math.PI / 4) * (1 + warp * 0.32), stageW / Math.max(stageH, 1), reelVelocity / 40);
+        (Math.PI / 4) * (1 + warp * 0.32), stageW / Math.max(stageH, 1), reelVelocity);
       work.renderBack(sceneTarget);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.

@@ -4,8 +4,12 @@
 // at a comfortable viewing distance, sized to the frame (half the height on
 // desktop, about half the width on phones) and kept clear of the walls.
 // Each sheet is glass worked like paper: thin and bowed, one outer corner
-// curling, a slow ripple running through it (fluttering harder while the
-// reel rushes between stops). The film sits inside the glass, lensed a
+// curling, a slow ripple running through it. It answers motion like paper
+// in moving air: as the reel rushes between stops the sheets billow from
+// their outer edge and flutter, and when it stops they swing back and settle
+// on a spring. The cursor (or a touch) plays on the glass: moving over a
+// sheet presses a soft dent under it and sends rings across the surface in
+// proportion to its speed, and a click or tap sends a strong one. The film sits inside the glass, lensed a
 // little by its bend; a clear margin shows the tunnel through it; the edge
 // is a thin bright line with a colour fringe, and reflections, fresnel and
 // a travelling glint follow the sheet's curvature. Sheets surface from the
@@ -23,8 +27,10 @@ uniform vec3 centre;
 uniform vec2 size; // sheet size including the clear margin
 uniform float yaw;
 uniform float curlSide; // which outer corner curls (+1 right, -1 left)
-uniform float flutter;
+uniform float billow; // signed air push from the reel's motion (spring)
 uniform float time;
+uniform vec4 ripples[6]; // local xy, start time, strength
+uniform vec4 press; // local xy, depth, radius
 out vec2 vLocal;
 out vec3 vWorld;
 out vec3 vNormal;
@@ -34,9 +40,24 @@ float lift(vec2 p) {
   vec2 q=p/size;
   float s=max(size.x,size.y);
   float bow=(.25-q.x*q.x)*size.x*.22;
-  float wave=sin(q.y*3.4+q.x*2.2-time*1.25)*s*(.018+.035*flutter)*(.35+abs(q.x+.5*curlSide));
+  float air=min(abs(billow),1.5);
+  float wave=sin(q.y*3.4+q.x*2.2-time*(1.25+air*5.0))*s*(.018+.04*air)*(.35+abs(q.x+.5*curlSide));
   float c=smoothstep(.2,.95,q.x*curlSide+q.y);
-  return bow+wave+c*c*s*.22;
+  // Billow: the outer edge lifts with the air and flaps as it goes.
+  float outer=q.x*curlSide+.5;
+  float gust=billow*s*.2*outer*outer*(1.0+.35*sin(q.y*5.0+time*7.0));
+  // Rings sent by the cursor: packets running outward and fading.
+  float rings=0.0;
+  for(int i=0;i<6;i++) {
+    vec4 r=ripples[i];
+    float age=time-r.z;
+    if(r.w<=0.0||age<0.0||age>3.0) continue;
+    float d=length(p-r.xy);
+    float front=d-age*s*.75;
+    rings+=r.w*s*.05*sin(front*30.0/s)*exp(-front*front/(s*s*.025))*exp(-age*1.1);
+  }
+  float dent=-press.z*s*.07*exp(-dot(p-press.xy,p-press.xy)/(press.w*press.w+1e-4));
+  return bow+wave+c*c*s*.22+gust+rings+dent;
 }
 void main() {
   vec2 p=corner*size;
@@ -102,7 +123,7 @@ void main() {
   float alpha;
   if(inside<0.0) {
     // The film behind the glass, lensed slightly by the bend.
-    vec2 uv=vLocal/screen+.5+n.xy*vec2(-.018,.018);
+    vec2 uv=vLocal/screen+.5+n.xy*vec2(-.035,.035);
     uv.y=1.0-uv.y;
     vec3 pic=pow(texture(picture,clamp(uv,0.0,1.0)).rgb,vec3(1.15));
     vec2 e=abs(uv-.5)*2.0;
@@ -149,7 +170,7 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
   }
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "Reel link failed");
-  const u = Object.fromEntries(["view", "projection", "centre", "size", "yaw", "curlSide", "flutter", "picture", "screen", "eye", "presence", "focus", "hue", "time"]
+  const u = Object.fromEntries(["view", "projection", "centre", "size", "yaw", "curlSide", "billow", "ripples", "press", "picture", "screen", "eye", "presence", "focus", "hue", "time"]
     .map((n) => [n, gl.getUniformLocation(program, n)]));
 
   const vao = gl.createVertexArray();
@@ -183,6 +204,12 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
     shown: number;
     playing: boolean;
     side: number;
+    // Cursor play: recent rings (x, y, start, strength) and the dent.
+    ripples: Float32Array;
+    nextRipple: number;
+    lastSpawn: number;
+    press: number;
+    hit: [number, number];
   };
   // Unit 12 is the reel's own; no other layer samples it.
   const upload = (texture: WebGLTexture, source: TexImageSource) => {
@@ -200,9 +227,46 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    return { item, texture, video: null, shown: -1, playing: false, side: i % 2 ? 1 : -1 };
+    return {
+      item, texture, video: null, shown: -1, playing: false, side: i % 2 ? 1 : -1,
+      ripples: new Float32Array(24), nextRipple: 0, lastSpawn: 0, press: 0, hit: [0, 0] as [number, number],
+    };
   });
   let disposed = false;
+  // The pointer in NDC, how fast it moves and whether it has just clicked.
+  const canvas = gl.canvas as HTMLCanvasElement;
+  const pointer = { x: 0, y: 0, on: false, speed: 0, lastX: 0, lastY: 0, lastT: 0, clicked: false };
+  const toNdc = (e: PointerEvent) => {
+    const r = canvas.getBoundingClientRect();
+    return [((e.clientX - r.left) / Math.max(r.width, 1)) * 2 - 1, 1 - ((e.clientY - r.top) / Math.max(r.height, 1)) * 2];
+  };
+  const onMove = (e: PointerEvent) => {
+    const [x, y] = toNdc(e);
+    const t = performance.now() / 1000;
+    const dt = Math.max(t - pointer.lastT, 1 / 240);
+    const v = Math.hypot(x - pointer.lastX, y - pointer.lastY) / dt;
+    pointer.speed = pointer.on && dt < 0.2 ? pointer.speed * 0.6 + v * 0.4 : 0;
+    pointer.x = pointer.lastX = x;
+    pointer.y = pointer.lastY = y;
+    pointer.lastT = t;
+    pointer.on = true;
+  };
+  const onDown = (e: PointerEvent) => {
+    onMove(e);
+    pointer.clicked = true;
+  };
+  const onLeave = () => { pointer.on = false; };
+  addEventListener("pointermove", onMove, { passive: true });
+  addEventListener("pointerdown", onDown, { passive: true });
+  document.documentElement.addEventListener("pointerleave", onLeave);
+  let billow = 0;
+  let billowVel = 0;
+  let lastTime = -1;
+  const spawn = (s: Screen, x: number, y: number, time: number, strength: number) => {
+    s.ripples.set([x, y, time, strength], s.nextRipple * 4);
+    s.nextRipple = (s.nextRipple + 1) % 6;
+    s.lastSpawn = time;
+  };
   let postersRequested = false;
   const requestPosters = () => {
     if (postersRequested) return;
@@ -267,7 +331,14 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
       return { position, index, focus };
     },
     render(view: Float32Array, projection: Float32Array, camera: [number, number, number], time: number,
-      presence: number, hue: number, position: number, fovY: number, aspect: number, flutter: number) {
+      presence: number, hue: number, position: number, fovY: number, aspect: number, velocity: number) {
+      // Air: a spring pulled by the reel's signed speed, so the sheets
+      // billow while it rushes and swing back past rest when it stops.
+      const delta = lastTime < 0 ? 1 / 60 : Math.min(0.05, Math.max(0, time - lastTime));
+      lastTime = time;
+      const pull = Math.max(-1.4, Math.min(1.4, velocity / 30));
+      billowVel += ((pull - billow) * 38 - billowVel * 5.5) * delta;
+      billow += billowVel * delta;
       // Decode only near the camera; pause everything else.
       for (let i = 0; i < screens.length; i++) {
         const s = screens[i];
@@ -300,7 +371,13 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
       gl.uniform1f(u.presence, presence);
       gl.uniform1f(u.hue, hue);
       gl.uniform1f(u.time, time);
-      gl.uniform1f(u.flutter, Math.min(1, flutter));
+      gl.uniform1f(u.billow, billow);
+      // The pointer's ray, from the camera's basis in the view matrix.
+      const tanV = Math.tan(fovY / 2);
+      const rx = pointer.x * tanV * aspect, ry = pointer.y * tanV;
+      const ray = [view[0] * rx + view[1] * ry - view[2], view[4] * rx + view[5] * ry - view[6], view[8] * rx + view[9] * ry - view[10]];
+      const clicked = pointer.clicked;
+      pointer.clicked = false;
       gl.uniform3f(u.eye, camera[0], camera[1], camera[2]);
       gl.uniform1i(u.picture, 12);
       gl.activeTexture(gl.TEXTURE12);
@@ -319,15 +396,41 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
         gl.uniform1f(u.yaw, p.yaw);
         gl.uniform1f(u.curlSide, s.side);
         gl.uniform1f(u.focus, near * near * (3 - 2 * near));
+        // Where the pointer meets this sheet (its flat plane is enough).
+        const cy = Math.cos(p.yaw), sy = Math.sin(p.yaw);
+        const cyc = 0.06 + Math.sin(time * 0.5 + i) * 0.04;
+        const denom = ray[0] * sy + ray[2] * cy;
+        let over = false;
+        if (pointer.on && Math.abs(denom) > 1e-4) {
+          const t = ((p.x - camera[0]) * sy + (z - camera[2]) * cy) / denom;
+          if (t > 0) {
+            const dx = camera[0] + ray[0] * t - p.x, dy = camera[1] + ray[1] * t - cyc, dz = camera[2] + ray[2] * t - z;
+            const lx = dx * cy - dz * sy;
+            over = Math.abs(lx) < p.w / 2 + margin && Math.abs(dy) < p.h / 2 + margin;
+            if (over) {
+              s.hit = [lx, dy];
+              const strength = Math.min(1, pointer.speed * 0.35);
+              if (clicked) spawn(s, lx, dy, time, 1.6);
+              else if (strength > 0.08 && time - s.lastSpawn > 0.09) spawn(s, lx, dy, time, strength);
+            }
+          }
+        }
+        s.press += ((over ? 1 : 0) - s.press) * Math.min(1, delta * 6);
+        gl.uniform4fv(u.ripples, s.ripples);
+        gl.uniform4f(u.press, s.hit[0], s.hit[1], s.press, Math.max(p.w, p.h) * 0.16);
         gl.bindTexture(gl.TEXTURE_2D, s.texture);
         gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
       }
+      pointer.speed *= Math.exp(-delta * 4);
       gl.disable(gl.DEPTH_TEST);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.bindVertexArray(null);
     },
     dispose() {
       disposed = true;
+      removeEventListener("pointermove", onMove);
+      removeEventListener("pointerdown", onDown);
+      document.documentElement.removeEventListener("pointerleave", onLeave);
       for (const s of screens) {
         s.video?.pause();
         s.video?.removeAttribute("src");
