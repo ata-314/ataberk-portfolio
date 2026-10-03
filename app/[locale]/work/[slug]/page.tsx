@@ -8,6 +8,7 @@ import { work, getWorkItem } from "@/content/work";
 import { Footer } from "@/components/sections/HomeSections";
 import { site } from "@/content/site";
 import { galleries } from "@/content/work-gallery";
+import { CaseShow } from "@/components/work/CaseShow";
 
 const labels = {
   tr: {
@@ -93,8 +94,8 @@ export default async function CasePage({
             {item.title}
           </h1>
           <div className="mt-8 grid grid-cols-12 gap-6">
-            <p className="col-span-12 max-w-2xl text-lg text-bone-dim md:col-span-7">{item.idea}</p>
-            <dl className="col-span-12 grid grid-cols-3 gap-4 text-sm md:col-span-5">
+            {!gallery && <p className="col-span-12 max-w-2xl text-lg text-bone-dim md:col-span-7">{item.idea}</p>}
+            <dl className={`col-span-12 grid grid-cols-3 gap-4 text-sm md:col-span-5 ${gallery ? "md:col-start-8" : ""}`}>
               <div>
                 <dt className="text-bone-dim">{l.category}</dt>
                 <dd className="mt-1 text-bone">{item.category}</dd>
@@ -118,8 +119,19 @@ export default async function CasePage({
         </div>
       </header>
 
-      {/* The product itself: a capture of it in a browser frame, or its film */}
-      {item.media && (
+      {/* The product on its devices, played by the scroll */}
+      {gallery && (
+        <CaseShow
+          title={item.title}
+          desktop={item.media && "image" in item.media && gallery.desktop.length ? [item.media.image, ...gallery.desktop] : gallery.desktop}
+          phone={gallery.phone}
+          statement={item.idea}
+          host={host}
+        />
+      )}
+
+      {/* Without a gallery: a capture of it in a browser frame, or its film */}
+      {!gallery && item.media && (
         <div className="px-6 pt-16 md:px-10 md:pt-24">
           <div className="mx-auto max-w-7xl">
             {"video" in item.media ? (
@@ -186,39 +198,6 @@ export default async function CasePage({
           )}
         </div>
       </div>
-
-      {/* Screens: chapters of the live product on desktop and on a phone */}
-      {gallery && (gallery.desktop.length > 0 || gallery.phone.length > 0) && (
-        <section className="px-6 md:px-10" style={{ paddingTop: "var(--space-section)" }} aria-label={l.screens}>
-          <div className="mx-auto max-w-7xl">
-            <p className="case-kicker">{l.screens}</p>
-            {gallery.desktop.length > 0 && (
-              <>
-                <h2 className="case-label font-display">{l.desktop}</h2>
-                <div className="case-shots">
-                  {gallery.desktop.map((src, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={src} src={src} alt={`${item.title} — ${l.desktop} ${i + 1}`} className="case-shot case-rise" loading="lazy" decoding="async" />
-                  ))}
-                </div>
-              </>
-            )}
-            {gallery.phone.length > 0 && (
-              <>
-                <h2 className="case-label font-display">{gallery.desktop.length ? l.phone : l.app}</h2>
-                <div className="case-phones" data-count={gallery.phone.length}>
-                  {gallery.phone.map((src, i) => (
-                    <div key={src} className="case-phone case-rise">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={src} alt={`${item.title} — ${l.phone} ${i + 1}`} loading="lazy" decoding="async" />
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-      )}
 
       {/* The offer: a brief for the visitor's own project */}
       <section className="px-6 md:px-10" style={{ paddingTop: "var(--space-section)" }}>
