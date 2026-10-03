@@ -640,3 +640,13 @@ html[data-stage-static="true"] .scroll-hint-intro {
   letter-spacing: -0.04em;
   color: rgb(243 239 231);
 }
+
+/* Case study film: the project's own clip under the hero; portrait films
+   are held to the viewport's height and centred. */
+.case-film {
+  display: block;
+  margin-inline: auto;
+  border-radius: 18px;
+  background: #050607;
+  object-fit: cover;
+}

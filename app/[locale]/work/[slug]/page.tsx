@@ -102,6 +102,26 @@ export default async function CasePage({
         </div>
       </header>
 
+      {/* The project's own film */}
+      {item.media && (
+        <div className="px-6 pt-16 md:px-10 md:pt-24">
+          <div className="mx-auto max-w-7xl">
+            <video
+              className="case-film"
+              src={item.media.video}
+              poster={item.media.poster}
+              style={{ aspectRatio: String(item.media.aspect), width: `min(100%, calc(82svh * ${item.media.aspect}))` }}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              aria-label={item.title}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Sections — editorial tempo: alternating column starts */}
       <div className="px-6 pb-24 md:px-10" style={{ paddingTop: "var(--space-section)" }}>
         <div className="mx-auto max-w-7xl space-y-20">

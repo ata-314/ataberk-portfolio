@@ -55,7 +55,7 @@ uniform vec3 uCam; uniform vec3 uDeep,uMid,uGlow;
 uniform vec2 uHalf; uniform float uRadius,uAspect;
 uniform float uTime,uSeed,uAlpha,uHover,uDim,uSweep,uSolid;
 uniform sampler2D uTitles; uniform float uRow,uRows,uTitleOn;
-uniform sampler2D uShot; uniform float uShotOn;
+uniform sampler2D uShot; uniform float uShotOn,uClear;
 uniform vec3 uAxisX,uAxisY;
 uniform sampler2D uScene; uniform vec2 uResolution; uniform float uGlass;
 uniform vec2 uCursorUv,uCursorVel; uniform float uCursorLight;
@@ -113,6 +113,12 @@ void main(){
       float bead=1.0-smoothstep(.22+br*.26,.3+br*.3,r);
       vec3 wash=texture(uShot,vec2(uv.x,1.0-uv.y),2.0).rgb;
       pic=px*bead*1.55+wash*.22+uDeep*.12;
+      // A project film reads as itself: its picture shows through the
+      // beads, which stay as a fine lit grain over it.
+      if(uClear>.5){
+        vec3 film=textureLod(uShot,vec2(uv.x,1.0-uv.y),.3).rgb*1.12;
+        pic=mix(pic,film*(.86+.22*bead),.72);
+      }
     }
     pic*=1.0+wave*.35;
     float inner=smoothstep(-.08,0.0,d);

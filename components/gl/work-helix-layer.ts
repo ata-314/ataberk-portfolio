@@ -157,7 +157,7 @@ export type WorkFrame = {
 export function createWorkHelixLayer(
   gl: WebGL2RenderingContext,
   mobile: boolean,
-  slots: { deep: Vec3; mid: Vec3; glow: Vec3; screen?: string; face?: string }[],
+  slots: { deep: Vec3; mid: Vec3; glow: Vec3; screen?: string; face?: string; video?: string }[],
   titles: () => string[],
 ) {
   const count = slots.length;
@@ -228,6 +228,49 @@ export function createWorkHelixLayer(
     screens[i] = tex;
     return { face, tex, at: -1 };
   });
+  // Project films: a muted loop per card, decoded only while its card is
+  // drawn (paused shortly after it leaves), uploaded at the face's rate
+  // when the decoder has a new frame. Until its first frame lands the card
+  // keeps its colour world; with reduced motion it holds that first frame.
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const videos = slots.map((s) => (s.video ? { src: s.video, el: null as HTMLVideoElement | null, tex: null as WebGLTexture | null, at: -1, shown: -1, seen: -1 } : null));
+  const refreshVideo = (i: number, time: number) => {
+    const v = videos[i];
+    if (!v) return;
+    v.seen = time;
+    if (!v.el) {
+      const el = document.createElement("video");
+      el.muted = true;
+      el.loop = true;
+      el.playsInline = true;
+      el.preload = "auto";
+      el.setAttribute("playsinline", "");
+      el.src = v.src;
+      v.el = el;
+    }
+    if (!reduced && v.el.paused) v.el.play().catch(() => {});
+    if (v.el.readyState < 2 || v.el.currentTime === v.shown || time - v.at < (mobile ? 1 / 15 : 1 / 24)) return;
+    v.at = time;
+    v.shown = v.el.currentTime;
+    if (!v.tex) {
+      v.tex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE11);
+      gl.bindTexture(gl.TEXTURE_2D, v.tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      screens[i] = v.tex;
+    }
+    gl.activeTexture(gl.TEXTURE11);
+    gl.bindTexture(gl.TEXTURE_2D, v.tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v.el);
+    gl.generateMipmap(gl.TEXTURE_2D);
+  };
+  const pauseHidden = (time: number) => {
+    for (const v of videos) if (v?.el && !v.el.paused && time - v.seen > 0.4) v.el.pause();
+  };
   const refreshFace = (i: number, time: number) => {
     const f = faces[i];
     if (!f || time - f.at < (mobile ? 1 / 15 : 1 / 24)) return;
@@ -434,6 +477,7 @@ export function createWorkHelixLayer(
   };
 
   const update = (f: WorkFrame) => {
+    pauseHidden(f.time);
     frame = f;
     syncTitles();
     // Arrival follows the scroll, starting before the section: the sea
@@ -571,6 +615,7 @@ export function createWorkHelixLayer(
       }
       const s = slots[i];
       refreshFace(i, f.time);
+      refreshVideo(i, f.time);
       gl.activeTexture(gl.TEXTURE12);
       gl.bindTexture(gl.TEXTURE_2D, grab!.tex);
       gl.uniform1f(card.u("uGlass"), 1);
@@ -586,6 +631,7 @@ export function createWorkHelixLayer(
       gl.activeTexture(gl.TEXTURE11);
       gl.bindTexture(gl.TEXTURE_2D, screens[i]);
       gl.uniform1f(card.u("uShotOn"), screens[i] ? 1 : 0);
+      gl.uniform1f(card.u("uClear"), videos[i] ? 1 : 0);
       gl.uniform1f(card.u("uTitleOn"), titleReady);
       gl.uniform3f(card.u("uAxisX"), models[i][0] / s0(i), models[i][1] / s0(i), models[i][2] / s0(i));
       gl.uniform3f(card.u("uAxisY"), models[i][4] / s0(i), models[i][5] / s0(i), models[i][6] / s0(i));
@@ -658,6 +704,7 @@ export function createWorkHelixLayer(
     const assemble = smooth(openT, 0.45, 0.95);
     if (assemble < 0.002) return;
     refreshFace(shown, f.time);
+    refreshVideo(shown, f.time);
     inside.render({
       rect: openRect, width: f.width, height: f.height, time: f.time, assemble,
       seed: shown * 1.37 + 0.4, deep: s.deep, mid: s.mid, glow: s.glow,
@@ -683,6 +730,11 @@ export function createWorkHelixLayer(
       sea.dispose();
       disposed = true;
       screens.forEach((t) => t && gl.deleteTexture(t));
+      videos.forEach((v) => {
+        v?.el?.pause();
+        v?.el?.removeAttribute("src");
+        v?.el?.load();
+      });
       gl.deleteTexture(titleTex);
       inside.dispose();
       if (grab) {

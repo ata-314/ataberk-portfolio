@@ -23,6 +23,8 @@ export type WorkItem = {
   visual: "field" | "agents" | "studio" | "spatial" | "web" | "film";
   // The working product, when it is public: opened in a new tab.
   live?: { url: string; label: string; host: string };
+  // The project's own film, shown at the top of its case study.
+  media?: { video: string; poster: string; aspect: number };
   sections: CaseSection[];
 };
 
@@ -73,6 +75,117 @@ const tr: WorkContent = {
             "Claude tabanlı çok-ajanlı sistem · Next.js studio arayüzü · Neon + Vercel Blob · onay kapısı olmadan hiçbir içerik dışarı çıkmaz.",
           ],
         },
+      ],
+    },
+    {
+      slug: "piyes-levent",
+      title: "Piyes Levent",
+      category: "AI Tanıtım Filmi",
+      year: "2026",
+      role: "AI Film Üretimi",
+      personal: false,
+      idea: "İstanbul siluetinden bir eskizin binaya dönüşmesine: bir konut projesini şehrin içinden anlatan dikey tanıtım filmi.",
+      layout: "featured",
+      visual: "film",
+      media: { video: "/reel/piyes-levent.mp4", poster: "/reel/piyes-levent.jpg", aspect: 9 / 16 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Film",
+          body: [
+            "Film Boğaz Köprüsü ve şehir siluetiyle açılıyor. Elle çizilen bir eskiz gerçek binaya dönüşüyor; ardından vaziyet planı, cephe detayları, giriş ve bir sanat eseriyle projenin karakteri kuruluyor ve gece şehir manzarasıyla kapanıyor.",
+          ],
+        },
+        { kind: "technical", title: "Format", body: ["Dikey 9:16 · yaklaşık 60 sn · yapay zekâ ile üretilmiş sahneler, kurgu ve marka kapanışı."] },
+      ],
+    },
+    {
+      slug: "ucay-360",
+      title: "Üçay 360",
+      live: { url: "https://www.ucay360.com.tr", label: "Siteyi aç", host: "ucay360.com.tr" },
+      category: "Web Deneyimi",
+      year: "2026",
+      role: "Tasarım · Geliştirme",
+      personal: false,
+      idea: "İklimlendirme, enerji ve e-mobiliteyi tek noktadan sunan bir marka için kaydırmayla oynayan sinematik bir site.",
+      layout: "wide",
+      visual: "web",
+      media: { video: "/reel/ucay-360.mp4", poster: "/reel/ucay-360.jpg", aspect: 16 / 9 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Yaratıcı yaklaşım",
+          body: [
+            "Açılış, kaydırmayla ilerleyen bir film: mağazadan eve, ısı pompasından bataryaya, elektrikli araç şarjından güneş panellerine markanın bütün hizmetleri tek sahnede dolaşılır. Site bölüm bölüm, her adım gözden geçirilerek kuruldu.",
+          ],
+        },
+        { kind: "technical", title: "Teknik", body: ["Next.js · Tailwind CSS · Framer Motion · kaydırmayla kontrol edilen video · cam navigasyon."] },
+      ],
+    },
+    {
+      slug: "elega-gunesli",
+      title: "Elega Güneşli",
+      category: "AI Tanıtım Filmi",
+      year: "2026",
+      role: "AI Film Üretimi",
+      personal: false,
+      idea: "“Herkes için Elega Güneşli”: binadan pencereye, pencereden evin içine geçerek yaşamın kendisini anlatan dikey film.",
+      layout: "split",
+      visual: "film",
+      media: { video: "/reel/elega-gunesli.mp4", poster: "/reel/elega-gunesli.jpg", aspect: 9 / 16 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Film",
+          body: [
+            "Kamera binanın cephesinden bir pencereye, oradan evin içine giriyor. Aile, mutfak, spor ve çalışma anları tek bir gün gibi akıyor; film marka kapanışıyla bitiyor.",
+          ],
+        },
+        { kind: "technical", title: "Format", body: ["Dikey 9:16 · yaklaşık 28 sn · yapay zekâ ile üretilmiş sahneler, kurgu ve marka kapanışı."] },
+      ],
+    },
+    {
+      slug: "dbh-group",
+      title: "DBH Group",
+      category: "Web Deneyimi",
+      year: "2026",
+      role: "Tasarım · Geliştirme",
+      personal: false,
+      idea: "İnşaat, gayrimenkul, maden, teknoloji, enerji ve turizmde faaliyet gösteren bir grup için sinematik bir ana sayfa.",
+      layout: "wide",
+      visual: "web",
+      media: { video: "/reel/dbh-group.mp4", poster: "/reel/dbh-group.jpg", aspect: 16 / 9 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Yaratıcı yaklaşım",
+          body: [
+            "Grubun altı alanı tek bir film akışında birleşiyor: kuleler, taş ocağı, konut projeleri, ışıklı bir şehir maketi, otel ve rüzgâr türbinleri. Ana sayfa bu filmin temposuyla açılıyor.",
+          ],
+        },
+        { kind: "technical", title: "Teknik", body: ["Next.js · Tailwind CSS · GSAP · Lenis."] },
+      ],
+    },
+    {
+      slug: "en-bostanci",
+      title: "eN Bostancı",
+      category: "AI Tanıtım Filmi",
+      year: "2026",
+      role: "AI Film Üretimi",
+      personal: false,
+      idea: "“Stil Sahibi Yaşam”: aynı salon, kesintisiz tek bir planda farklı iç mimari stillere bürünüyor.",
+      layout: "typographic",
+      visual: "film",
+      media: { video: "/reel/en-bostanci.mp4", poster: "/reel/en-bostanci.jpg", aspect: 9 / 16 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Film",
+          body: [
+            "Kamera aynı salonda kalırken mekân stilden stile geçiyor: sade, modern, klasik ve renkli dokular birbirine dönüşüyor. Daire tek, yaşam biçimleri çok; film marka kapanışıyla bitiyor.",
+          ],
+        },
+        { kind: "technical", title: "Format", body: ["Dikey 9:16 · yaklaşık 32 sn · yapay zekâ ile üretilmiş sahneler, kurgu ve marka kapanışı."] },
       ],
     },
     {
@@ -257,6 +370,117 @@ const en: WorkContent = {
             "Claude-based multi-agent system · Next.js studio interface · Neon + Vercel Blob · nothing ships without a human approval gate.",
           ],
         },
+      ],
+    },
+    {
+      slug: "piyes-levent",
+      title: "Piyes Levent",
+      category: "AI Brand Film",
+      year: "2026",
+      role: "AI Film Production",
+      personal: false,
+      idea: "From the Istanbul skyline to a sketch that turns into a building: a vertical film telling a residential project from inside the city.",
+      layout: "featured",
+      visual: "film",
+      media: { video: "/reel/piyes-levent.mp4", poster: "/reel/piyes-levent.jpg", aspect: 9 / 16 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Film",
+          body: [
+            "The film opens on the Bosphorus Bridge and the skyline. A hand-drawn sketch becomes the real building; the site plan, facade details, the entrance and an artwork build the project's character, and it closes on the city at night.",
+          ],
+        },
+        { kind: "technical", title: "Format", body: ["Vertical 9:16 · about 60 s · AI-generated scenes, edit and brand end card."] },
+      ],
+    },
+    {
+      slug: "ucay-360",
+      title: "Üçay 360",
+      live: { url: "https://www.ucay360.com.tr", label: "Open the site", host: "ucay360.com.tr" },
+      category: "Web Experience",
+      year: "2026",
+      role: "Design · Development",
+      personal: false,
+      idea: "A cinematic, scroll-played site for a brand that brings climate control, energy and e-mobility together.",
+      layout: "wide",
+      visual: "web",
+      media: { video: "/reel/ucay-360.mp4", poster: "/reel/ucay-360.jpg", aspect: 16 / 9 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Creative approach",
+          body: [
+            "The opening is a film played by scrolling: from the store to the home, from the heat pump to the battery, from EV charging to the solar roof, every service of the brand in one scene. The site was built section by section, each step reviewed.",
+          ],
+        },
+        { kind: "technical", title: "Technical", body: ["Next.js · Tailwind CSS · Framer Motion · scroll-driven video · glass navigation."] },
+      ],
+    },
+    {
+      slug: "elega-gunesli",
+      title: "Elega Güneşli",
+      category: "AI Brand Film",
+      year: "2026",
+      role: "AI Film Production",
+      personal: false,
+      idea: "“Elega Güneşli for everyone”: a vertical film moving from the building to a window and into the home to show life itself.",
+      layout: "split",
+      visual: "film",
+      media: { video: "/reel/elega-gunesli.mp4", poster: "/reel/elega-gunesli.jpg", aspect: 9 / 16 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Film",
+          body: [
+            "The camera travels from the facade to a window and into the home. Family, kitchen, workout and work moments flow like a single day; the film ends on the brand.",
+          ],
+        },
+        { kind: "technical", title: "Format", body: ["Vertical 9:16 · about 28 s · AI-generated scenes, edit and brand end card."] },
+      ],
+    },
+    {
+      slug: "dbh-group",
+      title: "DBH Group",
+      category: "Web Experience",
+      year: "2026",
+      role: "Design · Development",
+      personal: false,
+      idea: "A cinematic homepage for a group working across construction, real estate, mining, technology, energy and tourism.",
+      layout: "wide",
+      visual: "web",
+      media: { video: "/reel/dbh-group.mp4", poster: "/reel/dbh-group.jpg", aspect: 16 / 9 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Creative approach",
+          body: [
+            "The group's six fields meet in one film: towers, a quarry, residences, a lit city model, a hotel and wind turbines. The homepage opens at the film's tempo.",
+          ],
+        },
+        { kind: "technical", title: "Technical", body: ["Next.js · Tailwind CSS · GSAP · Lenis."] },
+      ],
+    },
+    {
+      slug: "en-bostanci",
+      title: "eN Bostancı",
+      category: "AI Brand Film",
+      year: "2026",
+      role: "AI Film Production",
+      personal: false,
+      idea: "“A life with style”: one living room turns through different interior styles in a single continuous shot.",
+      layout: "typographic",
+      visual: "film",
+      media: { video: "/reel/en-bostanci.mp4", poster: "/reel/en-bostanci.jpg", aspect: 9 / 16 },
+      sections: [
+        {
+          kind: "approach",
+          title: "Film",
+          body: [
+            "The camera stays in the same room while the space moves from style to style: pared-back, modern, classic and colourful textures turn into one another. One flat, many ways of living; the film ends on the brand.",
+          ],
+        },
+        { kind: "technical", title: "Format", body: ["Vertical 9:16 · about 32 s · AI-generated scenes, edit and brand end card."] },
       ],
     },
     {
