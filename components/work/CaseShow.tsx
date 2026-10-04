@@ -1,11 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import type { Fact } from "@/content/work-gallery";
 import { GlImage } from "./GlImage";
+
+// The 3D spaces load only here, only in the browser.
+const Gallery3D = dynamic(() => import("./Case3D").then((m) => m.Gallery3D), { ssr: false });
+const Phones3D = dynamic(() => import("./Case3D").then((m) => m.Phones3D), { ssr: false });
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -16,10 +21,13 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 //   grains into a large screen that grows to full bleed as you scroll.
 // · Marquee — the project's name runs past, faster with the scroll.
 // · Idea — its words light up in turn, as on the home manifesto.
-// · Chapters — one large sticky screen; each step of the scroll dissolves
-//   it to the next chapter of the site through a grain front.
+// · Chapters — a 3D space: the chapters as screens on a curved wall the
+//   camera turns along with the scroll (2D fallback: one sticky screen
+//   dissolving from chapter to chapter through a grain front).
 // · Figures — outlined, then lit in lime.
-// · Phones — rise at different speeds and lean toward the cursor.
+// · Phones — 3D phone bodies floating in studio light, turning with the
+//   cursor and the scroll (2D fallback: framed screens rising).
+// · The hero screen comes in tilted back in 3D and lands as you scroll.
 // The cursor ripples and splits every screen. Reduced motion: at rest.
 type Props = {
   locale: "tr" | "en";
@@ -42,6 +50,14 @@ export function CaseShow({ locale, title, kicker, idea, live, contact, hero, des
   // The hero already shows the opening screen; chapters start after it.
   const chapters = desktop.length > 1 ? desktop : hero ? [hero, ...desktop] : [];
   const [chapter, setChapter] = useState(0);
+  // 3D only with motion allowed and WebGL2 at hand.
+  const [three, setThree] = useState(false);
+  useEffect(() => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const ok = !!document.createElement("canvas").getContext("webgl2");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (ok) setThree(true);
+  }, []);
   const app = !hero;
   const trio = phone.length > 3 ? [phone[1], phone[0], phone[3]] : phone.slice(0, 3);
 
@@ -52,17 +68,28 @@ export function CaseShow({ locale, title, kicker, idea, live, contact, hero, des
       el.dataset.still = "true";
       return;
     }
+    const cleanups: (() => void)[] = [];
     // Title letters rise; the rest of the hero follows.
     gsap.from(el.querySelectorAll(".cx-letter"), { yPercent: 110, duration: 1.1, stagger: 0.025, ease: "power4.out", delay: 0.1 });
     gsap.from(el.querySelectorAll("[data-hero-rise]"), { y: 30, opacity: 0, duration: 1, stagger: 0.08, ease: "power3.out", delay: 0.5 });
 
-    // The hero screen grows to full bleed.
-    const screen = el.querySelector("[data-hero-screen]");
+    // The hero screen grows to full bleed, landing from a tilt back in 3D;
+    // the cursor leans it a little.
+    const screen = el.querySelector<HTMLElement>("[data-hero-screen]");
     if (screen) {
       gsap.fromTo(screen, { "--inset": "4vw", "--radius": "28px" }, {
         "--inset": "0vw", "--radius": "0px", ease: "none",
         scrollTrigger: { trigger: screen, start: "top 60%", end: "bottom 60%", scrub: true },
       });
+      const tilt = screen.querySelector<HTMLElement>("[data-tilt]");
+      if (tilt) {
+        gsap.fromTo(tilt, { rotateX: 24, scale: 0.92 }, { rotateX: 0, scale: 1, duration: 1.6, ease: "power3.out", delay: 0.25 });
+        gsap.set(tilt, { rotateY: 0 });
+        const ry = gsap.quickTo(tilt, "rotateY", { duration: 0.9, ease: "power3.out" });
+        const lean = (e: PointerEvent) => ry((e.clientX / innerWidth - 0.5) * 6);
+        addEventListener("pointermove", lean, { passive: true });
+        cleanups.push(() => removeEventListener("pointermove", lean));
+      }
     }
 
     // Marquee: drifts on its own and speeds with the scroll.
@@ -78,6 +105,7 @@ export function CaseShow({ locale, title, kicker, idea, live, contact, hero, des
         row.style.transform = `translate3d(${x}px,0,0)`;
       };
       gsap.ticker.add(tick);
+      cleanups.push(() => gsap.ticker.remove(tick));
     }
 
     // The idea, word by word.
@@ -89,12 +117,13 @@ export function CaseShow({ locale, title, kicker, idea, live, contact, hero, des
       });
     }
 
-    // Chapters: the scroll picks the chapter shown on the sticky screen.
+    // Chapters: the scroll picks the chapter shown (2D screen or 3D wall).
     const ch = el.querySelector("[data-chapters]");
     if (ch && chapters.length > 1) {
       ScrollTrigger.create({
         trigger: ch, start: "top top", end: "bottom bottom",
-        onUpdate: (s) => setChapter(Math.min(chapters.length - 1, Math.floor(s.progress * chapters.length))),
+        // Same mapping as the 3D camera: chapter i in front at progress i/(n-1).
+        onUpdate: (s) => setChapter(Math.round(s.progress * (chapters.length - 1))),
       });
     }
 
@@ -119,8 +148,18 @@ export function CaseShow({ locale, title, kicker, idea, live, contact, hero, des
         gsap.to(stage.querySelectorAll(".cx-phone"), { rotateY: x * 18, rotateX: -y * 12, duration: 0.8, ease: "power3.out" });
       };
       stage.addEventListener("pointermove", lean);
+      cleanups.push(() => stage.removeEventListener("pointermove", lean));
     }
-  }, { scope: root });
+    return () => cleanups.forEach((f) => f());
+  }, { scope: root, dependencies: [three], revertOnUpdate: true });
+
+  const hud = chapters.length > 1 && (
+    <div className="cx-chapter-hud">
+      <span className="case-kicker">{labels.chapter}</span>
+      <b className="font-display">{pad(chapter + 1)}<i> / {pad(chapters.length)}</i></b>
+      {live && <span className="cx-host">{live.host}</span>}
+    </div>
+  );
 
   const name = `${title} — `;
 
@@ -148,7 +187,7 @@ export function CaseShow({ locale, title, kicker, idea, live, contact, hero, des
         </div>
         <div className="cx-hero-screen" data-hero-screen>
           {hero ? (
-            <GlImage srcs={[hero]} intro alt={title} className="cx-screen" fit="top" />
+            <div data-tilt className="cx-tilt"><GlImage srcs={[hero]} intro alt={title} className="cx-screen" fit="top" /></div>
           ) : (
             <div className="cx-trio cx-trio-hero">
               {trio.map((src, i) => (
@@ -172,15 +211,13 @@ export function CaseShow({ locale, title, kicker, idea, live, contact, hero, des
         </p>
       </section>
 
-      {chapters.length > 1 && (
+      {chapters.length > 1 && three && <Gallery3D srcs={chapters} onChapter={setChapter}>{hud}</Gallery3D>}
+
+      {chapters.length > 1 && !three && (
         <section data-chapters className="cx-chapters" style={{ "--n": chapters.length } as React.CSSProperties}>
           <div className="cx-chapters-stage">
             <GlImage srcs={chapters} index={chapter} alt={title} className="cx-chapter-screen" fit="top" />
-            <div className="cx-chapter-hud">
-              <span className="case-kicker">{labels.chapter}</span>
-              <b className="font-display">{pad(chapter + 1)}<i> / {pad(chapters.length)}</i></b>
-              {live && <span className="cx-host">{live.host}</span>}
-            </div>
+            {hud}
           </div>
         </section>
       )}
@@ -196,7 +233,13 @@ export function CaseShow({ locale, title, kicker, idea, live, contact, hero, des
         </section>
       )}
 
-      {phone.length > 0 && (
+      {phone.length > 0 && three && (
+        <Phones3D srcs={app ? phone.slice(0, 5) : trio}>
+          <h2 className="cx-h2 font-display c3-phones-title">{labels.phones}</h2>
+        </Phones3D>
+      )}
+
+      {phone.length > 0 && !three && (
         <section className="cx-mobile">
           <h2 className="cx-h2 font-display">{labels.phones}</h2>
           <div data-phones className="cx-trio">

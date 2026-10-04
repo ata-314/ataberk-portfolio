@@ -263,6 +263,8 @@
   height: min(62.5vw, 92svh);
   clip-path: inset(0 var(--inset) round var(--radius));
 }
+.cx-hero-screen { perspective: 1800px; }
+.cx-tilt { transform-origin: 50% 0%; will-change: transform; }
 .cx-scroll { position: absolute; right: clamp(1.25rem, 4vw, 4rem); top: clamp(8rem, 18vh, 11rem); }
 
 .cx-marquee { overflow: hidden; padding: clamp(3rem, 8vh, 5rem) 0; border-bottom: 1px solid rgb(255 255 255 / 0.06); }
@@ -363,6 +365,14 @@
 .cx-phone .gl-image { aspect-ratio: 390 / 844; border-radius: 2.2rem; border: 3px solid #000; }
 .cx-trio-hero { margin-top: 0; }
 .cx-trio-hero .cx-phone { flex: 0 1 17rem; }
+
+/* 3D spaces (Case3D). */
+.c3-gallery { position: relative; height: calc(var(--n) * 95svh); }
+.c3-stage { position: sticky; top: 0; height: 100svh; }
+.c3-stage canvas { display: block; }
+.c3-phones { position: relative; padding-top: clamp(5rem, 14vh, 9rem); }
+.c3-phones-title { position: relative; z-index: 2; margin-inline: clamp(1.25rem, 4vw, 4rem); }
+.c3-phones-stage { height: min(100svh, 62rem); margin-top: -4rem; }
 
 .cx[data-still="true"] .cx-chapters { height: auto; }
 .cx[data-still="true"] .cx-chapters-stage { position: relative; height: auto; }

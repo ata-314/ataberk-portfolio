@@ -105,12 +105,14 @@ export function GlImage({ srcs, index = 0, intro = false, alt, className, fit = 
     gl.uniform1i(u("t1"), 1);
     gl.uniform1f(u("top"), fit === "top" ? 1 : 0);
 
+    let disposed = false;
     const tex: { t: WebGLTexture; w: number; h: number; ok: boolean }[] = srcs.map(() => ({ t: gl.createTexture()!, w: 16, h: 10, ok: false }));
     let ready = 0;
     srcs.forEach((src, i) => {
       const img = new Image();
       img.decoding = "async";
       img.onload = () => {
+        if (disposed) return;
         const x = tex[i];
         gl.bindTexture(gl.TEXTURE_2D, x.t);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
@@ -199,6 +201,7 @@ export function GlImage({ srcs, index = 0, intro = false, alt, className, fit = 
     };
     raf = requestAnimationFrame(frame);
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
       io.disconnect();
