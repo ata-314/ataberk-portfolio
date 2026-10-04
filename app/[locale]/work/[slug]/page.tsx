@@ -13,12 +13,12 @@ import { CaseShow } from "@/components/work/CaseShow";
 const labels = {
   tr: {
     role: "Rol", year: "Yıl", category: "Kategori", next: "Sonraki proje", back: "Tüm işler",
-    built: "Kullanılanlar", chapter: "Ekran", ring: "Cepte de aynı deneyim.", screens: "Ekranlar", desktop: "Masaüstü", phone: "Mobil", app: "Uygulama ekranları",
+    built: "Kullanılanlar", highlights: "Öne çıkanlar.", phones: "Telefonda da.", phonesBody: "Aynı site, telefonda: her bölüm tek elde gezilecek şekilde.", prev: "Önceki", nextSlide: "Sonraki", screens: "Ekranlar", desktop: "Masaüstü", phone: "Mobil", app: "Uygulama ekranları",
     ask: "Markan için benzerini birlikte kuralım.", askBody: "Bir site, bir uygulama ya da bir lansman deneyimi: fikrini anlat, nasıl kurulacağını birlikte çıkaralım.", askCta: "İletişime geç",
   },
   en: {
     role: "Role", year: "Year", category: "Category", next: "Next project", back: "All work",
-    built: "Built with", chapter: "Screen", ring: "The same experience, in hand.", screens: "Screens", desktop: "Desktop", phone: "Mobile", app: "App screens",
+    built: "Built with", highlights: "Get the highlights.", phones: "On the phone, too.", phonesBody: "The same site on a phone: every chapter within reach of one hand.", prev: "Previous", nextSlide: "Next", screens: "Screens", desktop: "Desktop", phone: "Mobile", app: "App screens",
     ask: "Let's build something like this for your brand.", askBody: "A site, an app or a launch experience: tell me the idea and we'll work out how to build it together.", askCta: "Get in touch",
   },
 };
@@ -76,20 +76,21 @@ export default async function CasePage({
   };
 
   return (
-    <main id="content" className="relative z-10 bg-ink">
-      {/* The project's screens in depth, with its title over them */}
+    <main id="content" className={`relative z-10 ${gallery ? "case-light" : "bg-ink"}`}>
+      {/* The product, large and sharp, the way a product page shows it */}
       {gallery && (
         <CaseShow
           locale={locale}
           title={item.title}
           kicker={`${item.category} · ${item.year}`}
-          back={l.back}
+          idea={item.idea}
           live={item.live}
-          desktop={item.media && "image" in item.media && gallery.desktop.length ? [item.media.image, ...gallery.desktop] : gallery.desktop}
+          contact={l.askCta}
+          hero={item.media && "image" in item.media && gallery.desktop.length ? item.media.image : undefined}
+          desktop={gallery.desktop}
           phone={gallery.phone}
           facts={gallery.facts}
-          ringTitle={l.ring}
-          chapter={l.chapter}
+          labels={{ highlights: l.highlights, phones: l.phones, phonesBody: l.phonesBody, prev: l.prev, next: l.nextSlide }}
         />
       )}
 
@@ -175,8 +176,7 @@ export default async function CasePage({
         <div className="mx-auto max-w-7xl space-y-20">
           {gallery && (
             <div className="case-rise grid grid-cols-12 gap-6">
-              <p className="case-lead font-display col-span-12 md:col-span-8">{item.idea}</p>
-              <dl className="col-span-12 grid grid-cols-3 gap-4 self-end text-sm md:col-span-4">
+              <dl className="col-span-12 grid grid-cols-3 gap-4 border-t border-black/10 pt-6 text-sm md:col-span-6 md:col-start-6">
                 <div><dt className="text-bone-dim">{l.category}</dt><dd className="mt-1 text-bone">{item.category}</dd></div>
                 <div><dt className="text-bone-dim">{l.year}</dt><dd className="mt-1 text-bone">{item.year}</dd></div>
                 <div><dt className="text-bone-dim">{l.role}</dt><dd className="mt-1 text-bone">{item.role}</dd></div>
@@ -246,7 +246,9 @@ export default async function CasePage({
           )}
         </div>
       </Link>
-      <Footer t={site[locale].footer} name={site[locale].name} />
+      <div className="bg-ink text-bone">
+        <Footer t={site[locale].footer} name={site[locale].name} />
+      </div>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
     </main>
   );
