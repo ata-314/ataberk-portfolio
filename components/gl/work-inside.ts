@@ -7,6 +7,7 @@
 // comets rake the surface. Moving grains turn into lit beads stretched
 // along their motion; resting ones tile the picture as pixels.
 import { nebulaChunk } from "./work-shaders";
+import { buildProgramU } from "./program";
 
 const fullscreen = `#version 300 es
 precision highp float;
@@ -138,43 +139,23 @@ void main(){
   color=vec4(mix(vColor,bead,vBead),a);
 }`;
 
-function program(gl: WebGL2RenderingContext, vs: string, fs: string) {
-  const make = (type: number, src: string) => {
-    const sh = gl.createShader(type)!;
-    gl.shaderSource(sh, src);
-    gl.compileShader(sh);
-    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh) ?? "inside shader");
-    return sh;
-  };
-  const p = gl.createProgram()!;
-  const v = make(gl.VERTEX_SHADER, vs), f = make(gl.FRAGMENT_SHADER, fs);
-  gl.attachShader(p, v);
-  gl.attachShader(p, f);
-  gl.linkProgram(p);
-  gl.deleteShader(v);
-  gl.deleteShader(f);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p) ?? "inside link");
-  const cache = new Map<string, WebGLUniformLocation | null>();
-  const u = (n: string) => {
-    if (!cache.has(n)) cache.set(n, gl.getUniformLocation(p, n));
-    return cache.get(n) ?? null;
-  };
-  return { p, u };
-}
+const program = (gl: WebGL2RenderingContext, vs: string, fs: string) => buildProgramU(gl, vs, fs, "Inside");
 
 const comet = (i: number, t: number, aspect: number): [number, number] => {
   const w = 0.2 + i * 0.07;
   return [Math.sin(t * w * 2.1 + i * 2.4) * 0.95 * aspect, Math.sin(t * w * 3.3 + i * 4.1 + Math.sin(t * w * 0.7) * 1.3) * 0.72];
 };
 
-export function createWorkInside(gl: WebGL2RenderingContext, mobile: boolean, aspect: number) {
+export async function createWorkInside(gl: WebGL2RenderingContext, mobile: boolean, aspect: number) {
   const cols = mobile ? 120 : 200;
   const rows = Math.round(cols / aspect);
   // Float render targets are needed for the simulation; without them the
   // card still opens as a still picture.
   const canSim = !!gl.getExtension("EXT_color_buffer_float");
-  const sim = canSim ? program(gl, fullscreen, simFragment) : null;
-  const draw = program(gl, renderVertex, renderFragment);
+  const [sim, draw] = await Promise.all([
+    canSim ? program(gl, fullscreen, simFragment) : null,
+    program(gl, renderVertex, renderFragment),
+  ]);
   const vao = gl.createVertexArray();
   const targets = [0, 1].map(() => {
     const tex = gl.createTexture()!;

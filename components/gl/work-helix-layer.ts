@@ -19,6 +19,7 @@ import {
 import { createGlyphFace } from "./glyph-face";
 import { createWorkInside } from "./work-inside";
 import { createSeaLayer } from "./sea-layer";
+import { buildProgramU } from "./program";
 
 type Vec3 = [number, number, number];
 
@@ -31,30 +32,7 @@ const STEP_Y = 0.95;
 // Share of the pinned runway the cards use; the tail is the backdrop's exit.
 export const CARDS_END = 0.7;
 
-function compile(gl: WebGL2RenderingContext, vs: string, fs: string) {
-  const make = (type: number, src: string) => {
-    const s = gl.createShader(type)!;
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) ?? "work shader");
-    return s;
-  };
-  const p = gl.createProgram()!;
-  const v = make(gl.VERTEX_SHADER, vs);
-  const f = make(gl.FRAGMENT_SHADER, fs);
-  gl.attachShader(p, v);
-  gl.attachShader(p, f);
-  gl.linkProgram(p);
-  gl.deleteShader(v);
-  gl.deleteShader(f);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p) ?? "work link");
-  const cache = new Map<string, WebGLUniformLocation | null>();
-  const u = (name: string) => {
-    if (!cache.has(name)) cache.set(name, gl.getUniformLocation(p, name));
-    return cache.get(name) ?? null;
-  };
-  return { p, u };
-}
+const compile = (gl: WebGL2RenderingContext, vs: string, fs: string) => buildProgramU(gl, vs, fs, "Work");
 
 // Rounded-rectangle slab: front (+z) and back faces as fans, side walls
 // between the two outlines. Attributes: position, normal, uv, face id.
@@ -154,18 +132,20 @@ export type WorkFrame = {
   cursorOn: number;
 };
 
-export function createWorkHelixLayer(
+export async function createWorkHelixLayer(
   gl: WebGL2RenderingContext,
   mobile: boolean,
   slots: { deep: Vec3; mid: Vec3; glow: Vec3; screen?: string; face?: string; video?: string }[],
   titles: () => string[],
 ) {
   const count = slots.length;
-  const card = compile(gl, cardVertex, cardFragment);
-  const sea = createSeaLayer(gl, mobile);
-  const atmosphere = compile(gl, fullscreenVertex, atmosphereFragment);
-  const veil = compile(gl, fullscreenVertex, veilFragment);
-  const inside = createWorkInside(gl, mobile, CARD_W / CARD_H);
+  const [card, sea, atmosphere, veil, inside] = await Promise.all([
+    compile(gl, cardVertex, cardFragment),
+    createSeaLayer(gl, mobile),
+    compile(gl, fullscreenVertex, atmosphereFragment),
+    compile(gl, fullscreenVertex, veilFragment),
+    createWorkInside(gl, mobile, CARD_W / CARD_H),
+  ]);
 
   const cardVao = gl.createVertexArray();
   gl.bindVertexArray(cardVao);
@@ -192,26 +172,54 @@ export function createWorkHelixLayer(
   // the card keeps its colour world.
   const screens: (WebGLTexture | null)[] = slots.map(() => null);
   let disposed = false;
-  slots.forEach((s, i) => {
-    if (!s.screen) return;
-    const img = new Image();
-    img.decoding = "async";
-    img.onload = () => {
-      if (disposed) return;
-      const tex = gl.createTexture();
-      gl.activeTexture(gl.TEXTURE11);
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-      gl.generateMipmap(gl.TEXTURE_2D);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      screens[i] = tex;
-    };
-    img.src = s.screen;
-  });
+  // Requested only by prepare() (after the opening, or as the section
+  // nears), decoded off the main thread, and uploaded one per frame from
+  // update(): seven full captures landing at once during the opening used
+  // to stall it, most of all on Windows where uploads go through Direct3D.
+  const pending: { i: number; picture: ImageBitmap | HTMLImageElement }[] = [];
+  let prepared = false;
+  const prepare = () => {
+    if (prepared) return;
+    prepared = true;
+    slots.forEach((s, i) => {
+      const src = s.screen;
+      if (!src) return;
+      const queue = (picture: ImageBitmap | HTMLImageElement) => {
+        if (disposed) {
+          if ("close" in picture) picture.close();
+          return;
+        }
+        pending.push({ i, picture });
+      };
+      const fallback = () => {
+        const img = new Image();
+        img.decoding = "async";
+        img.onload = () => queue(img);
+        img.src = src;
+      };
+      if (typeof createImageBitmap !== "function") return fallback();
+      fetch(src)
+        .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`${src}: ${r.status}`))))
+        .then((blob) => createImageBitmap(blob))
+        .then(queue, fallback);
+    });
+  };
+  const uploadPending = () => {
+    const next = pending.shift();
+    if (!next) return;
+    const tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE11);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, next.picture);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    if ("close" in next.picture) next.picture.close();
+    screens[next.i] = tex;
+  };
   // Living faces: the canvas is redrawn and re-uploaded while its card is on
   // screen, at most ~24 fps (15 on phones).
   const faces = slots.map((s, i) => {
@@ -477,6 +485,7 @@ export function createWorkHelixLayer(
   };
 
   const update = (f: WorkFrame) => {
+    uploadPending();
     pauseHidden(f.time);
     frame = f;
     syncTitles();
@@ -717,6 +726,7 @@ export function createWorkHelixLayer(
     renderBack,
     renderFront,
     pick,
+    prepare,
     // A click inside the opened card fires a burst from that point.
     burst(x: number, y: number) {
       if (openT < 0.85) return;
@@ -730,6 +740,7 @@ export function createWorkHelixLayer(
       sea.dispose();
       disposed = true;
       screens.forEach((t) => t && gl.deleteTexture(t));
+      pending.forEach(({ picture }) => "close" in picture && picture.close());
       videos.forEach((v) => {
         v?.el?.pause();
         v?.el?.removeAttribute("src");

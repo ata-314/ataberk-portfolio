@@ -1,3 +1,6 @@
+import { buildProgram } from "./program";
+
+
 const field = /* glsl */ `float hash(vec3 p) {
   p = fract(p * 0.3183099 + vec3(.11,.27,.43));
   p *= 17.0;
@@ -826,41 +829,27 @@ export type SculptureFlight = {
   };
 };
 
-export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean) {
-  const makeProgram=(vertexSource: string,fragmentSource: string) => {
-  const program=gl.createProgram();
-  if(!program) throw new Error("Particle sculpture allocation failed");
-  const shaders: WebGLShader[]=[];
-  try {
-    for(const [type,source] of [[gl.VERTEX_SHADER,vertexSource],[gl.FRAGMENT_SHADER,fragmentSource]] as const) {
-      const shader=gl.createShader(type);
-      if(!shader) throw new Error("Particle shader allocation failed");
-      shaders.push(shader); gl.shaderSource(shader,source); gl.compileShader(shader);
-      if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || "Particle shader failed");
-      gl.attachShader(program,shader);
-    }
-    gl.linkProgram(program);
-    if(!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "Particle link failed");
-  } catch(error) {gl.deleteProgram(program);throw error;}
-  finally {shaders.forEach(shader=>gl.deleteShader(shader));}
-    return program;
-  };
-  const program=makeProgram(vertex,fragment);
-  const surfaceProgram=makeProgram(canvasVertex,surfaceFragment);
-  // Simulation targets: two ping-pong framebuffers, each with displacement
-  // and velocity attachments. Without float render targets the bird simply
-  // renders unsimulated.
-  const simRows=Math.ceil((mobile?74000:226000)/SIM_W);
+export async function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean) {
   // Phones render the bird unsimulated: on real phone GPUs the simulation
   // scattered the grains into a shapeless cloud (not reproducible in desktop
   // Chromium), and the bird keeps its form without it.
   const simOk=!mobile&&!!gl.getExtension("EXT_color_buffer_float");
+  const [program,surfaceProgram,simCompiled,flowCompiled]=await Promise.all([
+    buildProgram(gl,vertex,fragment,"Particle"),
+    buildProgram(gl,canvasVertex,surfaceFragment,"Particle surface"),
+    simOk?buildProgram(gl,canvasVertex,simFragment,"Particle sim"):null,
+    simOk?buildProgram(gl,canvasVertex,flowFragment,"Particle flow"):null,
+  ]);
+  // Simulation targets: two ping-pong framebuffers, each with displacement
+  // and velocity attachments. Without float render targets the bird simply
+  // renders unsimulated.
+  const simRows=Math.ceil((mobile?74000:226000)/SIM_W);
   let simProgram: WebGLProgram|null=null;
   let simUniforms: Record<string,WebGLUniformLocation|null>={};
   const simTargets: {fbo: WebGLFramebuffer|null; disp: WebGLTexture|null; vel: WebGLTexture|null}[]=[];
   let simRead=0,simLive=false;
-  if(simOk) {
-    const sp=makeProgram(canvasVertex,simFragment);
+  if(simOk&&simCompiled) {
+    const sp=simCompiled;
     simProgram=sp;
     simUniforms=Object.fromEntries(["resolution","pointer","fieldTime","activity","birdPositions","birdNormals","birdLinks","linksReady","dispTex","velTex","flowTex","birdMatrix","prevMatrix","birdView","birdProjection","flap","time","dt","reset"].map(name=>[name,gl.getUniformLocation(sp,name)]));
     const makeTex=()=>{
@@ -891,8 +880,9 @@ export function createSculptureLayer(gl: WebGL2RenderingContext, mobile: boolean
   let flowUniforms: Record<string,WebGLUniformLocation|null>={};
   const flowTargets: {fbo: WebGLFramebuffer|null; tex: WebGLTexture|null}[]=[];
   let flowRead=0;
-  if(simLive) {
-    const fp=makeProgram(canvasVertex,flowFragment);
+  if(!simLive&&flowCompiled) gl.deleteProgram(flowCompiled);
+  if(simLive&&flowCompiled) {
+    const fp=flowCompiled;
     flowProgram=fp;
     flowUniforms=Object.fromEntries(["flowTex","flowSize","worldSpan","dt","time","splatPos","splatVel","splatAmt","aspect"].map(name=>[name,gl.getUniformLocation(fp,name)]));
     gl.activeTexture(gl.TEXTURE9);

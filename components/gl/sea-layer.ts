@@ -3,6 +3,7 @@
 // (projected onto the wall) parts and drags the grains through a small GPU
 // simulation. The selected-work backdrop drives it (work-helix-layer.ts).
 import { dataFragment, dataVertex, fullscreenVertex, seaSimFragment } from "./work-shaders";
+import { buildProgramU } from "./program";
 
 type Vec3 = [number, number, number];
 
@@ -21,36 +22,15 @@ export type SeaFrame = {
   amount: number; // overall opacity
 };
 
-function compile(gl: WebGL2RenderingContext, vs: string, fs: string) {
-  const make = (type: number, src: string) => {
-    const s = gl.createShader(type)!;
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) ?? "sea shader");
-    return s;
-  };
-  const p = gl.createProgram()!;
-  const v = make(gl.VERTEX_SHADER, vs);
-  const f = make(gl.FRAGMENT_SHADER, fs);
-  gl.attachShader(p, v);
-  gl.attachShader(p, f);
-  gl.linkProgram(p);
-  gl.deleteShader(v);
-  gl.deleteShader(f);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p) ?? "sea link");
-  const cache = new Map<string, WebGLUniformLocation | null>();
-  const u = (name: string) => {
-    if (!cache.has(name)) cache.set(name, gl.getUniformLocation(p, name));
-    return cache.get(name) ?? null;
-  };
-  return { p, u };
-}
+const compile = (gl: WebGL2RenderingContext, vs: string, fs: string) => buildProgramU(gl, vs, fs, "Sea");
 
 const damp = (c: number, t: number, k: number, d: number) => c + (t - c) * (1 - Math.exp(-k * d));
 
-export function createSeaLayer(gl: WebGL2RenderingContext, mobile: boolean) {
-  const data = compile(gl, dataVertex, dataFragment);
-  const seaSim = gl.getExtension("EXT_color_buffer_float") ? compile(gl, fullscreenVertex, seaSimFragment) : null;
+export async function createSeaLayer(gl: WebGL2RenderingContext, mobile: boolean) {
+  const [data, seaSim] = await Promise.all([
+    compile(gl, dataVertex, dataFragment),
+    gl.getExtension("EXT_color_buffer_float") ? compile(gl, fullscreenVertex, seaSimFragment) : null,
+  ]);
   const emptyVao = gl.createVertexArray();
   // Dense like the hero's sea: grains a couple of pixels apart.
   const cols = mobile ? 300 : 560;

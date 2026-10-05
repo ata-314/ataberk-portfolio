@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { preload } from "react-dom";
 import { isLocale } from "@/lib/i18n";
 import { site } from "@/content/site";
 import StageLoader from "@/components/gl/StageLoader";
@@ -25,6 +26,9 @@ export default async function Home({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const t = site[locale];
+  // The stage waits for the bird bake before its first frame; start the
+  // download with the page instead of after the stage's script has run.
+  preload("/models/bird-bake.bin", { as: "fetch", crossOrigin: "anonymous", fetchPriority: "low" });
 
   return (
     <SmoothScroll>

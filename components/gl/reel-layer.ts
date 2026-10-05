@@ -17,6 +17,7 @@
 // a stop of the camera are decoded and uploaded, and with reduced motion
 // only posters are shown.
 import type { ReelItem } from "@/content/reel";
+import { buildProgram } from "./program";
 
 const palette = `
 vec3 palette(float t,float s) {
@@ -191,20 +192,8 @@ void main(){
 const UNIFORMS = ["view", "projection", "centre", "size", "yaw", "tilt", "layer", "time", "picture", "side", "appear", "focus",
   "presence", "hue", "pass", "cursor", "burst", "burstAge", "strength", "slit", "quad", "viewportH"];
 
-function compile(gl: WebGL2RenderingContext, vs: string, fs: string, name: string) {
-  const program = gl.createProgram();
-  if (!program) throw new Error(`${name} program allocation failed`);
-  for (const [type, source] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]] as const) {
-    const shader = gl.createShader(type);
-    if (!shader) throw new Error(`${name} shader allocation failed`);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || `${name} shader failed`);
-    gl.attachShader(program, shader);
-    gl.deleteShader(shader);
-  }
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || `${name} link failed`);
+async function compile(gl: WebGL2RenderingContext, vs: string, fs: string, name: string) {
+  const program = await buildProgram(gl, vs, fs, name);
   return { program, u: Object.fromEntries(UNIFORMS.map((n) => [n, gl.getUniformLocation(program, n)])) };
 }
 
@@ -222,7 +211,7 @@ export function reelStops(progress: number, count: number) {
 
 type Vec3 = [number, number, number];
 
-export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, items: ReelItem[]) {
+export async function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, items: ReelItem[]) {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   // Same corridor as the tunnel layer: walls at ±3.4, blocks up to 0.75 in.
   const WALL = 3.4;
@@ -231,9 +220,11 @@ export function createReelLayer(gl: WebGL2RenderingContext, mobile: boolean, ite
   const VIEW = mobile ? 8.5 : 6.2;
   const MOTES = mobile ? 90 : 180;
 
-  const picture = compile(gl, pictureVertex, pictureFragment, "Reel picture");
-  const fan = compile(gl, fanVertex, fanFragment, "Reel fan");
-  const motes = compile(gl, moteVertex, moteFragment, "Reel motes");
+  const [picture, fan, motes] = await Promise.all([
+    compile(gl, pictureVertex, pictureFragment, "Reel picture"),
+    compile(gl, fanVertex, fanFragment, "Reel fan"),
+    compile(gl, moteVertex, moteFragment, "Reel motes"),
+  ]);
 
   const quadVao = gl.createVertexArray();
   gl.bindVertexArray(quadVao);

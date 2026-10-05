@@ -1,3 +1,4 @@
+import { buildProgram } from "./program";
 // The voxel tunnel the bird flies into after the opening: a square corridor
 // whose walls are a relief of dark metal blocks and fine structural beams.
 // Every block carries a thin lit edge; rings of light travel along the
@@ -133,20 +134,8 @@ function cube() {
   return new Float32Array(out);
 }
 
-export function createTunnelLayer(gl: WebGL2RenderingContext, mobile: boolean) {
-  const program = gl.createProgram();
-  if (!program) throw new Error("Tunnel program allocation failed");
-  for (const [type, source] of [[gl.VERTEX_SHADER, vertex], [gl.FRAGMENT_SHADER, fragment]] as const) {
-    const shader = gl.createShader(type);
-    if (!shader) throw new Error("Tunnel shader allocation failed");
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || "Tunnel shader failed");
-    gl.attachShader(program, shader);
-    gl.deleteShader(shader);
-  }
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "Tunnel link failed");
+export async function createTunnelLayer(gl: WebGL2RenderingContext, mobile: boolean) {
+  const program = await buildProgram(gl, vertex, fragment, "Tunnel");
   const u = Object.fromEntries(["view", "projection", "travel", "length_", "time", "presence", "hue", "build", "exit_"].map((n) => [n, gl.getUniformLocation(program, n)]));
 
   // Corridor: half-width W, half-height H, length L. Each wall is a grid of

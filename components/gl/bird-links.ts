@@ -22,15 +22,19 @@ export function buildBirdLinks(positions: Uint16Array, samples: number, width: n
     const x = halfToFloat(positions[i * 4]);
     const y = halfToFloat(positions[i * 4 + 1]);
     const z = halfToFloat(positions[i * 4 + 2]);
-    points.set([x, y, z], i * 3);
+    points[i * 3] = x;
+    points[i * 3 + 1] = y;
+    points[i * 3 + 2] = z;
     minX = Math.min(minX, x); maxX = Math.max(maxX, x);
     minY = Math.min(minY, y); maxY = Math.max(maxY, y);
     minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
   }
   const cell = Math.hypot(maxX - minX, maxY - minY, maxZ - minZ) / 70;
-  const key = (x: number, y: number, z: number) => `${x},${y},${z}`;
+  // Numeric cell keys (the grid spans ~71 cells per axis, plus the ±1
+  // neighbour ring): string keys made this the slowest step of startup.
+  const key = (x: number, y: number, z: number) => ((x + 1) * 128 + (y + 1)) * 128 + (z + 1);
   const cellOf = (v: number, min: number) => Math.floor((v - min) / cell);
-  const grid = new Map<string, number[]>();
+  const grid = new Map<number, number[]>();
   for (let i = 0; i < samples; i++) {
     const k = key(cellOf(points[i * 3], minX), cellOf(points[i * 3 + 1], minY), cellOf(points[i * 3 + 2], minZ));
     const bucket = grid.get(k);
@@ -48,7 +52,8 @@ export function buildBirdLinks(positions: Uint16Array, samples: number, width: n
       if (!bucket) continue;
       for (const j of bucket) {
         if (j === i) continue;
-        const d = Math.hypot(points[j * 3] - px, points[j * 3 + 1] - py, points[j * 3 + 2] - pz);
+        const ex = points[j * 3] - px, ey = points[j * 3 + 1] - py, ez = points[j * 3 + 2] - pz;
+        const d = Math.sqrt(ex * ex + ey * ey + ez * ez);
         if (d < 1e-5 || d >= dist[i * 3 + 2]) continue;
         // Insert into the sorted top three.
         let slot = 2;

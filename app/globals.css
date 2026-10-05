@@ -416,6 +416,26 @@ header[data-menu-open] .nav-capsule { visibility: hidden; }
   }
 }
 
+/* Windows and integrated GPUs (html[data-perf="lite"], see
+   components/gl/perf.ts): the same painted panes on desktop, and a lighter
+   blur on the small nav capsule. */
+html[data-perf="lite"] .liquid-glass {
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  backdrop-filter: blur(16px) saturate(1.8);
+}
+html[data-perf="lite"] :is(.glass, .glass-strong, .glass-chip, .glass-tile) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html[data-perf="lite"] .glass {
+  background: linear-gradient(145deg, rgba(32, 32, 36, 0.92), rgba(16, 16, 18, 0.88) 55%, rgba(26, 26, 30, 0.9));
+}
+html[data-perf="lite"] .glass-strong {
+  background: linear-gradient(145deg, rgba(28, 28, 31, 0.96), rgba(14, 14, 16, 0.92) 52%, rgba(25, 25, 28, 0.94));
+}
+html[data-perf="lite"] .glass-chip { background: rgba(28, 28, 32, 0.9); }
+html[data-perf="lite"] .glass-tile { background: linear-gradient(180deg, rgba(26, 26, 30, 0.93), rgba(15, 15, 17, 0.9)); }
+
 /* Small glass chips: tags, contact intents, metadata pills. */
 .glass-chip {
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));

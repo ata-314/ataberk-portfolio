@@ -99,7 +99,11 @@ export default async function LocaleLayout({
   };
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        {/* Windows takes the lite glass before first paint (see components/gl/perf.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: `if(/Windows/i.test(navigator.userAgent))document.documentElement.dataset.perf="lite"` }} />
+      </head>
       <body
         className={`${archivo.variable} ${audiowide.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
       >

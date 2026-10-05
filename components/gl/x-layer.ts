@@ -18,6 +18,7 @@
 // grains light up and pour back with an underdamped, liquid wobble.
 
 import { glyphSample } from "./matrix-layer";
+import { buildProgram } from "./program";
 
 const common = /* glsl */ `
 float hash(float n) {return fract(sin(n*12.9898)*43758.5453);}
@@ -256,28 +257,14 @@ export type XStep = {
   aspect: number;
 };
 
-export function createXLayer(gl: WebGL2RenderingContext, mobile: boolean, atlas: WebGLTexture | null) {
-  const compile = (vs: string, fs: string) => {
-    const program = gl.createProgram();
-    if (!program) throw new Error("X program allocation failed");
-    for (const [type, source] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]] as const) {
-      const shader = gl.createShader(type);
-      if (!shader) throw new Error("X shader allocation failed");
-      gl.shaderSource(shader, source);
-      gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || "X shader failed");
-      gl.attachShader(program, shader);
-      gl.deleteShader(shader);
-    }
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "X link failed");
-    return program;
-  };
+export async function createXLayer(gl: WebGL2RenderingContext, mobile: boolean, atlas: WebGLTexture | null) {
   const uniforms = (program: WebGLProgram, names: string[]) => Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(program, n)]));
   // Float render targets carry the simulation; without them the X is off.
   const simOk = !!gl.getExtension("EXT_color_buffer_float");
-  const simProgram = compile(quad, simFragment);
-  const renderProgram = compile(vertex, fragment);
+  const [simProgram, renderProgram] = await Promise.all([
+    buildProgram(gl, quad, simFragment, "X sim"),
+    buildProgram(gl, vertex, fragment, "X"),
+  ]);
   const su = uniforms(simProgram, ["posTex", "velTex", "dataA", "dataB", "dataC", "viewProj", "invViewProj", "centre", "camRight", "camUp", "cursor", "cursorVel", "cursorOn", "aspect", "tanHalf", "letterZ", "scale", "yaw", "radius", "dissolve", "gather", "open", "rush", "time", "dt", "reset"]);
   const ru = uniforms(renderProgram, ["posTex", "velTex", "dataA", "dataB", "dataC", "viewProj", "p11", "scale", "open", "presence", "time", "viewH", "bead", "cols", "atlas"]);
 

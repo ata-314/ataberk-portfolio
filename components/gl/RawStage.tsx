@@ -8,6 +8,9 @@ import { createReelLayer, reelStops } from "./reel-layer";
 import { createXLayer } from "./x-layer";
 import { makeGlyphAtlas } from "./matrix-layer";
 import { createPost } from "./post";
+import { buildProgram } from "./program";
+import { gpuTier, isWindows, markLite } from "./perf";
+import { fetchBake } from "./bake-cache";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour, FOLD_FRAME } from "./bird-behaviour";
 import { createWorkHelixLayer } from "./work-helix-layer";
@@ -47,41 +50,7 @@ ${leanFragment}`;
 
 type Vec3 = [number, number, number];
 
-function compile(gl: WebGL2RenderingContext, type: number, source: string) {
-  const shader = gl.createShader(type);
-  if (!shader) throw new Error("WebGL shader allocation failed");
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    const message = gl.getShaderInfoLog(shader) ?? "WebGL shader compilation failed";
-    gl.deleteShader(shader);
-    throw new Error(message);
-  }
-  return shader;
-}
-
 const yieldTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
-
-async function createProgram(gl: WebGL2RenderingContext) {
-  const vertex = compile(gl, gl.VERTEX_SHADER, vertexSource);
-  await yieldTask();
-  const fragment = compile(gl, gl.FRAGMENT_SHADER, fragmentSource);
-  await yieldTask();
-  const program = gl.createProgram();
-  if (!program) throw new Error("WebGL program allocation failed");
-  gl.attachShader(program, vertex);
-  gl.attachShader(program, fragment);
-  gl.linkProgram(program);
-  gl.deleteShader(vertex);
-  gl.deleteShader(fragment);
-  await yieldTask();
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const message = gl.getProgramInfoLog(program) ?? "WebGL program link failed";
-    gl.deleteProgram(program);
-    throw new Error(message);
-  }
-  return program;
-}
 
 function perspective(out: Float32Array, fov: number, aspect: number, near: number, far: number) {
   const f = 1 / Math.tan(fov / 2);
@@ -263,8 +232,38 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const birdBake = fetch("/models/bird-bake.bin");
     birdBake.catch(() => {});
     void (async () => {
-    const program = await createProgram(gl);
+    const mobile = window.matchMedia("(pointer: coarse)").matches || innerWidth < 768;
+    // Every program of every layer compiles at once, off the main thread
+    // where the driver allows (see program.ts).
+    const glyphAtlas = makeGlyphAtlas(gl);
+    const [program, sculpture, tunnel, reel, post, xLayer, work] = await Promise.all([
+      buildProgram(gl, vertexSource, fragmentSource, "Stage"),
+      // The particle sculpture carries the opening.
+      createSculptureLayer(gl, mobile),
+      // Voyage: after the opening, the bird on black, then the voxel tunnel.
+      createTunnelLayer(gl, mobile),
+      // The showreel: screens along the tunnel, advanced stop by stop by the
+      // reel span of the voyage scroll ([data-reel]).
+      createReelLayer(gl, mobile, reelItems),
+      // Film look (bloom, lens ring, grade); blended in only for the tunnel.
+      createPost(gl),
+      // The X: the name's last letter handed over as beads, drifting down
+      // into the voyage, condensing into a solid X and opening as the portal
+      // the bird flies through into the tunnel.
+      createXLayer(gl, mobile, glyphAtlas),
+      // Selected work: glass cards on a helix with the bird behind.
+      createWorkHelixLayer(gl, mobile, workSlots.slice(0, workItemCount).map((slot) => ({
+        deep: slotRgb(slot.colors[0]),
+        mid: slotRgb(slot.colors[1]),
+        glow: slotRgb(slot.colors[2]),
+        screen: slot.screen,
+        face: slot.face,
+        video: slot.video,
+      })), () => workState.titles),
+    ]);
     if (disposed) {
+      [sculpture, tunnel, reel, post, xLayer, work].forEach((layer) => layer?.dispose());
+      gl.deleteTexture(glyphAtlas);
       gl.deleteProgram(program);
       return;
     }
@@ -272,18 +271,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     gl.bindVertexArray(vao);
     gl.useProgram(program);
 
-    const mobile = window.matchMedia("(pointer: coarse)").matches || innerWidth < 768;
     // Stage size comes from the canvas (sized to the large viewport), not
     // innerHeight: on phones the URL bar resizes the window on every scroll
     // direction change, which used to rescale the field mid-scroll.
     let stageW = innerWidth;
     let stageH = innerHeight;
-    const sculpture = createSculptureLayer(gl, mobile);
-    // Voyage: after the opening, the bird on black, then the voxel tunnel.
-    const tunnel = createTunnelLayer(gl, mobile);
-    // The showreel: screens along the tunnel, advanced stop by stop by the
-    // reel span of the voyage scroll ([data-reel]).
-    const reel = createReelLayer(gl, mobile, reelItems);
     let reelElement: HTMLElement | null = null;
     let reelProgress = 0;
     let reelPosition = 0;
@@ -307,26 +299,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // Which way along the body the tail lies in the bake (+1: toward +z).
     const workTailSign = 1;
     workState.pick = (x, y) => work.pick(x, y, stageW, stageH);
-    // Film look (bloom, lens ring, grade); blended in only for the tunnel.
-    const post = createPost(gl);
     let voyageElement: HTMLElement | null = null;
     let voyageHold = 0;
     let voyage = 0;
     let tunnelIn = 0;
-    // The X: the name's last letter handed over as beads, drifting down
-    // into the voyage, condensing into a solid X and opening as the portal
-    // the bird flies through into the tunnel.
-    const glyphAtlas = makeGlyphAtlas(gl);
-    const xLayer = createXLayer(gl, mobile, glyphAtlas);
-    // Selected work: glass cards on a helix with the bird behind.
-    const work = createWorkHelixLayer(gl, mobile, workSlots.slice(0, workItemCount).map((slot) => ({
-      deep: slotRgb(slot.colors[0]),
-      mid: slotRgb(slot.colors[1]),
-      glow: slotRgb(slot.colors[2]),
-      screen: slot.screen,
-      face: slot.face,
-      video: slot.video,
-    })), () => workState.titles);
     // How far the voyage has slid in: 0 with its top at the screen's foot,
     // 1 once the X has had room to rejoin.
     let xPath = 0;
@@ -529,9 +505,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const bustLoad = setTimeout(() => {
       void (async () => {
         try {
-          const response = await fetch("/models/ataberk-bake.bin");
-          if (!response.ok) throw new Error(`bust bake: ${response.status}`);
-          const buffer = await response.arrayBuffer();
+          const buffer = await fetchBake("/models/ataberk-bake.bin");
           if (disposed) return;
           if (buffer.byteLength !== BUST_W * BUST_ROWS * 2 * 4 * 2) throw new Error("bust bake: unexpected size");
           gl.activeTexture(gl.TEXTURE5);
@@ -697,15 +671,26 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     const view = new Float32Array(16);
     const birdMatrix = new Float32Array(16);
     let pixelRatio = 1;
+    // The field is fill-bound, so resolution is the main cost. Integrated
+    // GPUs and Windows (ANGLE on Direct3D) start nearer native resolution;
+    // if frames still run slow, the quality step lowers it further below.
+    const tier = gpuTier(gl);
+    const windows = isWindows();
+    if (tier !== "high") markLite();
+    const QUALITY = [1, 0.82, 0.68, 0.56];
+    let quality = 0;
     const resize = () => {
       // Full-resolution rendering keeps the droplets pixel-crisp on retina
-      // displays; phones trade a little sharpness for fill-rate headroom —
-      // the additive field is fill-bound, so DPR is the dominant mobile cost.
-      // Standard-density desktop screens render supersampled (≥1.5x) and let
+      // displays; phones trade a little sharpness for fill-rate headroom.
+      // Standard-density Mac screens render supersampled (≥1.5x) and let
       // the compositor downsample, which rounds off the smallest droplets.
-      pixelRatio = mobile
-        ? Math.min(devicePixelRatio, 1.5)
-        : Math.min(Math.max(devicePixelRatio, 1.5), 2);
+      const dpr = devicePixelRatio || 1;
+      const base = mobile ? Math.min(dpr, 1.5)
+        : tier === "low" ? 1
+        : tier === "mid" ? Math.min(dpr, 1.25)
+        : windows ? Math.min(dpr, 1.5)
+        : Math.min(Math.max(dpr, 1.5), 2);
+      pixelRatio = Math.max(0.6, base * QUALITY[quality]);
       stageW = canvas.clientWidth || innerWidth;
       stageH = canvas.clientHeight || innerHeight;
       const width = Math.round(stageW * pixelRatio);
@@ -767,9 +752,30 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     let orbit = 0;
     const orbitRing = new Float32Array(4);
     let menuSkip = false;
+    // Frame pacing: after the opening has settled, if over a third of a
+    // ~1.5 s window runs below ~42 fps, drop one quality step (a single
+    // canvas resize, never per scroll frame) and flatten the glass.
+    let paceLast = 0;
+    let paceFrames = 0;
+    let paceSlow = 0;
     const render = (now: number) => {
       if (disposed) return;
       frameId = requestAnimationFrame(render);
+      const raw = now - paceLast;
+      paceLast = now;
+      if (time > 4 && raw < 250 && document.visibilityState === "visible") {
+        paceFrames++;
+        if (raw > 24) paceSlow++;
+        if (paceFrames >= 90) {
+          if (paceSlow / paceFrames > 0.35 && quality < QUALITY.length - 1) {
+            quality++;
+            markLite();
+            resize();
+          }
+          paceFrames = 0;
+          paceSlow = 0;
+        }
+      }
       // The open menu is live glass over this canvas: the stage keeps moving
       // but draws every other frame, halving how often the blur re-frosts.
       menuSkip = document.documentElement.dataset.menuOpen ? !menuSkip : false;
@@ -796,6 +802,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         introSettled = true;
         document.documentElement.dataset.stageSettled = "true";
       }
+      // The work captures load once the opening has settled.
+      if (introSettled) work.prepare();
       hero = damp(hero, scrollState.hero.current, 24, delta);
       // Disperse behind the service grid, then hand back to the bust. The
       // viewport envelope is reversible and independent of page length.

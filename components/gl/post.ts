@@ -1,3 +1,4 @@
+import { buildProgram } from "./program";
 // Post-processing for the stage: the whole world renders into an HDR
 // target (half-float colour + depth), then one composite pass lays the
 // film look over it — a multi-level bloom (bright pass, dual-filter
@@ -110,28 +111,11 @@ void main() {
 
 type Target = { fbo: WebGLFramebuffer | null; tex: WebGLTexture | null; w: number; h: number };
 
-export function createPost(gl: WebGL2RenderingContext) {
+export async function createPost(gl: WebGL2RenderingContext) {
   if (!gl.getExtension("EXT_color_buffer_float")) return null;
-  const compile = (fragment: string) => {
-    const program = gl.createProgram();
-    if (!program) throw new Error("Post program allocation failed");
-    for (const [type, source] of [[gl.VERTEX_SHADER, fullscreen], [gl.FRAGMENT_SHADER, fragment]] as const) {
-      const shader = gl.createShader(type);
-      if (!shader) throw new Error("Post shader allocation failed");
-      gl.shaderSource(shader, source);
-      gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || "Post shader failed");
-      gl.attachShader(program, shader);
-      gl.deleteShader(shader);
-    }
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "Post link failed");
-    return program;
-  };
-  const bright = compile(brightFragment);
-  const down = compile(downFragment);
-  const up = compile(upFragment);
-  const composite = compile(compositeFragment);
+  const [bright, down, up, composite] = await Promise.all(
+    [brightFragment, downFragment, upFragment, compositeFragment].map((f) => buildProgram(gl, fullscreen, f, "Post")),
+  );
   const loc = (p: WebGLProgram, names: string[]) => Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(p, n)]));
   const bu = loc(bright, ["source", "threshold"]);
   const du = loc(down, ["source", "texel"]);

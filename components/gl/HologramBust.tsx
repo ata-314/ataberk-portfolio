@@ -2,6 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { bustState } from "../three/scroll-state";
+import { buildProgram } from "./program";
+import { fetchBake } from "./bake-cache";
+import { gpuTier, isWindows } from "./perf";
 
 // Point-cloud portrait of the Ataberk Soylu scan for the About section, in
 // the register of a studio team portrait: 120k fine, dense points (face-
@@ -169,209 +172,203 @@ export function HologramBust() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
-    if (!gl) return;
     let disposed = false;
     let frameId = 0;
     let visible = false;
     let cleanup = () => {};
 
-    void (async () => {
-      const compile = (type: number, source: string) => {
-        const shader = gl.createShader(type);
-        if (!shader) throw new Error("hologram shader alloc failed");
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-          const message = gl.getShaderInfoLog(shader) ?? "hologram shader failed";
-          gl.deleteShader(shader);
-          throw new Error(message);
+    // Nothing is set up until the section is within a screen and a half:
+    // a second WebGL context, its shader and the 1.9 MB scan used to compete
+    // with the opening.
+    const start = () => {
+      const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
+      if (!gl) return;
+      void (async () => {
+        const program = await buildProgram(gl, VERTEX, FRAGMENT, "Hologram");
+        const buffer = await fetchBake("/models/ataberk-bake.bin");
+        if (disposed) {
+          gl.deleteProgram(program);
+          return;
         }
-        return shader;
-      };
-      const program = gl.createProgram();
-      if (!program) return;
-      gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX));
-      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAGMENT));
-      gl.linkProgram(program);
-      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        throw new Error(gl.getProgramInfoLog(program) ?? "hologram link failed");
-      }
-
-      const response = await fetch("/models/ataberk-bake.bin");
-      if (!response.ok) throw new Error(`hologram bake: ${response.status}`);
-      const buffer = await response.arrayBuffer();
-      if (disposed) return;
-      const lut = buildHalfLut();
-      const halves = new Uint16Array(buffer);
-      const positions = new Float32Array(SAMPLES * 3);
-      const normals = new Float32Array(SAMPLES * 3);
-      const randoms = new Float32Array(SAMPLES);
-      const cavities = new Float32Array(SAMPLES);
-      for (let i = 0; i < SAMPLES; i++) {
-        positions[i * 3] = lut[halves[i * 4]];
-        positions[i * 3 + 1] = lut[halves[i * 4 + 1]];
-        positions[i * 3 + 2] = lut[halves[i * 4 + 2]];
-        randoms[i] = lut[halves[i * 4 + 3]];
-        normals[i * 3] = lut[halves[HALF_ELEMENTS + i * 4]];
-        normals[i * 3 + 1] = lut[halves[HALF_ELEMENTS + i * 4 + 1]];
-        normals[i * 3 + 2] = lut[halves[HALF_ELEMENTS + i * 4 + 2]];
-        cavities[i] = lut[halves[HALF_ELEMENTS + i * 4 + 3]];
-      }
-
-      const vao = gl.createVertexArray();
-      gl.bindVertexArray(vao);
-      gl.useProgram(program);
-      const buffers: WebGLBuffer[] = [];
-      const attribute = (name: string, data: Float32Array, size: number) => {
-        const location = gl.getAttribLocation(program, name);
-        const glBuffer = gl.createBuffer();
-        if (!glBuffer || location < 0) return;
-        buffers.push(glBuffer);
-        gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(location);
-        gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
-      };
-      attribute("aPos", positions, 3);
-      attribute("aNrm", normals, 3);
-      attribute("aRnd", randoms, 1);
-      attribute("aCav", cavities, 1);
-
-      const u = (name: string) => gl.getUniformLocation(program, name);
-      const projection = new Float32Array(16);
-      let pixelRatio = 1;
-      const mobile = window.matchMedia("(pointer: coarse)").matches;
-      const resize = () => {
-        pixelRatio = Math.min(devicePixelRatio, mobile ? 1.25 : 2);
-        const width = Math.round(canvas.clientWidth * pixelRatio);
-        const height = Math.round(canvas.clientHeight * pixelRatio);
-        if (canvas.width !== width || canvas.height !== height) {
-          canvas.width = width;
-          canvas.height = height;
-          gl.viewport(0, 0, width, height);
+        const lut = buildHalfLut();
+        const halves = new Uint16Array(buffer);
+        const positions = new Float32Array(SAMPLES * 3);
+        const normals = new Float32Array(SAMPLES * 3);
+        const randoms = new Float32Array(SAMPLES);
+        const cavities = new Float32Array(SAMPLES);
+        for (let i = 0; i < SAMPLES; i++) {
+          positions[i * 3] = lut[halves[i * 4]];
+          positions[i * 3 + 1] = lut[halves[i * 4 + 1]];
+          positions[i * 3 + 2] = lut[halves[i * 4 + 2]];
+          randoms[i] = lut[halves[i * 4 + 3]];
+          normals[i * 3] = lut[halves[HALF_ELEMENTS + i * 4]];
+          normals[i * 3 + 1] = lut[halves[HALF_ELEMENTS + i * 4 + 1]];
+          normals[i * 3 + 2] = lut[halves[HALF_ELEMENTS + i * 4 + 2]];
+          cavities[i] = lut[halves[HALF_ELEMENTS + i * 4 + 3]];
         }
-        const aspect = canvas.clientWidth / Math.max(canvas.clientHeight, 1);
-        const f = 1 / Math.tan((35 * Math.PI) / 360);
-        projection.fill(0);
-        projection[0] = f / aspect;
-        projection[5] = f;
-        projection[10] = -1.02;
-        projection[11] = -1;
-        projection[14] = -0.202;
-      };
-      resize();
-      addEventListener("resize", resize);
 
-      // Pointer state: position for the head-turn, velocity for the ripple.
-      const pointer = [0, 0];
-      const pointerSmooth = [0, 0];
-      let touchVel = 0;
-      const section = canvas.closest("section") ?? canvas;
-      const onPointerMove = (event: PointerEvent) => {
-        const rect = section.getBoundingClientRect();
-        const nx = ((event.clientX - rect.left) / Math.max(rect.width, 1)) * 2 - 1;
-        const ny = -(((event.clientY - rect.top) / Math.max(rect.height, 1)) * 2 - 1);
-        touchVel = Math.min(1.2, touchVel + Math.hypot(nx - pointer[0], ny - pointer[1]) * 2.2);
-        pointer[0] = nx;
-        pointer[1] = ny;
-      };
-      if (!mobile && !reduced) {
-        section.addEventListener("pointermove", onPointerMove as EventListener, { passive: true });
-      }
-
-      const observer = new IntersectionObserver(([entry]) => {
-        visible = entry.isIntersecting;
-        if (visible && !frameId && !disposed && !reduced) frameId = requestAnimationFrame(render);
-      });
-      observer.observe(canvas);
-
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-      gl.disable(gl.DEPTH_TEST);
-      gl.clearColor(0, 0, 0, 0);
-
-      const drawCount = mobile ? 60000 : SAMPLES;
-      const drawFrame = (time: number, appear: number, spin: number, fade = 1) => {
-        gl.useProgram(program);
+        const vao = gl.createVertexArray();
         gl.bindVertexArray(vao);
-        gl.uniformMatrix4fv(u("uProj"), false, projection);
-        gl.uniform1f(u("uTime"), time);
-        gl.uniform1f(u("uAppear"), appear);
-        gl.uniform1f(u("uSpin"), spin);
-        gl.uniform2f(u("uPointer"), pointerSmooth[0], pointerSmooth[1]);
-        // touch ripple center mapped into the bust's own coordinate space
-        gl.uniform2f(u("uTouch"), pointerSmooth[0] * 1.05, pointerSmooth[1] * 1.1);
-        gl.uniform1f(u("uTouchVel"), touchVel);
-        // small viewports get bigger, brighter points: fewer pixels per point
-        // would otherwise leave the bust too faint on phones
-        const compact = Math.max(canvas.clientHeight / 640, 0.95);
-        gl.uniform1f(u("uSize"), (mobile ? 11 : 9) * pixelRatio * compact);
-        gl.uniform1f(u("uGain"), (mobile ? 1.35 : 1) * fade);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        // samples are area-weighted random, so a prefix is a uniform subset
-        gl.drawArrays(gl.POINTS, 0, drawCount);
-      };
+        gl.useProgram(program);
+        const buffers: WebGLBuffer[] = [];
+        const attribute = (name: string, data: Float32Array, size: number) => {
+          const location = gl.getAttribLocation(program, name);
+          const glBuffer = gl.createBuffer();
+          if (!glBuffer || location < 0) return;
+          buffers.push(glBuffer);
+          gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+          gl.enableVertexAttribArray(location);
+          gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
+        };
+        attribute("aPos", positions, 3);
+        attribute("aNrm", normals, 3);
+        attribute("aRnd", randoms, 1);
+        attribute("aCav", cavities, 1);
 
-      let last = performance.now();
-      let time = 0;
-      let appear = 0;
-      const render = (now: number) => {
-        frameId = 0;
-        if (disposed || !visible) return;
-        frameId = requestAnimationFrame(render);
-        const delta = Math.min(Math.max(now - last, 0) / 1000, 0.05);
-        last = now;
-        time += delta;
-        // scroll progress of the section through the viewport drives both the
-        // materialization and the turntable, so motion stays scroll-coupled
-        const rect = canvas.getBoundingClientRect();
-        const vh = Math.max(innerHeight, 1);
-        const progress = Math.min(1, Math.max(0, (vh - rect.top) / (vh + rect.height)));
-        const appearTarget = progress < 0.08 ? 0 : Math.min(1, (progress - 0.08) / 0.3);
-        appear += (appearTarget - appear) * (1 - Math.exp(-3.5 * delta));
-        pointerSmooth[0] += (pointer[0] - pointerSmooth[0]) * (1 - Math.exp(-5 * delta));
-        pointerSmooth[1] += (pointer[1] - pointerSmooth[1]) * (1 - Math.exp(-5 * delta));
-        touchVel *= Math.exp(-2.6 * delta);
-        // near-frontal with a gentle scroll-coupled sway: the face is the
-        // subject, so it never turns far from the camera
-        const spin = FACE_YAW - 0.22 + progress * 0.44 + Math.sin(time * 0.24) * 0.05;
-        // Publish the live pose (mirrors the vertex shader) so the stage's
-        // bird particles land on exactly these points.
-        bustState.yaw = spin + pointerSmooth[0] * 0.45;
-        bustState.pitch = -pointerSmooth[1] * 0.14;
-        bustState.lift = Math.sin(time * 0.7) * 0.03;
-        if (bustState.driven) {
-          // The bird's particles form the bust; this canvas takes over only
-          // once they have landed, fully materialized (no scatter offset).
-          const t = Math.min(1, Math.max(0, (bustState.morph - 0.88) / 0.11));
-          drawFrame(time, 1, spin, t * t * (3 - 2 * t));
-        } else {
-          drawFrame(time, appear, spin);
+        const u = (name: string) => gl.getUniformLocation(program, name);
+        const projection = new Float32Array(16);
+        let pixelRatio = 1;
+        const mobile = window.matchMedia("(pointer: coarse)").matches;
+        const lite = mobile || isWindows() || gpuTier(gl) !== "high";
+        const resize = () => {
+          pixelRatio = Math.min(devicePixelRatio, lite ? 1.25 : 2);
+          const width = Math.round(canvas.clientWidth * pixelRatio);
+          const height = Math.round(canvas.clientHeight * pixelRatio);
+          if (canvas.width !== width || canvas.height !== height) {
+            canvas.width = width;
+            canvas.height = height;
+            gl.viewport(0, 0, width, height);
+          }
+          const aspect = canvas.clientWidth / Math.max(canvas.clientHeight, 1);
+          const f = 1 / Math.tan((35 * Math.PI) / 360);
+          projection.fill(0);
+          projection[0] = f / aspect;
+          projection[5] = f;
+          projection[10] = -1.02;
+          projection[11] = -1;
+          projection[14] = -0.202;
+        };
+        resize();
+        addEventListener("resize", resize);
+
+        // Pointer state: position for the head-turn, velocity for the ripple.
+        const pointer = [0, 0];
+        const pointerSmooth = [0, 0];
+        let touchVel = 0;
+        const section = canvas.closest("section") ?? canvas;
+        const onPointerMove = (event: PointerEvent) => {
+          const rect = section.getBoundingClientRect();
+          const nx = ((event.clientX - rect.left) / Math.max(rect.width, 1)) * 2 - 1;
+          const ny = -(((event.clientY - rect.top) / Math.max(rect.height, 1)) * 2 - 1);
+          touchVel = Math.min(1.2, touchVel + Math.hypot(nx - pointer[0], ny - pointer[1]) * 2.2);
+          pointer[0] = nx;
+          pointer[1] = ny;
+        };
+        if (!mobile && !reduced) {
+          section.addEventListener("pointermove", onPointerMove as EventListener, { passive: true });
         }
-      };
 
-      if (reduced) {
-        // Reduced motion: one still frame of the fully materialized bust
-        // instead of an empty canvas.
-        drawFrame(0, 1, FACE_YAW);
-      } else {
-        frameId = requestAnimationFrame(render);
-      }
+        const observer = new IntersectionObserver(([entry]) => {
+          visible = entry.isIntersecting;
+          if (visible && !frameId && !disposed && !reduced) frameId = requestAnimationFrame(render);
+        });
+        observer.observe(canvas);
 
-      cleanup = () => {
-        if (frameId) cancelAnimationFrame(frameId);
-        observer.disconnect();
-        removeEventListener("resize", resize);
-        section.removeEventListener("pointermove", onPointerMove as EventListener);
-        buffers.forEach((glBuffer) => gl.deleteBuffer(glBuffer));
-        gl.deleteVertexArray(vao);
-        gl.deleteProgram(program);
-      };
-    })().catch((error) => console.error("hologram bust failed:", error));
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        gl.disable(gl.DEPTH_TEST);
+        gl.clearColor(0, 0, 0, 0);
+
+        const drawCount = mobile ? 60000 : SAMPLES;
+        const drawFrame = (time: number, appear: number, spin: number, fade = 1) => {
+          gl.useProgram(program);
+          gl.bindVertexArray(vao);
+          gl.uniformMatrix4fv(u("uProj"), false, projection);
+          gl.uniform1f(u("uTime"), time);
+          gl.uniform1f(u("uAppear"), appear);
+          gl.uniform1f(u("uSpin"), spin);
+          gl.uniform2f(u("uPointer"), pointerSmooth[0], pointerSmooth[1]);
+          // touch ripple center mapped into the bust's own coordinate space
+          gl.uniform2f(u("uTouch"), pointerSmooth[0] * 1.05, pointerSmooth[1] * 1.1);
+          gl.uniform1f(u("uTouchVel"), touchVel);
+          // small viewports get bigger, brighter points: fewer pixels per point
+          // would otherwise leave the bust too faint on phones
+          const compact = Math.max(canvas.clientHeight / 640, 0.95);
+          gl.uniform1f(u("uSize"), (mobile ? 11 : 9) * pixelRatio * compact);
+          gl.uniform1f(u("uGain"), (mobile ? 1.35 : 1) * fade);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          // samples are area-weighted random, so a prefix is a uniform subset
+          gl.drawArrays(gl.POINTS, 0, drawCount);
+        };
+
+        let last = performance.now();
+        let time = 0;
+        let appear = 0;
+        const render = (now: number) => {
+          frameId = 0;
+          if (disposed || !visible) return;
+          frameId = requestAnimationFrame(render);
+          const delta = Math.min(Math.max(now - last, 0) / 1000, 0.05);
+          last = now;
+          time += delta;
+          // scroll progress of the section through the viewport drives both the
+          // materialization and the turntable, so motion stays scroll-coupled
+          const rect = canvas.getBoundingClientRect();
+          const vh = Math.max(innerHeight, 1);
+          const progress = Math.min(1, Math.max(0, (vh - rect.top) / (vh + rect.height)));
+          const appearTarget = progress < 0.08 ? 0 : Math.min(1, (progress - 0.08) / 0.3);
+          appear += (appearTarget - appear) * (1 - Math.exp(-3.5 * delta));
+          pointerSmooth[0] += (pointer[0] - pointerSmooth[0]) * (1 - Math.exp(-5 * delta));
+          pointerSmooth[1] += (pointer[1] - pointerSmooth[1]) * (1 - Math.exp(-5 * delta));
+          touchVel *= Math.exp(-2.6 * delta);
+          // near-frontal with a gentle scroll-coupled sway: the face is the
+          // subject, so it never turns far from the camera
+          const spin = FACE_YAW - 0.22 + progress * 0.44 + Math.sin(time * 0.24) * 0.05;
+          // Publish the live pose (mirrors the vertex shader) so the stage's
+          // bird particles land on exactly these points.
+          bustState.yaw = spin + pointerSmooth[0] * 0.45;
+          bustState.pitch = -pointerSmooth[1] * 0.14;
+          bustState.lift = Math.sin(time * 0.7) * 0.03;
+          if (bustState.driven) {
+            // The bird's particles form the bust; this canvas takes over only
+            // once they have landed, fully materialized (no scatter offset).
+            const t = Math.min(1, Math.max(0, (bustState.morph - 0.88) / 0.11));
+            drawFrame(time, 1, spin, t * t * (3 - 2 * t));
+          } else {
+            drawFrame(time, appear, spin);
+          }
+        };
+
+        if (reduced) {
+          // Reduced motion: one still frame of the fully materialized bust
+          // instead of an empty canvas.
+          drawFrame(0, 1, FACE_YAW);
+        } else {
+          frameId = requestAnimationFrame(render);
+        }
+
+        cleanup = () => {
+          if (frameId) cancelAnimationFrame(frameId);
+          observer.disconnect();
+          removeEventListener("resize", resize);
+          section.removeEventListener("pointermove", onPointerMove as EventListener);
+          buffers.forEach((glBuffer) => gl.deleteBuffer(glBuffer));
+          gl.deleteVertexArray(vao);
+          gl.deleteProgram(program);
+        };
+      })().catch((error) => console.error("hologram bust failed:", error));
+    };
+    const near = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      near.disconnect();
+      start();
+    }, { rootMargin: "150% 0px" });
+    near.observe(canvas);
 
     return () => {
       disposed = true;
+      near.disconnect();
       cleanup();
     };
   }, []);
