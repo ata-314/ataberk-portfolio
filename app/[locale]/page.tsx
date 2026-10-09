@@ -56,7 +56,7 @@ export default async function Home({
         <FlightGap size="lg" />
         <AISystems locale={locale} t={t.aiSystems} />
         <FlightGap size="lg" />
-        <ContactFinale t={t.contact} />
+        <ContactFinale locale={locale} t={t.contact} />
         <Footer t={t.footer} name={t.name} />
       </main>
     </SmoothScroll>

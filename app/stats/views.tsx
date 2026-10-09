@@ -268,3 +268,49 @@ export function Visitors({ list }: { list: Browser[] }) {
     </div>
   );
 }
+
+export type Message = {
+  id: string;
+  name: string;
+  email: string;
+  company: string | null;
+  intent: string | null;
+  message: string;
+  ref: string | null;
+  city: string | null;
+  country: string | null;
+  device: string | null;
+  emailed: boolean;
+  mail_error: string | null;
+  created_at: string;
+};
+
+// Contact-form messages, newest first, tied to the personal link they came through.
+export function Messages({ list, labels }: { list: Message[]; labels: Map<string, string> }) {
+  if (!list.length) return <p className="text-sm text-white/40">Henüz mesaj yok.</p>;
+  return (
+    <div className="flex flex-col gap-2">
+      {list.map((m) => (
+        <details key={m.id} className="rounded-xl border border-white/10 p-4 open:border-white/20">
+          <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="font-medium">{m.name}</span>
+            {m.intent && <Chip>{m.intent}</Chip>}
+            {m.ref && <Chip tone="bg-[#c8ff3e]/10 text-[#c8ff3e]">{`Link: ${labels.get(m.ref) ?? m.ref}`}</Chip>}
+            {!m.emailed && <Chip tone="bg-red-400/15 text-red-300">Mail gitmedi</Chip>}
+            <span className="ml-auto text-xs text-white/60">{when(m.created_at)}</span>
+          </summary>
+          <div className="mt-3 text-sm">
+            <p className="text-xs text-white/50">
+              <a href={`mailto:${m.email}`} className="text-white/80 underline underline-offset-2">{m.email}</a>
+              {m.company && ` · ${m.company}`}
+              {` · ${[m.city, m.country].filter(Boolean).join(", ") || "Konum bilinmiyor"}`}
+              {m.device && ` · ${m.device}`}
+            </p>
+            <p className="mt-3 whitespace-pre-wrap text-white/90">{m.message}</p>
+            {m.mail_error && <p className="mt-3 text-xs text-red-300/80">{m.mail_error}</p>}
+          </div>
+        </details>
+      ))}
+    </div>
+  );
+}

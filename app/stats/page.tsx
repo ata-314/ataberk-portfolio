@@ -3,7 +3,7 @@ import { sql } from "@/lib/track/db";
 import { deleteLink, signOut } from "./actions";
 import { CopyLink, NewLink, NoTrack, SignIn } from "./ui";
 import Link from "next/link";
-import { type LinkRow, type Visit, People, Tally, Visitors, browsers, count, deviceOf, people, place, secs, when } from "./views";
+import { type LinkRow, type Message, type Visit, Messages, People, Tally, Visitors, browsers, count, deviceOf, people, place, secs, when } from "./views";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +21,10 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   const other = (await db`select * from visits where ref is null
     and created_at > now() - make_interval(days => ${days})
     order by created_at desc limit 5000`) as Visit[];
+
+  const messages = (await db`select * from messages order by created_at desc limit 200`) as Message[];
+  const labels = new Map(links.map((l) => [l.slug, l.label]));
+  const wrote = new Set(messages.map((m) => m.ref).filter(Boolean));
 
   const byRef = new Map<string, Visit[]>();
   for (const v of tagged) byRef.set(v.ref!, [...(byRef.get(v.ref!) ?? []), v]);
@@ -40,6 +44,11 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
           <button className="text-xs text-white/50 hover:text-white">Çıkış</button>
         </form>
       </header>
+
+      <section className="mb-10">
+        <h2 className="mb-3 text-sm font-medium">Mesajlar ({messages.length})</h2>
+        <Messages list={messages} labels={labels} />
+      </section>
 
       <section className="mb-10 rounded-xl border border-white/10 p-4">
         <h2 className="mb-3 text-sm font-medium">Kişiye özel link</h2>
@@ -61,6 +70,9 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
                   <span className={`h-2 w-2 rounded-full ${vs.length ? "bg-[#c8ff3e]" : "bg-white/20"}`} />
                   <span className="font-medium">{l.label}</span>
                   {l.note && <span className="text-xs text-white/40">{l.note}</span>}
+                  {wrote.has(l.slug) && (
+                    <span className="rounded-full bg-[#c8ff3e]/10 px-2 py-0.5 text-xs text-[#c8ff3e]">Form gönderdi</span>
+                  )}
                   {ps.length > 1 && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs ${forwarded ? "bg-orange-400/15 text-orange-300" : "bg-white/10 text-white/60"}`}

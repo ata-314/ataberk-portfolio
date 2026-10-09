@@ -3,8 +3,10 @@ import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { HologramBust } from "../gl/HologramBust";
 import { CodeRain } from "./CodeRain";
+import { ContactForm } from "./ContactForm";
 
 const CONTACT_URL = "https://github.com/ata-314";
+const CONTACT_EMAIL = "ataberk@ataberksoylu.com";
 
 // Second act of the page: the About story, set openly beside the
 // holographic scan that materializes and turns as the section scrolls.
@@ -59,7 +61,8 @@ export function AboutPreview({
 }
 
 // Final scene: transparent stage — the code matter returns behind the words.
-export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
+// The form sits on a glass pane at the right; the direct lines stay at the left.
+export function ContactFinale({ locale, t }: { locale: Locale; t: SiteContent["contact"] }) {
   return (
     <section
       id="contact"
@@ -73,21 +76,25 @@ export function ContactFinale({ t }: { t: SiteContent["contact"] }) {
         >
           {t.line}
         </h2>
-        <div data-reveal className="pointer-events-auto mt-12 grid gap-10 md:grid-cols-12 md:items-end">
-          <a
-            href={CONTACT_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="contact-link group font-display inline-flex w-fit items-baseline gap-3 text-3xl font-semibold tracking-[-0.03em] md:col-span-6 md:text-5xl"
-          >
-            <span className="link-draw">{t.cta}</span>
-            <span aria-hidden className="text-lime transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1">
-              ↗
-            </span>
-          </a>
-          <div className="text-[15px] leading-relaxed text-bone-dim md:col-span-5 md:col-start-8">
-            <p>{t.intents.join(", ")}.</p>
-            <p className="mt-3">{t.note}</p>
+        <div data-reveal className="pointer-events-auto mt-12 grid gap-12 md:grid-cols-12 md:items-end md:gap-6">
+          <div className="text-[15px] leading-relaxed text-bone-dim md:col-span-4">
+            <p>{t.note}</p>
+            <p className="mt-10 font-mono text-[11px] tracking-[0.18em] uppercase">{t.form.direct}</p>
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="contact-link group font-display mt-3 inline-flex w-fit items-baseline gap-2 text-xl font-semibold tracking-[-0.02em] text-bone md:text-2xl"
+            >
+              <span className="link-draw">{CONTACT_EMAIL}</span>
+              <span aria-hidden className="text-lime transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1">
+                ↗
+              </span>
+            </a>
+            <a href={CONTACT_URL} target="_blank" rel="noreferrer" className="link-draw mt-4 block w-fit text-sm">
+              {t.cta} ↗
+            </a>
+          </div>
+          <div className="md:col-span-7 md:col-start-6">
+            <ContactForm locale={locale} intents={t.intents} t={t.form} />
           </div>
         </div>
       </div>

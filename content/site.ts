@@ -47,6 +47,22 @@ export type SiteContent = {
     intents: string[];
     cta: string;
     note: string;
+    form: {
+      intent: string;
+      name: string;
+      email: string;
+      company: string;
+      message: string;
+      messageHint: string;
+      send: string;
+      sending: string;
+      sentTitle: string;
+      sentBody: string;
+      again: string;
+      error: string;
+      tooFast: string;
+      direct: string;
+    };
   };
   footer: { rights: string; built: string };
   notFound: { title: string; body: string; back: string };
@@ -146,8 +162,24 @@ const tr: SiteContent = {
     heading: "İletişim",
     line: "Daha önce var olmayan bir şeyi birlikte tasarlayalım.",
     intents: ["Yeni proje", "İş birliği", "Creative technology danışmanlığı", "Pozisyon / ekip görüşmesi"],
-    cta: "GitHub üzerinden ulaş",
+    cta: "GitHub",
     note: "Kısa bir proje özeti, zamanlama ve hedefle başlayabiliriz.",
+    form: {
+      intent: "Konu",
+      name: "Adın",
+      email: "E-posta",
+      company: "Şirket / web sitesi",
+      message: "Mesajın",
+      messageHint: "Ne üretmek istiyorsun, ne zamana, hangi hedefle?",
+      send: "Gönder",
+      sending: "Gönderiliyor",
+      sentTitle: "Mesajın ulaştı.",
+      sentBody: "Okuyup e-posta ile dönüş yapacağım.",
+      again: "Yeni mesaj",
+      error: "Gönderilemedi. Tekrar dene ya da doğrudan e-posta at.",
+      tooFast: "Biraz yavaş: birkaç saniye sonra tekrar dene.",
+      direct: "ya da doğrudan",
+    },
   },
   footer: { rights: "Tüm hakları saklıdır.", built: "Bu site, kendi geliştirdiğim web ajanının boru hattından çıktı." },
   notFound: { title: "404", body: "Bu sayfa sistemde yok — belki henüz üretilmedi.", back: "Ana sayfaya dön" },
@@ -228,8 +260,24 @@ const en: SiteContent = {
     heading: "Contact",
     line: "Let's create something that has never existed before.",
     intents: ["A new project", "Collaboration", "Creative technology consulting", "A role / team conversation"],
-    cta: "Start on GitHub",
+    cta: "GitHub",
     note: "A short project outline, timeline and objective is enough to start.",
+    form: {
+      intent: "Topic",
+      name: "Your name",
+      email: "Email",
+      company: "Company / website",
+      message: "Your message",
+      messageHint: "What do you want to make, by when, and to what end?",
+      send: "Send",
+      sending: "Sending",
+      sentTitle: "Your message is in.",
+      sentBody: "I'll read it and reply by email.",
+      again: "New message",
+      error: "It didn't go through. Try again or email me directly.",
+      tooFast: "A little too quick: try again in a few seconds.",
+      direct: "or directly",
+    },
   },
   footer: { rights: "All rights reserved.", built: "This site shipped through the web agent I build." },
   notFound: { title: "404", body: "This page doesn't exist in the system — perhaps it hasn't been generated yet.", back: "Back to home" },

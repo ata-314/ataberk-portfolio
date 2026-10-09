@@ -1,22 +1,12 @@
-import { createHmac } from "node:crypto";
 import { sql } from "@/lib/track/db";
 import { isBot, parseUa } from "@/lib/track/ua";
+import { networkOf } from "@/lib/track/network";
 
 // Page-view beacon from components/track/Tracker.tsx.
 // { id, visitor, ref, path, referrer } records a view; { id, duration } closes it.
 
 const UUID = /^[0-9a-f-]{36}$/i;
 const REF = /^[a-z0-9-]{1,64}$/;
-
-// Salted hash of the network (IPv4 address, or the /64 an IPv6 home or office shares).
-// Only ever compared for equality; the IP itself is never stored.
-function networkOf(request: Request) {
-  const salt = process.env.IP_SALT;
-  const ip = (request.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
-  if (!salt || !ip) return null;
-  const net = ip.includes(":") ? ip.split(":").slice(0, 4).join(":") : ip;
-  return createHmac("sha256", salt).update(net).digest("hex").slice(0, 16);
-}
 
 const clip = (v: unknown, n: number) => (typeof v === "string" && v ? v.slice(0, n) : null);
 
