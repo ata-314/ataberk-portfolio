@@ -1,6 +1,6 @@
 // Link-preview fetchers, crawlers and headless scanners: never counted as visits.
 const BOT =
-  /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|slack|discord|skype|linkedin|embedly|quora|pinterest|vkshare|headless|phantom|lighthouse|pagespeed|google-read-aloud|mediapartners|proofpoint|mimecast|barracuda|python|curl|wget|go-http|java\//i;
+  /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp\/|telegrambot|slackbot|slack-imgproxy|discordbot|skypeuripreview|linkedinbot|embedly|pinterestbot|vkshare|headless|phantom|lighthouse|pagespeed|google-read-aloud|mediapartners|proofpoint|mimecast|barracuda|python|curl|wget|go-http|java\//i;
 
 export function isBot(ua: string) {
   return !ua || BOT.test(ua);
@@ -25,7 +25,9 @@ export function parseUa(ua: string) {
       ? "Opera"
       : /samsungbrowser/i.test(ua)
         ? "Samsung"
-        : /instagram/i.test(ua)
+        : /linkedinapp/i.test(ua)
+          ? "LinkedIn"
+          : /instagram/i.test(ua)
           ? "Instagram"
           : /fban|fbav/i.test(ua)
             ? "Facebook"

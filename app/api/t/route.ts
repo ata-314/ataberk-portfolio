@@ -51,9 +51,17 @@ export async function POST(request: Request) {
   const { device, os, browser } = parseUa(ua);
 
   const network = networkOf(request);
+  const regionRaw = request.headers.get("x-vercel-ip-country-region");
+  const region = regionRaw ? decodeURIComponent(regionRaw) : null;
+  const lang = clip(body.lang, 20);
+  const screen = typeof body.screen === "string" && /^\d{2,5}x\d{2,5}$/.test(body.screen) ? body.screen : null;
+  const tz = clip(body.tz, 50);
+  const utm = clip(body.utm, 200);
 
-  await sql()`insert into visits (id, visitor, ref, path, referrer, country, city, device, browser, os, network)
-    values (${id}, ${visitor}, ${ref}, ${path}, ${referrer}, ${country}, ${city}, ${device}, ${browser}, ${os}, ${network})
+  await sql()`insert into visits (id, visitor, ref, path, referrer, country, city, device, browser, os, network,
+      region, lang, screen, tz, utm)
+    values (${id}, ${visitor}, ${ref}, ${path}, ${referrer}, ${country}, ${city}, ${device}, ${browser}, ${os}, ${network},
+      ${region}, ${lang}, ${screen}, ${tz}, ${utm})
     on conflict (id) do nothing`;
   return new Response(null, { status: 204 });
 }

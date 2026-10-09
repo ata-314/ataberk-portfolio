@@ -2,168 +2,34 @@ import { isSignedIn } from "@/lib/track/auth";
 import { sql } from "@/lib/track/db";
 import { deleteLink, signOut } from "./actions";
 import { CopyLink, NewLink, NoTrack, SignIn } from "./ui";
+import Link from "next/link";
+import { type LinkRow, type Visit, People, Tally, Visitors, browsers, count, deviceOf, people, place, secs, when } from "./views";
 
 export const dynamic = "force-dynamic";
 
-type Visit = {
-  ref: string | null;
-  visitor: string;
-  path: string;
-  referrer: string | null;
-  country: string | null;
-  city: string | null;
-  device: string;
-  browser: string;
-  os: string;
-  duration_s: number | null;
-  network: string | null;
-  created_at: string;
-};
-type Link = { slug: string; label: string; note: string | null; created_at: string };
+const RANGES = [1, 7, 30, 90];
 
-const when = (d: string) =>
-  new Intl.DateTimeFormat("tr-TR", {
-    timeZone: "Europe/Istanbul",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(d));
-const secs = (s: number | null) => (s == null ? "–" : s < 60 ? `${s} sn` : `${Math.floor(s / 60)} dk ${s % 60} sn`);
-const host = (r: string | null) => {
-  if (!r) return "Direkt / bilinmiyor";
-  try {
-    return new URL(r).host.replace(/^www\./, "");
-  } catch {
-    return r;
-  }
-};
-const place = (v: Visit) => [v.city, v.country].filter(Boolean).join(", ") || "–";
-
-function count<T>(rows: T[], key: (r: T) => string) {
-  const m = new Map<string, number>();
-  for (const r of rows) m.set(key(r), (m.get(key(r)) ?? 0) + 1);
-  return [...m.entries()].sort((a, b) => b[1] - a[1]);
-}
-
-function VisitRows({ visits }: { visits: Visit[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-xs">
-        <thead className="text-white/40">
-          <tr>
-            <th className="py-1 pr-4 font-normal">Zaman</th>
-            <th className="py-1 pr-4 font-normal">Sayfa</th>
-            <th className="py-1 pr-4 font-normal">Süre</th>
-            <th className="py-1 pr-4 font-normal">Yer</th>
-            <th className="py-1 pr-4 font-normal">Cihaz</th>
-            <th className="py-1 font-normal">Geldiği yer</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visits.map((v, i) => (
-            <tr key={i} className="border-t border-white/5 text-white/80">
-              <td className="py-1.5 pr-4 whitespace-nowrap">{when(v.created_at)}</td>
-              <td className="py-1.5 pr-4">{v.path}</td>
-              <td className="py-1.5 pr-4 whitespace-nowrap">{secs(v.duration_s)}</td>
-              <td className="py-1.5 pr-4 whitespace-nowrap">{place(v)}</td>
-              <td className="py-1.5 pr-4 whitespace-nowrap">{`${v.device} · ${v.os} · ${v.browser}`}</td>
-              <td className="py-1.5 whitespace-nowrap">{v.referrer ? host(v.referrer) : ""}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// One personal link opened on several browsers: each browser is a "person". Later ones
-// are judged against the earlier: same network reads as the same person on another
-// device (or their office); another network, and above all another city, reads as forwarded.
-type Person = { visits: Visit[]; verdict: "first" | "same" | "maybe" | "likely" };
-
-function people(visits: Visit[]): Person[] {
-  const groups = new Map<string, Visit[]>();
-  for (const v of [...visits].reverse()) groups.set(v.visitor, [...(groups.get(v.visitor) ?? []), v]);
-  const seenNets = new Set<string>();
-  const seenCities = new Set<string>();
-  return [...groups.values()].map((vs, i) => {
-    const nets = vs.map((v) => v.network).filter(Boolean) as string[];
-    const cities = vs.map((v) => v.city).filter(Boolean) as string[];
-    const verdict: Person["verdict"] =
-      i === 0
-        ? "first"
-        : nets.some((n) => seenNets.has(n))
-          ? "same"
-          : cities.length && seenCities.size && !cities.some((c) => seenCities.has(c))
-            ? "likely"
-            : "maybe";
-    nets.forEach((n) => seenNets.add(n));
-    cities.forEach((c) => seenCities.add(c));
-    return { visits: vs.reverse(), verdict };
-  });
-}
-
-const VERDICT: Record<Person["verdict"], [string, string]> = {
-  first: ["İlk açan", "text-[#c8ff3e]"],
-  same: ["Aynı ağ — muhtemelen aynı kişi başka cihazda ya da aynı ofisten biri", "text-white/50"],
-  maybe: ["Farklı cihaz ve ağ — iletilmiş olabilir (ya da aynı kişi mobil veriyle)", "text-amber-300"],
-  likely: ["Farklı şehir — büyük ihtimalle iletildi", "text-orange-400"],
-};
-
-function People({ visits }: { visits: Visit[] }) {
-  return (
-    <div className="flex flex-col gap-5">
-      {people(visits).map((p, i) => {
-        const v = p.visits[p.visits.length - 1];
-        const [text, tone] = VERDICT[p.verdict];
-        return (
-          <div key={v.visitor}>
-            <p className="mb-1 text-sm">
-              <span className="font-medium">{i + 1}. kişi</span>
-              <span className={`ml-2 text-xs ${tone}`}>{text}</span>
-            </p>
-            <p className="mb-2 text-xs text-white/50">
-              {`${v.device} · ${v.os} · ${v.browser} · ${place(v)} · ilk: ${when(v.created_at)} · ${p.visits.length} sayfa`}
-            </p>
-            <VisitRows visits={p.visits} />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function Tally({ title, rows }: { title: string; rows: [string, number][] }) {
-  return (
-    <div className="rounded-xl border border-white/10 p-4">
-      <h3 className="mb-2 text-xs text-white/50">{title}</h3>
-      {rows.length === 0 && <p className="text-xs text-white/40">Henüz yok.</p>}
-      {rows.slice(0, 8).map(([k, n]) => (
-        <div key={k} className="flex justify-between py-0.5 text-sm">
-          <span className="truncate pr-3">{k}</span>
-          <span className="text-white/60">{n}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export default async function StatsPage() {
+export default async function StatsPage({ searchParams }: { searchParams: Promise<{ gun?: string }> }) {
   if (!(await isSignedIn())) return <SignIn />;
+  const asked = Number((await searchParams).gun);
+  const days = RANGES.includes(asked) ? asked : 30;
 
   const db = sql();
-  const links = (await db`select slug, label, note, created_at from links order by created_at desc`) as Link[];
+  const links = (await db`select slug, label, note, created_at from links order by created_at desc`) as LinkRow[];
   const tagged = (await db`select * from visits where ref is not null
     order by created_at desc limit 2000`) as Visit[];
-  const other = (await db`select * from visits where ref is null and created_at > now() - interval '30 days'
-    order by created_at desc limit 2000`) as Visit[];
+  const other = (await db`select * from visits where ref is null
+    and created_at > now() - make_interval(days => ${days})
+    order by created_at desc limit 5000`) as Visit[];
 
   const byRef = new Map<string, Visit[]>();
   for (const v of tagged) byRef.set(v.ref!, [...(byRef.get(v.ref!) ?? []), v]);
   const known = new Set(links.map((l) => l.slug));
   const unknownRefs = [...byRef.keys()].filter((r) => !known.has(r));
-  const otherVisitors = new Set(other.map((v) => v.visitor)).size;
+  const list = browsers(other);
+  const firstOf = (b: (typeof list)[number]) => b.visits[b.visits.length - 1];
+  const returning = list.filter((b) => b.sessions > 1).length;
+  const avg = list.length ? Math.round(list.reduce((s, b) => s + b.total, 0) / list.length) : null;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -238,16 +104,40 @@ export default async function StatsPage() {
       </section>
 
       <section>
-        <h2 className="mb-1 text-sm font-medium">Linksiz ziyaretler · son 30 gün</h2>
-        <p className="mb-4 text-xs text-white/50">
-          {other.length} sayfa görüntüleme · {otherVisitors} farklı tarayıcı
-        </p>
-        <div className="mb-6 grid gap-3 sm:grid-cols-3">
-          <Tally title="Geldiği yer" rows={count(other.filter((v) => v.referrer), (v) => host(v.referrer))} />
-          <Tally title="Ülke / şehir" rows={count(other, place)} />
-          <Tally title="Sayfa" rows={count(other, (v) => v.path)} />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-medium">Diğer ziyaretçiler (linksiz)</h2>
+          <nav className="flex gap-1 text-xs">
+            {RANGES.map((d) => (
+              <Link
+                key={d}
+                href={`/stats?gun=${d}`}
+                className={`rounded-md px-2 py-1 ${d === days ? "bg-white/15" : "text-white/50 hover:text-white"}`}
+              >
+                {d === 1 ? "Bugün" : `${d} gün`}
+              </Link>
+            ))}
+          </nav>
         </div>
-        {other.length > 0 && <VisitRows visits={other.slice(0, 60)} />}
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            ["Ziyaretçi", String(list.length)],
+            ["Sayfa görüntüleme", String(other.length)],
+            ["Tekrar gelen", String(returning)],
+            ["Ortalama süre", secs(avg)],
+          ].map(([k, v]) => (
+            <div key={k} className="rounded-xl border border-white/10 p-4">
+              <p className="text-xs text-white/50">{k}</p>
+              <p className="mt-1 text-2xl font-semibold">{v}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Tally title="Kaynak (ziyaretçi)" rows={count(list, (b) => b.source)} />
+          <Tally title="Ülke / şehir (ziyaretçi)" rows={count(list, (b) => place(firstOf(b)))} />
+          <Tally title="Cihaz (ziyaretçi)" rows={count(list, (b) => deviceOf(firstOf(b)))} />
+          <Tally title="Sayfa (görüntüleme)" rows={count(other, (v) => v.path)} />
+        </div>
+        <Visitors list={list.slice(0, 150)} />
       </section>
     </main>
   );

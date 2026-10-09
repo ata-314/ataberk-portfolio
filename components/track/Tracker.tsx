@@ -29,6 +29,18 @@ function send(body: object) {
 
 let firstView = true;
 
+// Campaign tags, or the click id an ad or a social app appends, as one short label.
+function campaign(params: URLSearchParams) {
+  const utm = ["utm_source", "utm_medium", "utm_campaign"].map((k) => params.get(k)).filter(Boolean);
+  if (utm.length) return utm.join(" / ");
+  if (params.has("gclid") || params.has("gbraid") || params.has("wbraid")) return "Google Ads";
+  if (params.has("fbclid")) return "Facebook / Instagram";
+  if (params.has("li_fat_id")) return "LinkedIn";
+  if (params.has("ttclid")) return "TikTok";
+  if (params.has("msclkid")) return "Bing Ads";
+  return null;
+}
+
 export function Tracker() {
   const pathname = usePathname();
 
@@ -50,6 +62,7 @@ export function Tracker() {
     }
 
     let referrer: string | null = null;
+    const utm = firstView ? campaign(url.searchParams) : null;
     if (firstView && document.referrer) {
       try {
         if (new URL(document.referrer).host !== window.location.host) referrer = document.referrer;
@@ -58,7 +71,17 @@ export function Tracker() {
     firstView = false;
 
     const id = crypto.randomUUID();
-    send({ id, visitor, ref: read("ab_ref"), path: pathname, referrer });
+    send({
+      id,
+      visitor,
+      ref: read("ab_ref"),
+      path: pathname,
+      referrer,
+      utm,
+      lang: navigator.language,
+      screen: `${screen.width}x${screen.height}`,
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
 
     // Time on page counts only while visible. Reported on every hide and on leaving;
     // the last report wins, so a tab closed later still counts.
