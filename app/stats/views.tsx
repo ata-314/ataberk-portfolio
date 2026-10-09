@@ -36,8 +36,8 @@ export const host = (r: string | null) => {
     return r;
   }
 };
-export const place = (v: Visit) =>
-  [v.city, v.region && v.region !== v.city ? v.region : null, v.country].filter(Boolean).join(", ") || "–";
+// Region arrives as a subdivision code (34 for İstanbul), so it stays out of the label.
+export const place = (v: Visit) => [v.city, v.country].filter(Boolean).join(", ") || "Konum bilinmiyor";
 export const deviceOf = (v: Visit) => `${v.device} · ${v.os} · ${v.browser}`;
 
 const SOURCES: [RegExp, string][] = [
