@@ -3,8 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { createLink, signIn } from "./actions";
 
-const SITE = "https://www.ataberksoylu.com";
-export const linkFor = (slug: string) => `${SITE}/?ref=${slug}`;
+export const linkFor = (slug: string) => `https://ataberksoylu.com/${slug}`;
 
 const input =
   "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-[#c8ff3e]/60";
@@ -56,7 +55,7 @@ export function NewLink() {
   });
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-      <input name="label" placeholder="Kime? (ör. Ahmet – X Ajans)" required className={input} />
+      <input name="label" placeholder="Kime? (ör. Birkan) — link: ataberksoylu.com/birkan" required className={input} />
       <input name="note" placeholder="Not (ör. teklif maili, LinkedIn DM)" className={input} />
       <button disabled={pending} className={button}>Link oluştur</button>
       {state.error && <p className="text-sm text-red-400 sm:col-span-3">{state.error}</p>}

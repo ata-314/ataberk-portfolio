@@ -1,10 +1,10 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { isSignedIn, passwordMatches, sessionToken, SESSION_COOKIE } from "@/lib/track/auth";
 import { sql } from "@/lib/track/db";
+import { RESERVED } from "@/lib/track/reserved";
 
 export async function signIn(_: unknown, form: FormData) {
   const password = String(form.get("password") ?? "");
@@ -35,7 +35,7 @@ const slugify = (s: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
 
-// A short random tail keeps one recipient from guessing another's link.
+// Personal links read as ataberksoylu.com/<name>; a taken name gets a number (birkan2).
 export async function createLink(
   _: unknown,
   form: FormData,
@@ -44,7 +44,12 @@ export async function createLink(
   const label = String(form.get("label") ?? "").trim().slice(0, 80);
   const note = String(form.get("note") ?? "").trim().slice(0, 200) || null;
   if (!label) return { error: "İsim gerekli." };
-  const slug = `${slugify(label) || "link"}-${randomBytes(3).toString("hex").slice(0, 4)}`;
+  const base = slugify(label) || "link";
+  const taken = new Set(
+    ((await sql()`select slug from links where slug like ${base + "%"}`) as { slug: string }[]).map((r) => r.slug),
+  );
+  let slug = base;
+  for (let n = 2; taken.has(slug) || RESERVED.has(slug); n++) slug = `${base}${n}`;
   await sql()`insert into links (slug, label, note) values (${slug}, ${label}, ${note})`;
   revalidatePath("/stats");
   return { error: null, slug };

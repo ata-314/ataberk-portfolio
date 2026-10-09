@@ -142,7 +142,7 @@ export default async function StatsPage() {
                   </span>
                 </summary>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <code className="break-all text-xs text-white/60">/?ref={l.slug}</code>
+                  <code className="break-all text-xs text-white/60">ataberksoylu.com/{l.slug}</code>
                   <CopyLink slug={l.slug} />
                   <form action={deleteLink} className="ml-auto">
                     <input type="hidden" name="slug" value={l.slug} />
