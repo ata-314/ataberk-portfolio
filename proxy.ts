@@ -9,7 +9,9 @@ export function proxy(request: NextRequest) {
     (cookie && isLocale(cookie) && cookie) ||
     (header && isLocale(header) && header) ||
     defaultLocale;
-  return NextResponse.redirect(new URL(`/${locale}`, request.url));
+  const url = new URL(`/${locale}`, request.url);
+  url.search = request.nextUrl.search; // keeps ?ref= from personal links
+  return NextResponse.redirect(url);
 }
 
 export const config = {

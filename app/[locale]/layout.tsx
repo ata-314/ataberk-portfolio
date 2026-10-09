@@ -5,6 +5,7 @@ import { locales, isLocale, type Locale } from "@/lib/i18n";
 import { BASE_URL } from "@/lib/url";
 import { site } from "@/content/site";
 import { Nav } from "@/components/nav/Nav";
+import { Tracker } from "@/components/track/Tracker";
 import "../globals.css";
 
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin", "latin-ext"] });
@@ -115,6 +116,7 @@ export default async function LocaleLayout({
         </a>
         <Nav locale={locale} t={t.nav} />
         {children}
+        <Tracker />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}
