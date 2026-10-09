@@ -1,0 +1,281 @@
+/* Contact form: frosted glass over the stage's returning matter, played in once.
+   Blur stays on for touch and lite devices here (a lighter one) — this is the one
+   pane on the page that has to read as glass. */
+
+.cf-glass {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03) 46%, rgba(255, 255, 255, 0.07));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 50px rgba(255, 255, 255, 0.035),
+    0 40px 120px -40px rgba(0, 0, 0, 0.85);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8) brightness(1.05);
+  backdrop-filter: blur(30px) saturate(1.8) brightness(1.05);
+  text-shadow: none;
+}
+@media (hover: none) {
+  .cf-glass {
+    -webkit-backdrop-filter: blur(14px) saturate(1.6);
+    backdrop-filter: blur(14px) saturate(1.6);
+  }
+}
+html[data-perf="lite"] .cf-glass {
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  backdrop-filter: blur(14px) saturate(1.6);
+}
+
+.cf-pane {
+  border-radius: clamp(1.75rem, 3vw, 2.75rem);
+  overflow: hidden;
+}
+
+.cf-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+
+/* A glass well inside the slab. */
+.cf-well {
+  display: block;
+  border-radius: 1.1rem;
+  padding: 0.85rem 1.1rem 0.7rem;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
+}
+.cf-well:focus-within,
+textarea.cf-well:focus {
+  border-color: rgba(200, 255, 62, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 4px rgba(200, 255, 62, 0.08), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.cf-input {
+  margin-top: 0.35rem;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--bone);
+  font-size: 1.05rem;
+}
+.cf-input::placeholder {
+  color: rgba(185, 181, 172, 0.45);
+}
+
+.cf-chip {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.55rem 1.05rem;
+  font-size: 0.875rem;
+  color: var(--bone-dim);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: color 0.3s ease, background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+}
+.cf-chip:hover {
+  color: var(--bone);
+  transform: translateY(-1px);
+}
+:checked + .cf-chip {
+  color: var(--ink);
+  background: var(--lime);
+  border-color: var(--lime);
+  box-shadow: 0 0 28px -6px rgba(200, 255, 62, 0.6);
+}
+:focus-visible + .cf-chip {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+
+/* Topic slider: one row that slides sideways, faded at the edge with more to show. */
+.cf-track {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  /* Room for the chosen chip's glow inside the scroller's clip. */
+  padding: 0.9rem 0.25rem;
+  margin-block: -0.55rem;
+  cursor: grab;
+  user-select: none;
+  --fade-start: 0px;
+  --fade-end: 0px;
+  mask-image: linear-gradient(90deg, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+}
+.cf-track::-webkit-scrollbar {
+  display: none;
+}
+.cf-track:active {
+  cursor: grabbing;
+}
+.cf-slider[data-start] .cf-track {
+  --fade-start: 3rem;
+}
+.cf-slider[data-end] .cf-track {
+  --fade-end: 3rem;
+}
+.cf-slide {
+  flex: none;
+  scroll-snap-align: center;
+}
+.cf-slide .cf-chip {
+  white-space: nowrap;
+}
+.cf-arrow {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--bone);
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0.85);
+  transition: opacity 0.3s ease, transform 0.3s ease, background 0.3s ease;
+}
+.cf-arrow:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.cf-arrow-start {
+  left: -0.4rem;
+}
+.cf-arrow-end {
+  right: -0.4rem;
+}
+/* Wide panes: the arrows sit in the pane's margin, clear of the chips. */
+@media (min-width: 768px) {
+  .cf-arrow-start {
+    left: -2.2rem;
+  }
+  .cf-arrow-end {
+    right: -2.2rem;
+  }
+}
+.cf-slider[data-start] .cf-arrow-start,
+.cf-slider[data-end] .cf-arrow-end {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%);
+}
+@media (hover: none) {
+  .cf-arrow {
+    display: none;
+  }
+}
+
+.cf-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border-radius: 999px;
+  padding: 1rem 2.2rem;
+  background: var(--lime);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 600;
+  box-shadow: 0 14px 40px -14px rgba(200, 255, 62, 0.65);
+  transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1), box-shadow 0.4s ease, opacity 0.3s ease;
+}
+.cf-send:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 50px -14px rgba(200, 255, 62, 0.8);
+}
+.cf-send:disabled {
+  opacity: 0.6;
+}
+
+/* Entrance: the glass lands, then its parts follow in order (--i). */
+.cf-stage [data-a] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.9s cubic-bezier(0.19, 1, 0.22, 1) calc(var(--i, 0) * 70ms + 380ms),
+    transform 1.1s cubic-bezier(0.19, 1, 0.22, 1) calc(var(--i, 0) * 70ms + 380ms);
+}
+.cf-stage[data-in] [data-a] {
+  opacity: 1;
+  transform: none;
+}
+
+.cf-stage .cf-pane {
+  opacity: 0;
+  transform: translateY(80px) scale(0.94);
+  transition:
+    opacity 1s ease,
+    transform 1.4s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.cf-stage[data-in] .cf-pane {
+  opacity: 1;
+  transform: none;
+}
+
+/* A light sweeping once across the slab as it lands. */
+.cf-sheen::after {
+  content: "";
+  position: absolute;
+  inset: -20% auto -20% 0;
+  width: 40%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.13) 45%, rgba(200, 255, 62, 0.08) 55%, transparent);
+  transform: translateX(-160%) skewX(-12deg);
+}
+.cf-stage[data-in] .cf-sheen::after {
+  animation: cf-sweep 1.8s cubic-bezier(0.45, 0, 0.2, 1) 0.7s both;
+}
+@keyframes cf-sweep {
+  to {
+    transform: translateX(360%) skewX(-12deg);
+  }
+}
+
+.cf-sent {
+  animation: cf-sent-in 0.9s cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+.cf-sent-dot {
+  box-shadow: 0 0 0 0 rgba(200, 255, 62, 0.6);
+  animation: cf-pulse 2.4s ease-out infinite;
+}
+@keyframes cf-sent-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes cf-pulse {
+  70%,
+  100% {
+    box-shadow: 0 0 0 18px rgba(200, 255, 62, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-stage [data-a],
+  .cf-stage .cf-pane {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .cf-sheen::after,
+  .cf-sent,
+  .cf-sent-dot {
+    animation: none;
+  }
+}

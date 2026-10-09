@@ -61,41 +61,47 @@ export function AboutPreview({
 }
 
 // Final scene: transparent stage — the code matter returns behind the words.
-// The form sits on a glass pane at the right; the direct lines stay at the left.
+// Everything is centred: the line, the glass form over the matter, then the direct lines.
 export function ContactFinale({ locale, t }: { locale: Locale; t: SiteContent["contact"] }) {
   return (
     <section
       id="contact"
-      className="pointer-events-none relative z-20 flex min-h-[90svh] flex-col justify-end px-5 pb-[10svh] md:px-10"
+      className="pointer-events-none relative z-20 px-5 md:px-10"
+      style={{ paddingBlock: "var(--space-section)" }}
     >
-      <div className="hero-copy mx-auto w-full max-w-[88rem]">
-        <h2
-          data-reveal
-          className="font-display max-w-[16ch] leading-[0.95] font-semibold tracking-[-0.05em] text-balance"
-          style={{ fontSize: "clamp(3rem, 7.5vw, 7.5rem)" }}
-        >
-          {t.line}
-        </h2>
-        <div data-reveal className="pointer-events-auto mt-12 grid gap-12 md:grid-cols-12 md:items-end md:gap-6">
-          <div className="text-[15px] leading-relaxed text-bone-dim md:col-span-4">
-            <p>{t.note}</p>
-            <p className="mt-10 font-mono text-[11px] tracking-[0.18em] uppercase">{t.form.direct}</p>
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="contact-link group font-display mt-3 inline-flex w-fit items-baseline gap-2 text-xl font-semibold tracking-[-0.02em] text-bone md:text-2xl"
-            >
-              <span className="link-draw">{CONTACT_EMAIL}</span>
-              <span aria-hidden className="text-lime transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1">
-                ↗
-              </span>
-            </a>
-            <a href={CONTACT_URL} target="_blank" rel="noreferrer" className="link-draw mt-4 block w-fit text-sm">
-              {t.cta} ↗
-            </a>
-          </div>
-          <div className="md:col-span-7 md:col-start-6">
-            <ContactForm locale={locale} intents={t.intents} t={t.form} />
-          </div>
+      <div className="mx-auto flex w-full max-w-[88rem] flex-col items-center text-center">
+        <div className="hero-copy flex flex-col items-center">
+          <p data-reveal className="font-mono text-[11px] tracking-[0.22em] text-lime uppercase">
+            [&nbsp;&nbsp;{t.heading}&nbsp;&nbsp;]
+          </p>
+          <h2
+            data-reveal
+            className="font-display mt-6 max-w-[18ch] leading-[0.95] font-semibold tracking-[-0.05em] text-balance"
+            style={{ fontSize: "clamp(2.6rem, 6.2vw, 6.4rem)" }}
+          >
+            {t.line}
+          </h2>
+          <p data-reveal className="mt-6 max-w-xl text-base leading-relaxed text-bone-dim md:text-lg">
+            {t.note}
+          </p>
+        </div>
+        <div className="pointer-events-auto mt-14 w-full max-w-[46rem] text-left">
+          <ContactForm locale={locale} intents={t.intents} t={t.form} />
+        </div>
+        <div className="hero-copy pointer-events-auto mt-12 flex flex-col items-center gap-3 text-sm text-bone-dim">
+          <span className="font-mono text-[11px] tracking-[0.18em] uppercase">{t.form.direct}</span>
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="contact-link group font-display inline-flex items-baseline gap-2 text-xl font-semibold tracking-[-0.02em] text-bone md:text-2xl"
+          >
+            <span className="link-draw">{CONTACT_EMAIL}</span>
+            <span aria-hidden className="text-lime transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1">
+              ↗
+            </span>
+          </a>
+          <a href={CONTACT_URL} target="_blank" rel="noreferrer" className="link-draw">
+            {t.cta} ↗
+          </a>
         </div>
       </div>
     </section>
