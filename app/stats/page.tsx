@@ -16,6 +16,7 @@ type Visit = {
   browser: string;
   os: string;
   duration_s: number | null;
+  network: string | null;
   created_at: string;
 };
 type Link = { slug: string; label: string; note: string | null; created_at: string };
@@ -76,6 +77,63 @@ function VisitRows({ visits }: { visits: Visit[] }) {
   );
 }
 
+// One personal link opened on several browsers: each browser is a "person". Later ones
+// are judged against the earlier: same network reads as the same person on another
+// device (or their office); another network, and above all another city, reads as forwarded.
+type Person = { visits: Visit[]; verdict: "first" | "same" | "maybe" | "likely" };
+
+function people(visits: Visit[]): Person[] {
+  const groups = new Map<string, Visit[]>();
+  for (const v of [...visits].reverse()) groups.set(v.visitor, [...(groups.get(v.visitor) ?? []), v]);
+  const seenNets = new Set<string>();
+  const seenCities = new Set<string>();
+  return [...groups.values()].map((vs, i) => {
+    const nets = vs.map((v) => v.network).filter(Boolean) as string[];
+    const cities = vs.map((v) => v.city).filter(Boolean) as string[];
+    const verdict: Person["verdict"] =
+      i === 0
+        ? "first"
+        : nets.some((n) => seenNets.has(n))
+          ? "same"
+          : cities.length && seenCities.size && !cities.some((c) => seenCities.has(c))
+            ? "likely"
+            : "maybe";
+    nets.forEach((n) => seenNets.add(n));
+    cities.forEach((c) => seenCities.add(c));
+    return { visits: vs.reverse(), verdict };
+  });
+}
+
+const VERDICT: Record<Person["verdict"], [string, string]> = {
+  first: ["İlk açan", "text-[#c8ff3e]"],
+  same: ["Aynı ağ — muhtemelen aynı kişi başka cihazda ya da aynı ofisten biri", "text-white/50"],
+  maybe: ["Farklı cihaz ve ağ — iletilmiş olabilir (ya da aynı kişi mobil veriyle)", "text-amber-300"],
+  likely: ["Farklı şehir — büyük ihtimalle iletildi", "text-orange-400"],
+};
+
+function People({ visits }: { visits: Visit[] }) {
+  return (
+    <div className="flex flex-col gap-5">
+      {people(visits).map((p, i) => {
+        const v = p.visits[p.visits.length - 1];
+        const [text, tone] = VERDICT[p.verdict];
+        return (
+          <div key={v.visitor}>
+            <p className="mb-1 text-sm">
+              <span className="font-medium">{i + 1}. kişi</span>
+              <span className={`ml-2 text-xs ${tone}`}>{text}</span>
+            </p>
+            <p className="mb-2 text-xs text-white/50">
+              {`${v.device} · ${v.os} · ${v.browser} · ${place(v)} · ilk: ${when(v.created_at)} · ${p.visits.length} sayfa`}
+            </p>
+            <VisitRows visits={p.visits} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Tally({ title, rows }: { title: string; rows: [string, number][] }) {
   return (
     <div className="rounded-xl border border-white/10 p-4">
@@ -129,12 +187,21 @@ export default async function StatsPage() {
           {links.map((l) => {
             const vs = byRef.get(l.slug) ?? [];
             const total = vs.reduce((s, v) => s + (v.duration_s ?? 0), 0);
+            const ps = people(vs);
+            const forwarded = ps.filter((p) => p.verdict === "maybe" || p.verdict === "likely").length;
             return (
               <details key={l.slug} className="rounded-xl border border-white/10 p-4 open:border-white/20">
                 <summary className="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1">
                   <span className={`h-2 w-2 rounded-full ${vs.length ? "bg-[#c8ff3e]" : "bg-white/20"}`} />
                   <span className="font-medium">{l.label}</span>
                   {l.note && <span className="text-xs text-white/40">{l.note}</span>}
+                  {ps.length > 1 && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs ${forwarded ? "bg-orange-400/15 text-orange-300" : "bg-white/10 text-white/60"}`}
+                    >
+                      {forwarded ? `${ps.length} kişi · iletilmiş olabilir` : `${ps.length} cihaz`}
+                    </span>
+                  )}
                   <span className="ml-auto text-xs text-white/60">
                     {vs.length
                       ? `${vs.length} sayfa · ${secs(total)} · son: ${when(vs[0].created_at)}`
@@ -151,7 +218,7 @@ export default async function StatsPage() {
                 </div>
                 {vs.length > 0 && (
                   <div className="mt-4">
-                    <VisitRows visits={vs} />
+                    <People visits={vs} />
                   </div>
                 )}
               </details>
@@ -163,7 +230,7 @@ export default async function StatsPage() {
                 {r} <span className="text-xs text-white/40">(listede olmayan / silinmiş link)</span>
               </summary>
               <div className="mt-4">
-                <VisitRows visits={byRef.get(r)!} />
+                <People visits={byRef.get(r)!} />
               </div>
             </details>
           ))}
