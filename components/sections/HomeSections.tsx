@@ -71,12 +71,9 @@ export function ContactFinale({ locale, t }: { locale: Locale; t: SiteContent["c
     >
       <div className="mx-auto flex w-full max-w-[88rem] flex-col items-center text-center">
         <div className="hero-copy flex flex-col items-center">
-          <p data-reveal className="font-mono text-[11px] tracking-[0.22em] text-lime uppercase">
-            [&nbsp;&nbsp;{t.heading}&nbsp;&nbsp;]
-          </p>
           <h2
             data-reveal
-            className="font-display mt-6 max-w-[18ch] leading-[0.95] font-semibold tracking-[-0.05em] text-balance"
+            className="font-display max-w-[18ch] leading-[0.95] font-semibold tracking-[-0.05em] text-balance"
             style={{ fontSize: "clamp(2.6rem, 6.2vw, 6.4rem)" }}
           >
             {t.line}
@@ -89,7 +86,7 @@ export function ContactFinale({ locale, t }: { locale: Locale; t: SiteContent["c
           <ContactForm locale={locale} intents={t.intents} t={t.form} />
         </div>
         <div className="hero-copy pointer-events-auto mt-12 flex flex-col items-center gap-3 text-sm text-bone-dim">
-          <span className="font-mono text-[11px] tracking-[0.18em] uppercase">{t.form.direct}</span>
+          <span>{t.form.direct}</span>
           <a
             href={`mailto:${CONTACT_EMAIL}`}
             className="contact-link group font-display inline-flex items-baseline gap-2 text-xl font-semibold tracking-[-0.02em] text-bone md:text-2xl"
