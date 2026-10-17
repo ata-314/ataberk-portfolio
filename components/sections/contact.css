@@ -174,9 +174,31 @@ textarea.cf-well:focus {
   pointer-events: auto;
   transform: translateY(-50%);
 }
-@media (hover: none) {
+/* Phones and touch: no slider. All topics wrap, centred, always in view — a
+   sliding row there flickered at its end, where the iOS bounce toggled the fade. */
+@media (hover: none), (max-width: 767px) {
   .cf-arrow {
     display: none;
+  }
+  .cf-track,
+  .cf-slider[data-start] .cf-track,
+  .cf-slider[data-end] .cf-track {
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow: visible;
+    padding: 0;
+    margin-block: 0.25rem 0;
+    cursor: auto;
+    user-select: auto;
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+  .cf-slide {
+    max-width: 100%;
+  }
+  .cf-slide .cf-chip {
+    white-space: normal;
+    text-align: center;
   }
 }
 
