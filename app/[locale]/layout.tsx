@@ -5,10 +5,8 @@ import { locales, isLocale, type Locale } from "@/lib/i18n";
 import { BASE_URL } from "@/lib/url";
 import { site } from "@/content/site";
 import { services } from "@/content/services";
-import { PERSON_ID } from "@/lib/url";
+import { PERSON_ID, PROFILES } from "@/lib/url";
 
-// Public profiles: add each one the person actually owns.
-const SAME_AS = ["https://github.com/ata-314"];
 import { Nav } from "@/components/nav/Nav";
 import { Tracker } from "@/components/track/Tracker";
 import "../globals.css";
@@ -123,7 +121,7 @@ export default async function LocaleLayout({
       knowsAbout: m.knowsAbout,
       hasOccupation: services[locale].items.map((s) => ({ "@type": "Occupation", name: s.name })),
       worksFor: { "@type": "Organization", name: "Oneavex" },
-      sameAs: SAME_AS,
+      sameAs: PROFILES.map((p) => p.url),
     },
     {
       "@context": "https://schema.org",

@@ -5,6 +5,7 @@ import { HologramBust } from "../gl/HologramBust";
 import { CodeRain } from "./CodeRain";
 import { ContactForm } from "./ContactForm";
 import { services, servicePath } from "@/content/services";
+import { PROFILES } from "@/lib/url";
 
 const CONTACT_URL = "https://github.com/ata-314";
 const CONTACT_EMAIL = "ataberk@ataberksoylu.com";
@@ -120,6 +121,13 @@ export function Footer({ t, name, locale }: { t: SiteContent["footer"]; name: st
       </nav>
       <div className="mx-auto flex max-w-[88rem] flex-wrap items-baseline justify-between gap-4 text-sm text-bone-dim">
         <p className="font-display font-semibold text-bone">{name}</p>
+        <p className="flex flex-wrap gap-x-4 gap-y-1">
+          {PROFILES.map((p) => (
+            <a key={p.name} href={p.url} target="_blank" rel="me noopener noreferrer" className="link-draw hover:text-bone">
+              {p.name}
+            </a>
+          ))}
+        </p>
         <p>{t.built}</p>
         <p>
           © {new Date().getFullYear()} {t.rights}

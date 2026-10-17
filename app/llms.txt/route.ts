@@ -1,4 +1,4 @@
-import { BASE_URL } from "@/lib/url";
+import { BASE_URL, PROFILES } from "@/lib/url";
 import { site } from "@/content/site";
 import { work } from "@/content/work";
 import { services, servicePath } from "@/content/services";
@@ -18,6 +18,7 @@ export function GET() {
     tr.hub.who,
     "",
     "Contact: ataberk@ataberksoylu.com · Location: İstanbul, Türkiye (works remotely) · Languages: Turkish, English",
+    `Profiles: ${PROFILES.map((p) => `[${p.name}](${p.url})`).join(" · ")}`,
     "",
     "## Hizmetler (TR)",
     "",
