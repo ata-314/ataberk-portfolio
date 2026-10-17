@@ -63,7 +63,7 @@ export default async function LabPage({
           <Link href={`/${locale}#contact`} className="lab-cta">{t.close.cta}<span aria-hidden="true">→</span></Link>
         </div>
       </section>
-      <Footer t={site[locale].footer} name={site[locale].name} />
+      <Footer t={site[locale].footer} name={site[locale].name} locale={locale} />
     </main>
   );
 }

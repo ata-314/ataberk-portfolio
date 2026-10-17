@@ -4,7 +4,9 @@ import { useEffect, useRef, type PointerEvent } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import Link from "next/link";
 import type { Locale } from "@/lib/i18n";
+import { services, servicePath } from "@/content/services";
 import { ServiceArt } from "./ServiceArt";
 import "./services.css";
 
@@ -104,7 +106,12 @@ export function Services({ locale }: { locale: Locale }) {
       <div className="services-inner mx-auto max-w-[88rem]">
         <div className="services-heading">
           <div><p className="services-label">{locale === "tr" ? "Hizmetler" : "Services"}</p><h2 id="services-heading">{t.heading}</h2></div>
-          <p className="services-lead">{t.lead}</p>
+          <div className="services-lead">
+            <p>{t.lead}</p>
+            <Link href={servicePath(locale)} className="link-draw mt-4 inline-block text-bone">
+              {services[locale].labels.all} →
+            </Link>
+          </div>
         </div>
         <div className="services-grid" data-services-grid>
           {t.items.map(([title, description], index) => (

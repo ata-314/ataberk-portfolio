@@ -38,6 +38,10 @@ export default async function Home({
         <Hero
           t={{
             name: t.name,
+            heading:
+              locale === "tr"
+                ? "Ataberk Soylu: yapay zeka uzmanı, web ve grafik tasarımcı"
+                : "Ataberk Soylu: AI specialist, web and graphic designer",
             title: t.title,
             tagline: t.tagline,
             ctaWork: locale === "tr" ? "Seçili işler" : "Selected work",
@@ -57,7 +61,7 @@ export default async function Home({
         <AISystems locale={locale} t={t.aiSystems} />
         <FlightGap size="lg" />
         <ContactFinale locale={locale} t={t.contact} />
-        <Footer t={t.footer} name={t.name} />
+        <Footer t={t.footer} name={t.name} locale={locale} />
       </main>
     </SmoothScroll>
   );

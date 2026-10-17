@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
+import { translatePath } from "@/content/services";
 import { scrollState } from "../three/scroll-state";
 
 // Apple-style liquid glass capsule floating at the top of every page, above
@@ -14,7 +15,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const other = locale === "tr" ? "en" : "tr";
-  const otherPath = pathname.replace(`/${locale}`, `/${other}`);
+  const otherPath = translatePath(pathname, locale, other);
   const panel = useRef<HTMLDivElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
 

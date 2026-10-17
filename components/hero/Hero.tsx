@@ -15,6 +15,9 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 ScrollTrigger.config({ ignoreMobileResize: true });
 
 export type HeroStrings = {
+  // The page's real heading, read by search engines and screen readers;
+  // the glyph name stays the visible one.
+  heading: string;
   name: string;
   title: string;
   tagline: string;
@@ -133,7 +136,7 @@ export function Hero({ t }: { t: HeroStrings }) {
               </span>
             </div>
             <div data-hero-name className="hero-enter order-1 -mx-5 md:order-2 md:mx-0" style={{ ["--d" as string]: "0.05s" }}>
-              <CodeName words={["ATABERX"]} label={t.name} fill handoffLast className="hero-name" />
+              <CodeName words={["ATABERX"]} label={t.heading} fill handoffLast className="hero-name" />
             </div>
           </div>
         </div>

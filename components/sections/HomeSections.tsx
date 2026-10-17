@@ -4,6 +4,7 @@ import type { SiteContent } from "@/content/site";
 import { HologramBust } from "../gl/HologramBust";
 import { CodeRain } from "./CodeRain";
 import { ContactForm } from "./ContactForm";
+import { services, servicePath } from "@/content/services";
 
 const CONTACT_URL = "https://github.com/ata-314";
 const CONTACT_EMAIL = "ataberk@ataberksoylu.com";
@@ -105,9 +106,18 @@ export function ContactFinale({ locale, t }: { locale: Locale; t: SiteContent["c
   );
 }
 
-export function Footer({ t, name }: { t: SiteContent["footer"]; name: string }) {
+export function Footer({ t, name, locale }: { t: SiteContent["footer"]; name: string; locale: Locale }) {
+  const s = services[locale];
   return (
     <footer className="relative z-20 bg-ink px-5 py-10 md:px-10">
+      <nav aria-label={s.labels.all} className="mx-auto mb-8 flex max-w-[88rem] flex-wrap gap-x-6 gap-y-2 border-b border-white/10 pb-8 text-sm text-bone-dim">
+        <Link href={servicePath(locale)} className="link-draw text-bone">{s.labels.all}</Link>
+        {s.items.map((item) => (
+          <Link key={item.slug} href={servicePath(locale, item.slug)} className="link-draw hover:text-bone">
+            {item.name}
+          </Link>
+        ))}
+      </nav>
       <div className="mx-auto flex max-w-[88rem] flex-wrap items-baseline justify-between gap-4 text-sm text-bone-dim">
         <p className="font-display font-semibold text-bone">{name}</p>
         <p>{t.built}</p>

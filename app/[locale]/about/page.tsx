@@ -83,7 +83,7 @@ export default async function AboutPage({
           </section>
         </div>
       </div>
-      <Footer t={site[locale].footer} name={site[locale].name} />
+      <Footer t={site[locale].footer} name={site[locale].name} locale={locale} />
     </main>
   );
 }

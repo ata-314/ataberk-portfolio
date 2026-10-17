@@ -4,6 +4,11 @@ import { notFound } from "next/navigation";
 import { locales, isLocale, type Locale } from "@/lib/i18n";
 import { BASE_URL } from "@/lib/url";
 import { site } from "@/content/site";
+import { services } from "@/content/services";
+import { PERSON_ID } from "@/lib/url";
+
+// Public profiles: add each one the person actually owns.
+const SAME_AS = ["https://github.com/ata-314"];
 import { Nav } from "@/components/nav/Nav";
 import { Tracker } from "@/components/track/Tracker";
 import "../globals.css";
@@ -24,14 +29,29 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500", "800"],
 });
 
-const meta: Record<Locale, { description: string }> = {
+// Titles and descriptions carry the phrases people search for, in each language.
+const meta: Record<Locale, { title: string; description: string; jobTitle: string; knowsAbout: string[] }> = {
   tr: {
+    title: "Ataberk Soylu — Yapay Zeka Uzmanı, Web ve Grafik Tasarımcı | İstanbul",
     description:
-      "Ataberk Soylu — Creative Technologist & Multi Designer. Yapay zekâ, motion, 3D ve web arasında akıllı dijital deneyimler.",
+      "Ataberk Soylu: İstanbul'da yapay zeka uzmanı, yapay zeka artist, web tasarımcısı ve web geliştiricisi, grafik ve UI/UX tasarımcı. AI agent, AI video, sinematik web siteleri ve marka kimliği.",
+    jobTitle: "Creative Technologist, Yapay Zeka Uzmanı ve Multi Designer",
+    knowsAbout: [
+      "Yapay zeka", "Yapay zeka mühendisliği", "AI agent geliştirme", "Çok ajanlı sistemler", "Yapay zeka reklam filmi",
+      "Üretken sanat", "Web tasarımı", "Web geliştirme", "Grafik tasarım", "Marka kimliği", "UI/UX tasarım",
+      "Motion tasarım", "3D görselleştirme",
+    ],
   },
   en: {
+    title: "Ataberk Soylu — AI Specialist, Web and Graphic Designer | Istanbul",
     description:
-      "Ataberk Soylu — Creative Technologist & Multi Designer. Intelligent digital experiences across AI, motion, 3D and the web.",
+      "Ataberk Soylu: AI specialist, AI artist, web designer and developer, graphic and UI/UX designer in Istanbul. AI agents, AI video, cinematic websites and brand identity.",
+    jobTitle: "Creative Technologist, AI Specialist and Multi Designer",
+    knowsAbout: [
+      "Artificial intelligence", "AI engineering", "AI agents", "Multi-agent systems", "AI video production",
+      "Generative art", "Web design", "Web development", "Graphic design", "Brand identity", "UI/UX design",
+      "Motion design", "3D visualization",
+    ],
   },
 };
 
@@ -46,15 +66,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const l: Locale = isLocale(locale) ? locale : "tr";
-  const title = "Ataberk Soylu — Creative Technologist & Multi Designer";
+  const title = meta[l].title;
   return {
     metadataBase: new URL(BASE_URL),
     title: { default: title, template: "%s — Ataberk Soylu" },
     description: meta[l].description,
     alternates: {
       canonical: `/${l}`,
-      languages: { tr: "/tr", en: "/en" },
+      languages: { tr: "/tr", en: "/en", "x-default": "/tr" },
     },
+    authors: [{ name: "Ataberk Soylu", url: BASE_URL }],
+    creator: "Ataberk Soylu",
     openGraph: {
       title,
       description: meta[l].description,
@@ -82,22 +104,37 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
   const t = site[locale];
 
-  const personSchema = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: "Ataberk Soylu",
-    jobTitle: "Creative Technologist & Multi Designer",
-    url: `${BASE_URL}/${locale}`,
-    sameAs: ["https://github.com/ata-314"],
-    knowsAbout: [
-      "Creative Direction",
-      "UI/UX Design",
-      "WebGL",
-      "Motion Design",
-      "Generative AI",
-      "Multi-Agent Systems",
-    ],
-  };
+  const m = meta[locale];
+  const schema = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "@id": PERSON_ID,
+      name: "Ataberk Soylu",
+      givenName: "Ataberk",
+      familyName: "Soylu",
+      jobTitle: m.jobTitle,
+      description: m.description,
+      url: `${BASE_URL}/${locale}`,
+      image: `${BASE_URL}/brand/logo.png`,
+      email: "mailto:ataberk@ataberksoylu.com",
+      address: { "@type": "PostalAddress", addressLocality: "İstanbul", addressCountry: "TR" },
+      knowsLanguage: ["tr", "en"],
+      knowsAbout: m.knowsAbout,
+      hasOccupation: services[locale].items.map((s) => ({ "@type": "Occupation", name: s.name })),
+      worksFor: { "@type": "Organization", name: "Oneavex" },
+      sameAs: SAME_AS,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": `${BASE_URL}/#website`,
+      name: "Ataberk Soylu",
+      url: BASE_URL,
+      inLanguage: ["tr", "en"],
+      publisher: { "@id": PERSON_ID },
+    },
+  ];
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -119,7 +156,7 @@ export default async function LocaleLayout({
         <Tracker />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
         />
       </body>
     </html>

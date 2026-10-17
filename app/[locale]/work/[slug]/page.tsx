@@ -246,7 +246,7 @@ export default async function CasePage({
           )}
         </div>
       </Link>
-      <Footer t={site[locale].footer} name={site[locale].name} />
+      <Footer t={site[locale].footer} name={site[locale].name} locale={locale} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
     </main>
   );

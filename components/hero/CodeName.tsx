@@ -422,7 +422,8 @@ export function CodeName({
   }, [fill, handoffLast]);
 
   return (
-    <h1 ref={root} aria-label={label ?? words.join(" ")} className={`relative ${className ?? ""}`}>
+    <h1 ref={root} className={`relative ${className ?? ""}`}>
+      <span className="sr-only">{label ?? words.join(" ")} </span>
       {words.map((word, i) => (
         <span key={word} aria-hidden>
           {i > 0 ? " " : null}
