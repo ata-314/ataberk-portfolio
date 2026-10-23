@@ -9,6 +9,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Manifesto } from "@/components/sections/Manifesto";
 import { WorkSection } from "@/components/sections/WorkSection";
 import { Services } from "@/components/sections/Services";
+import { Strip } from "@/components/sections/Strip";
 import { Voyage } from "@/components/sections/Voyage";
 import { AISystems } from "@/components/sections/AISystems";
 import { FlightGap } from "@/components/sections/FlightGap";
@@ -49,6 +50,7 @@ export default async function Home({
             locale,
           }}
         />
+        <Strip locale={locale} />
         <Voyage locale={locale} />
         <Services locale={locale} />
         <FlightGap />

@@ -6,6 +6,8 @@ import { createSculptureLayer } from "./sculpture-layer";
 import { createTunnelLayer } from "./tunnel-layer";
 import { createReelLayer, reelStops } from "./reel-layer";
 import { createXLayer } from "./x-layer";
+import { createStripLayer } from "./strip-layer";
+import { stripFilms, stripPosition } from "@/content/strip";
 import { makeGlyphAtlas } from "./matrix-layer";
 import { createPost } from "./post";
 import { buildProgram } from "./program";
@@ -236,7 +238,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // Every program of every layer compiles at once, off the main thread
     // where the driver allows (see program.ts).
     const glyphAtlas = makeGlyphAtlas(gl);
-    const [program, sculpture, tunnel, reel, post, xLayer, work] = await Promise.all([
+    const [program, sculpture, tunnel, reel, post, xLayer, work, strip] = await Promise.all([
       buildProgram(gl, vertexSource, fragmentSource, "Stage"),
       // The particle sculpture carries the opening.
       createSculptureLayer(gl, mobile),
@@ -260,9 +262,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         face: slot.face,
         video: slot.video,
       })), () => workState.titles),
+      // The film strip between the hero and the X ([data-strip]).
+      createStripLayer(gl, mobile, stripFilms),
     ]);
     if (disposed) {
-      [sculpture, tunnel, reel, post, xLayer, work].forEach((layer) => layer?.dispose());
+      [sculpture, tunnel, reel, post, xLayer, work, strip].forEach((layer) => layer?.dispose());
       gl.deleteTexture(glyphAtlas);
       gl.deleteProgram(program);
       return;
@@ -299,6 +303,11 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // Which way along the body the tail lies in the bake (+1: toward +z).
     const workTailSign = 1;
     workState.pick = (x, y) => work.pick(x, y, stageW, stageH);
+    // Film strip: how far it has slid in, its film position and how far it
+    // has handed over to the X (see strip-layer).
+    let stripElement: HTMLElement | null = null;
+    const stripFrame = { time: 0, enter: 0, position: 0, leave: 0, aspect: 1, width: 1, height: 1 };
+    let stripHold = 0;
     let voyageElement: HTMLElement | null = null;
     let voyageHold = 0;
     let voyage = 0;
@@ -907,6 +916,18 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         // by the time the words have risen.
         voyageHold = damp(voyageHold, smoothstep(r.top / stageH, 1.0, 0.25) * smoothstep(r.bottom / stageH, 0.3, 1), 5, delta);
       }
+      stripElement ??= document.querySelector<HTMLElement>("[data-strip]");
+      if (stripElement) {
+        const r = stripElement.getBoundingClientRect();
+        const lead = stripElement.querySelector<HTMLElement>("[data-strip-lead]")?.offsetHeight ?? 0;
+        const runway = Math.max(r.height - stageH, 1);
+        const target = stripPosition(Math.max(0, Math.min(1, -r.top / runway)));
+        stripFrame.position = Math.abs(target - stripFrame.position) > 1.5 ? target : damp(stripFrame.position, target, 6, delta);
+        stripFrame.enter = Math.max(0, Math.min(1, (stageH - r.top) / (stageH + lead)));
+        stripFrame.leave = Math.max(0, Math.min(1, (stageH - r.bottom) / stageH));
+        if (r.top < stageH * 3) strip.prepare();
+      }
+      stripHold = strip.hold(stripFrame);
       // The X condenses, opens as a portal, the bird flies in, the ring
       // passes the camera; the tunnel assembles round the opening and hands
       // over to the next scene with a stretch and a flare.
@@ -1218,7 +1239,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       // in, and the two merge into one shapeless mass, so it steps back
       // (faint) while the bird holds the hero and returns as the X gathers.
       const swarmBack = mobile ? 0.97 * smoothstep(hero, 0.35, 0.55) * (1 - xGather) : 0;
-      xLayer.render(time, canvas.height, projection, smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(portalThrough, 0.8, 1)) * (1 - swarmBack));
+      // While the film strip holds the screen the code swarm stays out of
+      // it; it comes back as the strip's ring breaks into grains and gathers
+      // into the X in its place.
+      xLayer.render(time, canvas.height, projection, smoothstep(hero, 0.035, 0.06) * (1 - smoothstep(portalThrough, 0.8, 1)) * (1 - swarmBack) * (1 - stripHold));
       // The corridor rushes toward us on its own clock, and scrolling pushes
       // the flight on or back on top of it; its light cycles teal → pink →
       // blue and back over the ride.
@@ -1247,6 +1271,13 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         }, sceneTarget);
       if (sceneTarget) gl.bindFramebuffer(gl.FRAMEBUFFER, sceneTarget);
       gl.viewport(0, 0, canvas.width, canvas.height);
+      // The film strip over the bird: it flies on behind the drum, and shows
+      // again as the ring breaks into the X.
+      stripFrame.time = time;
+      stripFrame.aspect = stageW / Math.max(stageH, 1);
+      stripFrame.width = canvas.width;
+      stripFrame.height = canvas.height;
+      strip.render(stripFrame);
       work.renderFront(sceneTarget);
       // A film in focus on the reel is kept clear: less bloom and fringing.
       const reelClear = reel.focus(reelPosition).focus * tunnelIn;
@@ -1284,6 +1315,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       sculpture.dispose();
       tunnel.dispose();
       reel.dispose();
+      strip.dispose();
       work.dispose();
       workState.pick = null;
       gl.deleteTexture(glyphAtlas);

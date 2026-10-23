@@ -1,0 +1,109 @@
+/* Film strip: the stage draws the drum of films; the page sets the title of
+   the film in front large along the bottom, and the next one at the side. */
+.strip-frame {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+  pointer-events: none;
+}
+.strip-titles {
+  position: absolute;
+  left: clamp(1rem, 2.6vw, 2.5rem);
+  right: clamp(9rem, 22vw, 20rem);
+  bottom: clamp(1.25rem, 4vh, 2.5rem);
+  display: grid;
+}
+.strip-title-line {
+  grid-area: 1 / 1;
+  overflow: hidden;
+  /* Room for descenders and the roll. */
+  padding-block: 0.06em 0.1em;
+  font-size: clamp(3.4rem, 11.5vw, 11rem);
+  line-height: 0.9;
+}
+.strip-title {
+  display: block;
+  transform: translate3d(0, 108%, 0);
+  font-family: var(--font-archivo), sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.065em;
+  white-space: nowrap;
+  background: linear-gradient(180deg, #fff 35%, #cfe3c4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  will-change: transform;
+}
+.strip-side {
+  position: absolute;
+  right: clamp(1rem, 2.6vw, 2.5rem);
+  bottom: clamp(1.5rem, 5vh, 3rem);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  opacity: 0;
+  pointer-events: auto;
+}
+.strip-next-label {
+  font-size: 12px;
+  color: rgb(243 239 231 / 0.55);
+}
+.strip-next-line {
+  display: grid;
+  overflow: hidden;
+  justify-items: end;
+  font-family: var(--font-archivo), sans-serif;
+  font-size: clamp(1rem, 1.5vw, 1.35rem);
+  font-weight: 550;
+  letter-spacing: -0.03em;
+  color: rgb(243 239 231);
+}
+.strip-next {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+  transform: translate3d(0, 110%, 0);
+  will-change: transform;
+}
+.strip-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.strip-buttons button {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  background: rgb(243 239 231);
+  color: var(--ink);
+  transition: background-color 0.25s, transform 0.25s;
+}
+.strip-buttons button:hover { background: var(--lime); transform: scale(1.06); }
+.strip-buttons button:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
+.strip-buttons svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Without the stage: the first shot of each film in a plain row. */
+.strip-static { display: none; }
+:root[data-stage-static] .strip-static {
+  position: absolute;
+  inset: 12svh clamp(1rem, 2.6vw, 2.5rem) auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+:root[data-stage-static] .strip-static img { width: 100%; aspect-ratio: 9 / 16; max-height: 56svh; object-fit: cover; border-radius: 4px; }
+:root[data-stage-static] .strip-title { transform: none; }
+:root[data-stage-static] .strip-title-line:not(:first-child) { display: none; }
+:root[data-stage-static] .strip-side { display: none; }
+
+@media (max-width: 767px) {
+  .strip-titles { right: 1rem; bottom: 7.5rem; }
+  .strip-side { flex-direction: row; align-items: center; gap: 0.75rem; }
+  .strip-buttons { flex-direction: row-reverse; margin-top: 0; }
+  :root[data-stage-static] .strip-static { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :root[data-stage-static] .strip-static img { max-height: 30svh; }
+}
