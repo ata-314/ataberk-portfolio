@@ -11,7 +11,8 @@ import { Nav } from "@/components/nav/Nav";
 import { Tracker } from "@/components/track/Tracker";
 import "../globals.css";
 
-const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin", "latin-ext"] });
+// The width axis gives the film strip its condensed titles.
+const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin", "latin-ext"], axes: ["wdth"] });
 // Futuristic display face for the hero name (human decision 2026-09-26),
 // a technical grotesk for supporting hero copy, and a code mono for labels
 // and the glyphs that build the name.

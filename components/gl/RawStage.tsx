@@ -306,7 +306,24 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
     // Film strip: how far it has slid in, its film position and how far it
     // has handed over to the X (see strip-layer).
     let stripElement: HTMLElement | null = null;
-    const stripFrame = { time: 0, enter: 0, position: 0, leave: 0, aspect: 1, width: 1, height: 1 };
+    const stripFrame = {
+      time: 0, enter: 0, position: 0, leave: 0, aspect: 1, width: 1, height: 1,
+      bird: [0, 0] as [number, number], xCentre: [0, 0] as [number, number],
+      xAxisX: [0, 0] as [number, number], xAxisY: [0, 0] as [number, number],
+    };
+    // A camera-space point to NDC with this frame's camera.
+    const toNdc = (x: number, y: number, z: number, out: [number, number]) => {
+      const vx = view[0] * x + view[4] * y + view[8] * z + view[12];
+      const vy = view[1] * x + view[5] * y + view[9] * z + view[13];
+      const vz = view[2] * x + view[6] * y + view[10] * z + view[14];
+      const cx = projection[0] * vx + projection[4] * vy + projection[8] * vz + projection[12];
+      const cy = projection[1] * vx + projection[5] * vy + projection[9] * vz + projection[13];
+      const cw = projection[3] * vx + projection[7] * vy + projection[11] * vz + projection[15];
+      out[0] = cx / Math.max(Math.abs(cw), 1e-4);
+      out[1] = cy / Math.max(Math.abs(cw), 1e-4);
+      return out;
+    };
+    const ndcA: [number, number] = [0, 0];
     let stripHold = 0;
     let voyageElement: HTMLElement | null = null;
     let voyageHold = 0;
@@ -1256,7 +1273,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       work.renderBack(sceneTarget);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
-      const sculptureAlpha = smoothstep(intro, 0, 0.04);
+      // The bird bursts into the film strip's grains and is gone while the
+      // strip holds the screen; it comes back under the X.
+      const birdAway = smoothstep(stripFrame.enter, 0.03, 0.3) * (1 - smoothstep(stripFrame.leave, 0.75, 1));
+      const sculptureAlpha = smoothstep(intro, 0, 0.04) * (1 - birdAway);
       sculpture.render(canvas.width, canvas.height, time, sculptureAlpha,
         scanSmooth[0] / (8.2 * Math.tan(Math.PI / 8) * (stageW / stageH)),
         scanSmooth[1] / (8.2 * Math.tan(Math.PI / 8)),
@@ -1277,6 +1297,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       stripFrame.aspect = stageW / Math.max(stageH, 1);
       stripFrame.width = canvas.width;
       stripFrame.height = canvas.height;
+      // Where the grains burst from (the bird) and pour into (the X).
+      toNdc(birdMatrix[12], birdMatrix[13], birdMatrix[14], stripFrame.bird);
+      const xScale = (mobile ? 1.15 : 1.9) * (0.9 + xDense * 0.2) * (1 + xOpen * 0.35);
+      toNdc(xCentre[0], xCentre[1], xCentre[2], stripFrame.xCentre);
+      toNdc(xCentre[0] + xScale, xCentre[1], xCentre[2], ndcA);
+      stripFrame.xAxisX[0] = ndcA[0] - stripFrame.xCentre[0];
+      stripFrame.xAxisX[1] = ndcA[1] - stripFrame.xCentre[1];
+      toNdc(xCentre[0], xCentre[1] + xScale, xCentre[2], ndcA);
+      stripFrame.xAxisY[0] = ndcA[0] - stripFrame.xCentre[0];
+      stripFrame.xAxisY[1] = ndcA[1] - stripFrame.xCentre[1];
       strip.render(stripFrame);
       work.renderFront(sceneTarget);
       // A film in focus on the reel is kept clear: less bloom and fringing.
