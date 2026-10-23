@@ -312,6 +312,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       xAxisX: [0, 0] as [number, number], xAxisY: [0, 0] as [number, number],
       birdPositions: null as WebGLTexture | null, birdMatrix: new Float32Array(16),
       stageViewProj: new Float32Array(16), birdFrame: 0,
+      swarm: null as { texture: WebGLTexture; cols: number; rows: number } | null,
     };
     // A camera-space point to NDC with this frame's camera.
     const toNdc = (x: number, y: number, z: number, out: [number, number]) => {
@@ -1312,6 +1313,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
         }
       }
       stripFrame.birdFrame = flap * 16;
+      stripFrame.swarm = xLayer.grains();
       const xScale = (mobile ? 1.15 : 1.9) * (0.9 + xDense * 0.2) * (1 + xOpen * 0.35);
       toNdc(xCentre[0], xCentre[1], xCentre[2], stripFrame.xCentre);
       toNdc(xCentre[0] + xScale, xCentre[1], xCentre[2], ndcA);

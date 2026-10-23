@@ -3,9 +3,10 @@
 // lens, so the film ahead is clearest while the band swings out toward the
 // sides, a little taller, smeared and breaking into a cloud of grains. The band is
 // never still: a slow wave runs along it and its edges ripple.
-// The bird builds it: as it slides in, the bird comes apart grain by grain,
-// each grain leaving its own point on the bird's skin for its place on the
-// band, and only then does the picture settle under them. The scroll turns the drum film by film
+// The bird and the code swarm build it: as it slides in, both come apart
+// grain by grain, each grain leaving its own point on the bird's skin or its
+// own place in the swarm for its place on the band, at its own moment, so
+// the band fills evenly; only then does the picture settle under them. The scroll turns the drum film by film
 // (three shots each). At its end the picture breaks back into grains, which
 // pour into the shape of the X where the X then gathers.
 // A panel shows its poster until it turns into view; only the clips in view
@@ -108,6 +109,9 @@ uniform mat4 birdMatrix;
 uniform mat4 stageViewProj;
 uniform float birdFrame;
 uniform float birdShape;
+uniform sampler2D swarmPositions; // the code swarm's grains (world xyz)
+uniform ivec2 swarmSize;
+uniform float swarmShape;
 uniform vec2 xCentre; // NDC, and the X's unit axes in NDC
 uniform vec2 xAxisX;
 uniform vec2 xAxisY;
@@ -133,7 +137,14 @@ void main(){
   // it, and leaves it at its own moment, swirling on the way.
   float k=0.0;
   vec2 from;
-  if(birdShape>.5){
+  bool fromSwarm=swarmShape>.5 && (seed.y<.5 || birdShape<.5);
+  if(fromSwarm){
+    int n=swarmSize.x*swarmSize.y;
+    int i=int(fract(seed.x*5.17+seed.z*2.71+seed.w*3.33)*float(n));
+    vec3 g=texelFetch(swarmPositions,ivec2(i%swarmSize.x,i/swarmSize.x),0).xyz;
+    vec4 sc=stageViewProj*vec4(g,1.0);
+    from=sc.xy/max(sc.w,1e-3);
+  } else if(birdShape>.5){
     int i=int(fract(seed.x*7.31+seed.y*3.17+seed.w*1.93)*9000.0);
     ivec2 c=ivec2(i%2048,i/2048);
     int f=int(floor(birdFrame))%16;
@@ -145,10 +156,10 @@ void main(){
     float r=sqrt(seed.z)*.16, ang=seed.w*6.2832;
     from=bird+vec2(cos(ang)*r/aspect,sin(ang)*r);
   }
-  // The band unrolls out of the bird: the nearer a grain's place on the
-  // band, the sooner it leaves.
+  // Each grain leaves at its own moment, spread evenly over the first part
+  // of the slide-in, so the band fills evenly everywhere at once.
   vec2 path=home-from;
-  k=ease((enter-.01-length(path*vec2(aspect,1.0))*.08-seed.x*.1)/.28);
+  k=ease((enter-.01-fract(seed.x*13.7+seed.w*5.1)*.26)/.24);
   vec2 pos=from+path*k+vec2(-path.y,path.x)*sin(k*3.1416)*.06*(seed.z-.5);
   // Out: into the X, a grain on one of its two bars.
   float q=ease((leave-.03-seed.x*.3)/.42);
@@ -166,8 +177,10 @@ void main(){
   alpha=max(alpha,smoothstep(0.0,.12,leave));
   alpha*=(1.0-smoothstep(.55,.85,leave))*step(.001,enter);
   alpha*=mix(smoothstep(.1,.4,-p.z),1.0,q)*(1.0-smoothstep(1.25,1.6,abs(start+uv.x*arc)));
-  // Bird colours on the bird, the films' once on the band.
-  vec3 plumage=mix(mix(vec3(.3,.9,.78),vec3(.62,.95,.45),seed.z),vec3(.66,.52,1.0),smoothstep(.55,1.0,seed.w));
+  // Bird or code colours where they start, the films' once on the band.
+  vec3 plumage=fromSwarm
+    ? mix(vec3(.92,.94,.9),vec3(.7,1.0,.55),seed.z*.5)*(.55+seed.w*.35)
+    : mix(mix(vec3(.3,.9,.78),vec3(.62,.95,.45),seed.z),vec3(.66,.52,1.0),smoothstep(.55,1.0,seed.w));
   vColor=mix(mix(plumage,pic,smoothstep(.15,.85,k)),vec3(.62,.64,.68),q*.75);
   vAlpha=alpha;
   gl_Position=vec4(pos,0.0,1.0);
@@ -188,7 +201,7 @@ void main(){
 
 const UNIFORMS = ["projection", "centre", "radius", "height", "start", "arc", "tilt", "picture", "resolution", "time", "solid",
   "enter", "settle", "leave", "bird", "xCentre", "xAxisX", "xAxisY", "aspect", "pointScale",
-  "birdPositions", "birdMatrix", "stageViewProj", "birdFrame", "birdShape"];
+  "birdPositions", "birdMatrix", "stageViewProj", "birdFrame", "birdShape", "swarmPositions", "swarmSize", "swarmShape"];
 
 export type StripFrame = {
   time: number;
@@ -209,6 +222,8 @@ export type StripFrame = {
   birdMatrix: Float32Array;
   stageViewProj: Float32Array;
   birdFrame: number;
+  // The code swarm's grains, null until sampled.
+  swarm: { texture: WebGLTexture; cols: number; rows: number } | null;
   xCentre: [number, number];
   xAxisX: [number, number];
   xAxisY: [number, number];
@@ -430,8 +445,17 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
         gl.uniformMatrix4fv(up.birdMatrix, false, f.birdMatrix);
         gl.uniformMatrix4fv(up.stageViewProj, false, f.stageViewProj);
         gl.uniform1f(up.birdFrame, f.birdFrame);
-        gl.activeTexture(gl.TEXTURE12);
       }
+      gl.uniformMatrix4fv(up.stageViewProj, false, f.stageViewProj);
+      gl.uniform1f(up.swarmShape, f.swarm ? 1 : 0);
+      if (f.swarm) {
+        // Unit 2 is the strip's own.
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, f.swarm.texture);
+        gl.uniform1i(up.swarmPositions, 2);
+        gl.uniform2i(up.swarmSize, f.swarm.cols, f.swarm.rows);
+      }
+      gl.activeTexture(gl.TEXTURE12);
       for (const i of order) {
         gl.bindTexture(gl.TEXTURE_2D, panels[i].texture);
         gl.uniform1f(up.start, angles[i] - STEP * 0.5);

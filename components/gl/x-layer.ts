@@ -449,6 +449,11 @@ export async function createXLayer(gl: WebGL2RenderingContext, mobile: boolean, 
       read = write;
       resetPending = false;
     },
+    // The grains' current world positions (xyz, code amount in w), for a
+    // layer that takes them over (the film strip); null before sampling.
+    grains() {
+      return live && sampled ? { texture: targets[read].pos, cols, rows } : null;
+    },
     render(time: number, viewH: number, projection: Float32Array, presence: number) {
       if (!live || !sampled || presence < 0.005) return;
       gl.useProgram(renderProgram);
