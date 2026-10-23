@@ -310,6 +310,8 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       time: 0, enter: 0, position: 0, leave: 0, aspect: 1, width: 1, height: 1,
       bird: [0, 0] as [number, number], xCentre: [0, 0] as [number, number],
       xAxisX: [0, 0] as [number, number], xAxisY: [0, 0] as [number, number],
+      birdPositions: null as WebGLTexture | null, birdMatrix: new Float32Array(16),
+      stageViewProj: new Float32Array(16), birdFrame: 0,
     };
     // A camera-space point to NDC with this frame's camera.
     const toNdc = (x: number, y: number, z: number, out: [number, number]) => {
@@ -1273,9 +1275,10 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       work.renderBack(sceneTarget);
       // The sea surfaces grain by grain in the sculpture shader; only a very
       // short global fade guards the first frame.
-      // The bird bursts into the film strip's grains and is gone while the
-      // strip holds the screen; it comes back under the X.
-      const birdAway = smoothstep(stripFrame.enter, 0.03, 0.3) * (1 - smoothstep(stripFrame.leave, 0.75, 1));
+      // The bird hands over to the film strip's grains, which start on its
+      // skin, and is gone while the strip holds the screen; it comes back
+      // under the X.
+      const birdAway = smoothstep(stripFrame.enter, 0.005, 0.03) * (1 - smoothstep(stripFrame.leave, 0.75, 1));
       const sculptureAlpha = smoothstep(intro, 0, 0.04) * (1 - birdAway);
       sculpture.render(canvas.width, canvas.height, time, sculptureAlpha,
         scanSmooth[0] / (8.2 * Math.tan(Math.PI / 8) * (stageW / stageH)),
@@ -1299,6 +1302,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       stripFrame.height = canvas.height;
       // Where the grains burst from (the bird) and pour into (the X).
       toNdc(birdMatrix[12], birdMatrix[13], birdMatrix[14], stripFrame.bird);
+      stripFrame.birdPositions = readyMix > 0.5 ? positionTexture : null;
+      stripFrame.birdMatrix.set(birdMatrix);
+      for (let c = 0; c < 4; c++) {
+        for (let r = 0; r < 4; r++) {
+          let sum = 0;
+          for (let k = 0; k < 4; k++) sum += projection[k * 4 + r] * view[c * 4 + k];
+          stripFrame.stageViewProj[c * 4 + r] = sum;
+        }
+      }
+      stripFrame.birdFrame = flap * 16;
       const xScale = (mobile ? 1.15 : 1.9) * (0.9 + xDense * 0.2) * (1 + xOpen * 0.35);
       toNdc(xCentre[0], xCentre[1], xCentre[2], stripFrame.xCentre);
       toNdc(xCentre[0] + xScale, xCentre[1], xCentre[2], ndcA);
