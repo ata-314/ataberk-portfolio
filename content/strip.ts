@@ -18,10 +18,23 @@ export const stripFilms: StripFilm[] = [
 
 export const STRIP_SHOTS = 3;
 
-export const stripCopy: Record<Locale, { label: string; kind: string; next: string; prev: string; nextFilm: string }> = {
-  tr: { label: "AI tanıtım filmleri", kind: "AI tanıtım filmi", next: "Sonraki", prev: "Önceki film", nextFilm: "Sonraki film" },
-  en: { label: "AI brand films", kind: "AI brand film", next: "Next", prev: "Previous film", nextFilm: "Next film" },
+export const stripCopy: Record<Locale, {
+  label: string; kind: string; next: string; prev: string; nextFilm: string;
+  play: string; close: string; soundOn: string; soundOff: string; pause: string;
+}> = {
+  tr: {
+    label: "AI tanıtım filmleri", kind: "AI tanıtım filmi", next: "Sonraki", prev: "Önceki film", nextFilm: "Sonraki film",
+    play: "Filmi izle", close: "Kapat", soundOn: "Sesi aç", soundOff: "Sesi kapat", pause: "Durdur ya da oynat",
+  },
+  en: {
+    label: "AI brand films", kind: "AI brand film", next: "Next", prev: "Previous film", nextFilm: "Next film",
+    play: "Watch the film", close: "Close", soundOn: "Sound on", soundOff: "Sound off", pause: "Pause or play",
+  },
 };
+
+// The full film a click on the strip opens (public/strip/films/<slug>.mp4,
+// 720×1280 with sound, cut from the delivered piece).
+export const stripFilmSrc = (slug: string) => `/strip/films/${slug}.mp4`;
 
 // Scroll given to each film (svh), and the lead-in before the first one.
 export const STRIP_STEP_SVH = 85;

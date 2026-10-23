@@ -27,3 +27,13 @@ export const workState = {
   titles: [] as string[], // card names, in the visitor's language
   pick: null as null | ((clientX: number, clientY: number) => number),
 };
+
+// Film strip player. The section's DOM owns the open film (set by a click on
+// the band) and the player frame's box; the stage flies the film's grains
+// into that box and publishes a screen-space picker for the band.
+export const stripState = {
+  open: -1, // film being played, -1 when none
+  hover: -1, // film under the cursor
+  rect: [0, 0, 0, 0] as [number, number, number, number], // player frame, client px (l, t, r, b)
+  pick: null as null | ((clientX: number, clientY: number) => number),
+};

@@ -16,7 +16,7 @@ import { fetchBake } from "./bake-cache";
 import { buildBirdLinks } from "./bird-links";
 import { createBirdBehaviour, FOLD_FRAME } from "./bird-behaviour";
 import { createWorkHelixLayer } from "./work-helix-layer";
-import { bustState, scrollState, workState } from "../three/scroll-state";
+import { bustState, scrollState, stripState, workState } from "../three/scroll-state";
 import { slotRgb, workSlots } from "@/content/work-slots";
 import { work as workContent } from "@/content/work";
 import { reelItems } from "@/content/reel";
@@ -313,7 +313,9 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       birdPositions: null as WebGLTexture | null, birdMatrix: new Float32Array(16),
       stageViewProj: new Float32Array(16), birdFrame: 0,
       swarm: null as { texture: WebGLTexture; cols: number; rows: number } | null,
+      openFilm: -1, openAmount: 0, openRect: [0, 0, 0, 0] as [number, number, number, number], hover: -1,
     };
+    stripState.pick = (x, y) => strip.pick((x / stageW) * 2 - 1, 1 - (y / stageH) * 2);
     // A camera-space point to NDC with this frame's camera.
     const toNdc = (x: number, y: number, z: number, out: [number, number]) => {
       const vx = view[0] * x + view[4] * y + view[8] * z + view[12];
@@ -1314,6 +1316,16 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       }
       stripFrame.birdFrame = flap * 16;
       stripFrame.swarm = xLayer.grains();
+      // The player: the open film's grains fly into its frame and back.
+      if (stripState.open >= 0) stripFrame.openFilm = stripState.open;
+      stripFrame.openAmount = damp(stripFrame.openAmount, stripState.open >= 0 ? 1 : 0, 3.2, delta);
+      if (stripState.open < 0 && stripFrame.openAmount < 0.002) stripFrame.openFilm = -1;
+      const [rl, rt, rr, rb] = stripState.rect;
+      stripFrame.openRect[0] = (rl / stageW) * 2 - 1;
+      stripFrame.openRect[1] = 1 - (rb / stageH) * 2;
+      stripFrame.openRect[2] = (rr / stageW) * 2 - 1;
+      stripFrame.openRect[3] = 1 - (rt / stageH) * 2;
+      stripFrame.hover = stripState.hover;
       const xScale = (mobile ? 1.15 : 1.9) * (0.9 + xDense * 0.2) * (1 + xOpen * 0.35);
       toNdc(xCentre[0], xCentre[1], xCentre[2], stripFrame.xCentre);
       toNdc(xCentre[0] + xScale, xCentre[1], xCentre[2], ndcA);
@@ -1361,6 +1373,7 @@ export function RawStage({ onReady }: { onReady?: () => void }) {
       tunnel.dispose();
       reel.dispose();
       strip.dispose();
+      stripState.pick = null;
       work.dispose();
       workState.pick = null;
       gl.deleteTexture(glyphAtlas);

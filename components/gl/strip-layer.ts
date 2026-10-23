@@ -9,6 +9,9 @@
 // the band fills evenly; only then does the picture settle under them. The scroll turns the drum film by film
 // (three shots each). At its end the picture breaks back into grains, which
 // pour into the shape of the X where the X then gathers.
+// A click on a film (see stripState) lifts its shots off the band as grains
+// that stream into the player's frame and form the picture there, while the
+// rest of the band sinks back; closing sends them home.
 // A panel shows its poster until it turns into view; only the clips in view
 // are decoded and uploaded, and with reduced motion only posters are shown.
 import { STRIP_SHOTS, type StripFilm } from "@/content/strip";
@@ -65,6 +68,8 @@ uniform sampler2D picture;
 uniform vec2 resolution;
 uniform float time;
 uniform float solid;
+uniform float dim; // this panel's share of the picture (open film, hover)
+uniform float lift;
 out vec4 color;
 float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 void main(){
@@ -88,7 +93,8 @@ void main(){
   pic*=mix(.35,1.0,smoothstep(0.0,.006,min(vUv.x,1.0-vUv.x)));
   // Stippled fade into the grain cloud at the sides.
   float keep=1.0-smoothstep(.55,.98,abs(ndc.x))*.85;
-  float a=solid*smoothstep(.12,.45,-vView.z);
+  pic*=1.0+lift*.14;
+  float a=solid*dim*smoothstep(.12,.45,-vView.z);
   if(h21(gl_FragCoord.xy*.71+floor(time*24.0))>keep) a=0.0;
   color=vec4(pic*a,a);
 }`;
@@ -112,6 +118,11 @@ uniform float birdShape;
 uniform sampler2D swarmPositions; // the code swarm's grains (world xyz)
 uniform ivec2 swarmSize;
 uniform float swarmShape;
+uniform float openMine; // 1 on the open film's panels
+uniform float shot; // this panel's place in its film (0..2)
+uniform float openAmount;
+uniform float dimOthers;
+uniform vec4 openRect; // player frame in NDC: left, bottom, right, top
 uniform vec2 xCentre; // NDC, and the X's unit axes in NDC
 uniform vec2 xAxisX;
 uniform vec2 xAxisY;
@@ -132,7 +143,7 @@ void main(){
   vec2 drift=vec2(sin(t+seed.x*40.0),cos(t*1.3+seed.y*40.0));
   home+=drift*vec2(.02,.03)*side*side+vec2(0.0,(uv.y-.5)*.12*side*side*(.6+seed.w*.8));
   vec2 tuv=vec2(uv.x,1.0-uv.y);
-  vec3 pic=textureLod(picture,tuv,1.0+side*4.5).rgb;
+  vec3 pic=textureLod(picture,tuv,(1.0+side*4.5)*(1.0-openMine*openAmount)).rgb;
   // In: every grain starts on a point of the bird's skin, flapping with
   // it, and leaves it at its own moment, swirling on the way.
   float k=0.0;
@@ -170,6 +181,12 @@ void main(){
   vec2 onX=xCentre+xAxisX*onBar.x+xAxisY*onBar.y;
   vec2 toX=onX-pos;
   pos=mix(pos,onX,q)+vec2(-toX.y,toX.x)*sin(q*3.1416)*.25*(seed.x-.5);
+  // Open: the film's grains stream into the player's frame, each shot to
+  // its third, at their own pace and swirling a little on the way.
+  float o=openMine*ease((openAmount-seed.x*.3)/.7);
+  vec2 target=vec2(mix(openRect.x,openRect.z,(shot+uv.x)/3.0),mix(openRect.y,openRect.w,uv.y));
+  vec2 toT=target-pos;
+  pos=mix(pos,target,o)+vec2(-toT.y,toT.x)*sin(o*3.1416)*.18*(seed.z-.5);
   // Seen: everywhere while flying, then only at the sides once the picture
   // has settled under them; all of them again as it breaks.
   float steady=smoothstep(.4,.85,abs(home.x))*.65;
@@ -177,6 +194,7 @@ void main(){
   alpha=max(alpha,smoothstep(0.0,.12,leave));
   alpha*=(1.0-smoothstep(.55,.85,leave))*step(.001,enter);
   alpha*=mix(smoothstep(.1,.4,-p.z),1.0,q)*(1.0-smoothstep(1.25,1.6,abs(start+uv.x*arc)));
+  alpha=mix(alpha*dimOthers,1.0,o);
   // Bird or code colours where they start, the films' once on the band.
   vec3 plumage=fromSwarm
     ? mix(vec3(.92,.94,.9),vec3(.7,1.0,.55),seed.z*.5)*(.55+seed.w*.35)
@@ -184,7 +202,7 @@ void main(){
   vColor=mix(mix(plumage,pic,smoothstep(.15,.85,k)),vec3(.62,.64,.68),q*.75);
   vAlpha=alpha;
   gl_Position=vec4(pos,0.0,1.0);
-  gl_PointSize=pointScale*(.7+seed.w*.8)*(1.0+side*.6);
+  gl_PointSize=pointScale*(.7+seed.w*.8)*(1.0+side*.6)*(1.0+o*.7);
 }`;
 
 const pointFragment = `#version 300 es
@@ -201,7 +219,8 @@ void main(){
 
 const UNIFORMS = ["projection", "centre", "radius", "height", "start", "arc", "tilt", "picture", "resolution", "time", "solid",
   "enter", "settle", "leave", "bird", "xCentre", "xAxisX", "xAxisY", "aspect", "pointScale",
-  "birdPositions", "birdMatrix", "stageViewProj", "birdFrame", "birdShape", "swarmPositions", "swarmSize", "swarmShape"];
+  "birdPositions", "birdMatrix", "stageViewProj", "birdFrame", "birdShape", "swarmPositions", "swarmSize", "swarmShape",
+  "dim", "lift", "openMine", "shot", "openAmount", "dimOthers", "openRect"];
 
 export type StripFrame = {
   time: number;
@@ -224,6 +243,12 @@ export type StripFrame = {
   birdFrame: number;
   // The code swarm's grains, null until sampled.
   swarm: { texture: WebGLTexture; cols: number; rows: number } | null;
+  // The player: which film (-1 none), how far open (0..1), its frame in
+  // NDC (left, bottom, right, top), and the film under the cursor.
+  openFilm: number;
+  openAmount: number;
+  openRect: [number, number, number, number];
+  hover: number;
   xCentre: [number, number];
   xAxisX: [number, number];
   xAxisY: [number, number];
@@ -344,10 +369,13 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
   };
   addEventListener("pointermove", onMove, { passive: true });
   let lastTime = -1;
+  // The last frame's panel angles, for picking.
+  let lastAngles: number[] = [];
+  let lastNarrow = false;
 
   const shared = (u: Record<string, WebGLUniformLocation | null>, f: StripFrame, narrow: boolean) => {
     gl.uniformMatrix4fv(u.projection, false, projection);
-    gl.uniform3f(u.centre, 0, narrow ? 0.08 : 0.12, -0.5);
+    gl.uniform3f(u.centre, 0, narrow ? 0.08 : 0.12, -BACK);
     gl.uniform1f(u.radius, RADIUS);
     gl.uniform1f(u.height, HEIGHT);
     gl.uniform1f(u.arc, STEP);
@@ -356,8 +384,32 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
     gl.uniform1i(u.picture, 12);
   };
 
+  // The band without its wave, as in the shader: a point's NDC.
+  const BACK = 0.5;
+  const toNdc = (a: number, v: number) => {
+    const bend = Math.min(1, Math.max(0, (Math.abs(a) - 0.2) / 0.95));
+    const h = HEIGHT * (1 + (((BACK + Math.cos(a)) / (BACK + RADIUS)) - 1) * 0.78) * (1 + bend * bend * (3 - 2 * bend) * 0.28);
+    const z = BACK + RADIUS * Math.cos(a);
+    return [(projection[0] * RADIUS * Math.sin(a)) / z, (projection[5] * ((lastNarrow ? 0.08 : 0.12) + v * 0.5 * h)) / z];
+  };
+
   return {
     prepare,
+    // The film under a point in NDC, or -1: only the sharp middle of the
+    // band, once it has settled.
+    pick(x: number, y: number) {
+      if (!lastAngles.length || Math.abs(x) > 0.85) return -1;
+      for (let i = 0; i < count; i++) {
+        const a0 = lastAngles[i] - STEP * 0.5;
+        if (Math.abs(lastAngles[i]) > 1.2) continue;
+        const [x0] = toNdc(a0, 0), [x1] = toNdc(a0 + STEP, 0);
+        if (x < x0 || x > x1) continue;
+        const a = a0 + ((x - x0) / Math.max(x1 - x0, 1e-4)) * STEP;
+        const [, bottom] = toNdc(a, -1), [, top] = toNdc(a, 1);
+        if (y >= bottom - 0.03 && y <= top + 0.03) return Math.floor(i / STRIP_SHOTS);
+      }
+      return -1;
+    },
     // How much the strip holds the screen (for the layers it replaces).
     hold(f: Pick<StripFrame, "enter" | "leave">) {
       return clamp(f.enter * 25) * (1 - clamp((f.leave - 0.45) / 0.35));
@@ -383,6 +435,8 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
         a -= Math.round(a / (Math.PI * 2)) * Math.PI * 2;
         return a;
       });
+      lastAngles = present && f.enter > 0.7 && f.leave < 0.02 ? angles : [];
+      lastNarrow = narrow;
       for (let i = 0; i < count; i++) {
         const p = panels[i];
         const want = present && !reduced && f.leave < 0.4 && Math.abs(angles[i]) < view;
@@ -419,8 +473,12 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
         gl.uniform2f(um.resolution, f.width, f.height);
         gl.uniform1f(um.solid, solid);
         for (const i of order) {
+          const film = Math.floor(i / STRIP_SHOTS);
+          const mine = film === f.openFilm;
           gl.bindTexture(gl.TEXTURE_2D, panels[i].texture);
           gl.uniform1f(um.start, angles[i] - STEP * 0.5);
+          gl.uniform1f(um.dim, mine ? 1 - clamp(f.openAmount * 2.2) : 1 - 0.85 * f.openAmount);
+          gl.uniform1f(um.lift, film === f.hover && f.openAmount < 0.01 ? 1 : 0);
           gl.drawArrays(gl.TRIANGLES, 0, COLUMNS * 6);
         }
       }
@@ -456,9 +514,14 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
         gl.uniform2i(up.swarmSize, f.swarm.cols, f.swarm.rows);
       }
       gl.activeTexture(gl.TEXTURE12);
+      gl.uniform1f(up.openAmount, f.openAmount);
+      gl.uniform1f(up.dimOthers, 1 - 0.8 * f.openAmount);
+      gl.uniform4f(up.openRect, ...f.openRect);
       for (const i of order) {
         gl.bindTexture(gl.TEXTURE_2D, panels[i].texture);
         gl.uniform1f(up.start, angles[i] - STEP * 0.5);
+        gl.uniform1f(up.openMine, Math.floor(i / STRIP_SHOTS) === f.openFilm ? 1 : 0);
+        gl.uniform1f(up.shot, i % STRIP_SHOTS);
         gl.drawArrays(gl.POINTS, 0, GRAINS);
       }
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
