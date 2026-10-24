@@ -1,5 +1,6 @@
 import type { Locale } from "@/lib/i18n";
 import { contactBase, contactPath } from "@/content/contact";
+import { guides, guidePath, getGuide } from "@/content/guides";
 
 // Service pages: one per discipline people search for, each grounded in real
 // work from content/work.ts. Same rule as the rest of the site: no invented
@@ -251,6 +252,37 @@ const tr: Services = {
       ],
       terms: ["motion tasarımcı", "motion graphics", "3D tasarımcı", "3D görselleştirme", "web animasyonu", "animasyon"],
     },
+    {
+      key: "real-estate",
+      slug: "gayrimenkul-web-sitesi",
+      name: "Gayrimenkul Web Sitesi",
+      title: "Gayrimenkul ve Konut Projesi Web Sitesi Tasarımı | İstanbul",
+      description:
+        "Konut ve ticari projeler için lansman sitesi: kaydırdıkça anlatan proje sitesi, lead formu, e-katalog, yabancı yatırımcı için çok dilli portföy ve AI tanıtım filmi. İstanbul.",
+      h1: "Gayrimenkul ve konut projesi web siteleri",
+      lead: "Bir konut projesini alıcı daha şantiyeyi görmeden sitede görür. Projeyi bir film gibi anlatan, rakamlarını net veren ve her ekranda bilgi formunu elinin altında tutan siteler kuruyorum.",
+      offers: [
+        { name: "Proje lansman sitesi", desc: "Tek bir proje için kaydırdıkça ilerleyen video, blok ve daire bilgileri, konum ve yaşam alanları; satış ofisine giden bilgi formu her an görünür." },
+        { name: "Kurumsal gayrimenkul sitesi", desc: "Geliştirici firmanın projelerini, mimari dilini, tanıtım filmlerini ve e-kataloğunu tek akışta toplayan site." },
+        { name: "Yabancı yatırımcı portföy sitesi", desc: "Konum, durum, tür ve fiyatla filtrelenen proje araması, bölge rehberleri ve çok dilli içerikle uluslararası alıcıya yönelik portföy." },
+        { name: "Lead formu ve takip", desc: "Formdan gelen talebin satış ekibine ulaşması ve hangi kaynaktan geldiğinin görülmesi." },
+        { name: "AI tanıtım filmi ve görseller", desc: "Proje henüz yükselirken yapay zekâ destekli dikey tanıtım filmleri ve sosyal medya görselleri." },
+      ],
+      approach: [
+        "Projenin tek cümlelik fikrini buluyoruz: alıcıya ilk saniyede ne hissettirmeli?",
+        "Rakamlar, plan tipleri, konum ve görseller gerçek içerikle sitenin akışına yerleşiyor.",
+        "Video ve hareket telefonda da akıcı çalışacak şekilde kuruluyor; ağır sahneler zayıf cihazlarda hafifliyor.",
+        "Form, site haritası ve arama motoru ayarlarıyla site satış ofisine çalışır halde yayına çıkıyor.",
+      ],
+      work: ["ala-cekmekoy", "the-lock", "fidan-property", "dbh-group"],
+      faq: [
+        { q: "Hangi gayrimenkul projelerinin sitesini yaptın?", a: "A'lâ Çekmeköy Nefes (9 blok, 72 konut), The Lock Adres Barbarossa (4 blok, 286 konut ve 100 ticari alan), yabancı yatırımcılar için Fidan Property ve inşaat ile gayrimenkulde de faaliyet gösteren DBH Group. Hepsi canlı linkleriyle İşler bölümünde." },
+        { q: "Proje henüz inşaat halindeyken site yapılabilir mi?", a: "Evet. Render, plan ve tanıtım filmiyle lansman sitesi inşaat başlamadan yayına alınabilir; proje ilerledikçe içerik güncellenir." },
+        { q: "Site yabancı alıcılar için birden fazla dilde olabilir mi?", a: "Evet. Fidan Property gibi uluslararası alıcıya yönelik siteler çok dilli kuruluyor." },
+        { q: "Bir proje sitesi ne kadar tutar?", a: "Kapsama göre fiyatlanıyor: tek sayfalık lansman sitesi ile çok projeli kurumsal site farklı. İletişim formundan projeyi anlat, net teklif göndereyim." },
+      ],
+      terms: ["gayrimenkul web sitesi", "konut projesi web sitesi", "proje lansman sitesi", "inşaat firması web sitesi", "emlak web sitesi tasarımı", "gayrimenkul web tasarım İstanbul"],
+    },
   ],
 };
 
@@ -470,6 +502,37 @@ const en: Services = {
       ],
       terms: ["motion designer", "motion graphics", "3D designer", "3D visualization", "web animation"],
     },
+    {
+      key: "real-estate",
+      slug: "real-estate-website-design",
+      name: "Real Estate Website",
+      title: "Real Estate and Property Launch Website Design | Istanbul, Türkiye",
+      description:
+        "Launch websites for residential and commercial projects: scroll-told project sites, enquiry forms, e-catalogues, multilingual portfolios for foreign investors and AI launch films.",
+      h1: "Real estate and residential project websites",
+      lead: "Buyers see a development on its website long before they see the site itself. I build sites that tell a project like a film, give its figures plainly and keep the enquiry form within reach on every screen.",
+      offers: [
+        { name: "Project launch site", desc: "One development told through scroll-driven video, blocks and units, location and amenities, with the enquiry form to the sales office always in view." },
+        { name: "Developer website", desc: "A developer's projects, architectural language, launch films and e-catalogue gathered in one flow." },
+        { name: "Portfolio for foreign investors", desc: "Project search filtered by location, status, type and price, area guides and multilingual content for international buyers." },
+        { name: "Enquiry forms and tracking", desc: "Every enquiry reaches the sales team, with the channel it came from." },
+        { name: "AI launch films and visuals", desc: "AI-driven vertical launch films and social visuals while the building is still going up." },
+      ],
+      approach: [
+        "We find the project's one-line idea: what should a buyer feel in the first second?",
+        "Figures, unit types, location and visuals are set into the flow as real content.",
+        "Video and motion are built to stay smooth on phones; heavy scenes lighten on weaker devices.",
+        "Forms, sitemap and search settings are in place, so the site works for the sales office from launch day.",
+      ],
+      work: ["ala-cekmekoy", "the-lock", "fidan-property", "dbh-group"],
+      faq: [
+        { q: "Which real estate projects have you built sites for?", a: "A'lâ Çekmeköy Nefes (9 blocks, 72 homes), The Lock Adres Barbarossa (4 blocks, 286 homes and 100 commercial units), Fidan Property for foreign investors, and DBH Group, which also works in construction and real estate. All are live, linked from the Work section." },
+        { q: "Can the site launch before construction starts?", a: "Yes. With renders, plans and a launch film the site can go live before ground is broken, and grows with the project." },
+        { q: "Can the site serve foreign buyers in several languages?", a: "Yes. Sites for international buyers, like Fidan Property, are built multilingual." },
+        { q: "Do you work with developers outside Türkiye?", a: "Yes. I'm based in Istanbul and work remotely in English and Turkish." },
+      ],
+      terms: ["real estate website design", "property launch website", "residential project website", "real estate developer website", "property website Turkey", "real estate web designer"],
+    },
   ],
 };
 
@@ -494,6 +557,11 @@ export function serviceAlternates(key: string) {
 export function translatePath(pathname: string, from: Locale, to: Locale) {
   const [, , base, slug] = pathname.split("/");
   if (base === contactBase[from]) return contactPath(to);
+  if (base === guides[from].base) {
+    const key = slug ? getGuide(from, slug)?.key : undefined;
+    const target = key ? guides[to].items.find((g) => g.key === key) : undefined;
+    return guidePath(to, target?.slug);
+  }
   if (base === services[from].base) {
     const key = slug ? getService(from, slug)?.key : undefined;
     const target = key ? services[to].items.find((s) => s.key === key) : undefined;

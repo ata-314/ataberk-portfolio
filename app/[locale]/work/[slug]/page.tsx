@@ -9,6 +9,7 @@ import { Footer } from "@/components/sections/HomeSections";
 import { site } from "@/content/site";
 import { galleries } from "@/content/work-gallery";
 import { CaseShow } from "@/components/work/CaseShow";
+import { BASE_URL, PERSON_ID } from "@/lib/url";
 import { ContactBlock } from "@/components/contact/ContactPage";
 
 const labels = {
@@ -39,14 +40,17 @@ export async function generateMetadata({
   const l = isLocale(locale) ? locale : "tr";
   const item = getWorkItem(l, slug);
   if (!item) return {};
+  // "Üçay 360 — Web Deneyimi | Vaka Çalışması": the name plus what it is, for search.
+  const title = `${item.title} — ${item.category} | ${l === "tr" ? "Vaka Çalışması" : "Case Study"}`;
+  const image = item.media && "image" in item.media ? item.media.image : item.media?.poster;
   return {
-    title: item.title,
+    title,
     description: item.idea,
     alternates: {
       canonical: `/${l}/work/${slug}`,
-      languages: { tr: `/tr/work/${slug}`, en: `/en/work/${slug}` },
+      languages: { tr: `/tr/work/${slug}`, en: `/en/work/${slug}`, "x-default": `/tr/work/${slug}` },
     },
-    openGraph: { title: item.title, description: item.idea, type: "article" },
+    openGraph: { title, description: item.idea, type: "article", url: `/${l}/work/${slug}`, ...(image ? { images: [image] } : {}) },
   };
 }
 
@@ -67,14 +71,34 @@ export default async function CasePage({
   const story = item.sections.filter((s) => s.kind !== "technical");
   const host = item.live?.host;
 
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "CreativeWork",
-    name: item.title,
-    description: item.idea,
-    author: { "@type": "Person", name: "Ataberk Soylu" },
-    ...(item.live ? { url: item.live.url } : {}),
-  };
+  const pageUrl = `${BASE_URL}/${locale}/work/${slug}`;
+  const image = item.media && "image" in item.media ? item.media.image : item.media?.poster;
+  const schema = [
+    {
+      "@context": "https://schema.org",
+      "@type": "CreativeWork",
+      "@id": `${pageUrl}#work`,
+      name: item.title,
+      description: item.idea,
+      genre: item.category,
+      dateCreated: item.year.slice(0, 4),
+      inLanguage: locale,
+      creator: { "@id": PERSON_ID },
+      author: { "@id": PERSON_ID },
+      mainEntityOfPage: pageUrl,
+      ...(image ? { image: `${BASE_URL}${image}` } : {}),
+      ...(item.live ? { url: item.live.url } : {}),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: locale === "tr" ? "Ana sayfa" : "Home", item: `${BASE_URL}/${locale}` },
+        { "@type": "ListItem", position: 2, name: work[locale].heading, item: `${BASE_URL}/${locale}#work` },
+        { "@type": "ListItem", position: 3, name: item.title, item: pageUrl },
+      ],
+    },
+  ];
 
   return (
     <main id="content" className="relative z-10 bg-ink">

@@ -11,6 +11,6 @@ export function contactMetadata(locale: Locale): Metadata {
       canonical: contactPath(locale),
       languages: { tr: contactPath("tr"), en: contactPath("en"), "x-default": contactPath("tr") },
     },
-    openGraph: { title: p.title, description: p.description, url: contactPath(locale), type: "website" },
+    openGraph: { title: p.title, description: p.description, url: contactPath(locale), type: "website", images: [`/${locale}/opengraph-image`] },
   };
 }

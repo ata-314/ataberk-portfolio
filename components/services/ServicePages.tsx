@@ -7,6 +7,7 @@ import { services, servicePath, type Service } from "@/content/services";
 import { Footer } from "@/components/sections/HomeSections";
 import { ContactBlock } from "@/components/contact/ContactPage";
 import { ClientStrip } from "@/components/sections/ClientStrip";
+import { guides, guidePath } from "@/content/guides";
 import "./services-page.css";
 
 // The service hub (/tr/hizmetler, /en/services) and one page per service.
@@ -119,6 +120,7 @@ export function ServiceDetail({ locale, item }: { locale: Locale; item: Service 
   const projects = item.work
     .map((slug) => work[locale].items.find((w) => w.slug === slug))
     .filter((w): w is NonNullable<typeof w> => Boolean(w));
+  const reading = guides[locale].items.filter((g) => g.service === item.key);
 
   const schema = [
     {
@@ -227,6 +229,22 @@ export function ServiceDetail({ locale, item }: { locale: Locale; item: Service 
               ))}
             </div>
           </section>
+
+          {reading.length > 0 && (
+            <section className="grid grid-cols-12 gap-6">
+              <h2 className="svc-h2 col-span-12 md:col-span-4">{guides[locale].hub.h1}</h2>
+              <ul className="svc-links col-span-12 md:col-span-8 !mt-0 !grid-cols-1">
+                {reading.map((g) => (
+                  <li key={g.slug}>
+                    <Link href={guidePath(locale, g.slug)} className="svc-link">
+                      <span>{g.h1}</span>
+                      <span aria-hidden>→</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <div className="-mx-6 md:-mx-10">
             <ClientStrip locale={locale} />

@@ -11,7 +11,8 @@
     "bake:bird": "node scripts/bake-bird.mjs",
     "bake:model": "node scripts/bake-model.mjs",
     "qa": "node scripts/qa.mjs /private/tmp/ataberk-portfolio-qa",
-    "shoot:live": "node scripts/shoot-live.mjs"
+    "shoot:live": "node scripts/shoot-live.mjs",
+    "indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

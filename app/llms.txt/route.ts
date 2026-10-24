@@ -1,4 +1,5 @@
 import { contactPath } from "@/content/contact";
+import { guides, guidePath } from "@/content/guides";
 import { BASE_URL, PROFILES } from "@/lib/url";
 import { site } from "@/content/site";
 import { work } from "@/content/work";
@@ -29,6 +30,11 @@ export function GET() {
     "## Services (EN)",
     "",
     ...en.items.map((s) => `- [${s.name}](${BASE_URL}${servicePath("en", s.slug)}): ${s.description}`),
+    "",
+    "## Guides",
+    "",
+    ...guides.en.items.map((g) => `- [${g.title}](${BASE_URL}${guidePath("en", g.slug)}): ${g.description}`),
+    ...guides.tr.items.map((g) => `- [${g.title}](${BASE_URL}${guidePath("tr", g.slug)}) (TR): ${g.description}`),
     "",
     "## Work",
     "",

@@ -121,7 +121,10 @@ export default async function LocaleLayout({
       address: { "@type": "PostalAddress", addressLocality: "İstanbul", addressCountry: "TR" },
       knowsLanguage: ["tr", "en"],
       knowsAbout: m.knowsAbout,
-      hasOccupation: services[locale].items.map((s) => ({ "@type": "Occupation", name: s.name })),
+      // The real estate page is a niche of web design, not a role of its own.
+      hasOccupation: services[locale].items
+        .filter((s) => s.key !== "real-estate")
+        .map((s) => ({ "@type": "Occupation", name: s.name })),
       worksFor: { "@type": "Organization", name: "Oneavex" },
       sameAs: PROFILES.map((p) => p.url),
     },

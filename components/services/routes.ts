@@ -23,7 +23,7 @@ export function hubMetadata(locale: Locale): Metadata {
       canonical: servicePath(locale),
       languages: { tr: servicePath("tr"), en: servicePath("en"), "x-default": servicePath("tr") },
     },
-    openGraph: { title: h.title, description: h.description, url: servicePath(locale), type: "website" },
+    openGraph: { title: h.title, description: h.description, url: servicePath(locale), type: "website", images: [`/${locale}/opengraph-image`] },
   };
 }
 
@@ -35,6 +35,6 @@ export function detailMetadata(locale: Locale, slug: string): Metadata {
     description: item.description,
     keywords: item.terms,
     alternates: { canonical: servicePath(locale, slug), languages: serviceAlternates(item.key) },
-    openGraph: { title: item.title, description: item.description, url: servicePath(locale, slug), type: "website" },
+    openGraph: { title: item.title, description: item.description, url: servicePath(locale, slug), type: "website", images: [`/${locale}/opengraph-image`] },
   };
 }

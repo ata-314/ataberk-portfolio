@@ -14,7 +14,7 @@ const EMAIL = "ataberk@ataberksoylu.com";
 
 // Topic preselected on each service page's form, by service key (content/services.ts),
 // as an index into site.contact.intents.
-const SERVICE_INTENT: Record<string, number> = { "web-design": 0, "web-dev": 0, ux: 0, "ai-art": 1, motion: 1, ai: 2, graphic: 3 };
+const SERVICE_INTENT: Record<string, number> = { "web-design": 0, "web-dev": 0, ux: 0, "real-estate": 0, "ai-art": 1, motion: 1, ai: 2, graphic: 3 };
 
 // The form with a line above it, closing service and case pages so a visitor can
 // write from where they are instead of being sent to the home page.
