@@ -86,7 +86,10 @@ void main(){
     pic+=texture(picture,tuv+vec2(k*spread,0.0),lod).rgb*(1.0-abs(k)*.4);
   }
   pic/=4.6;
-  float grain=h21(gl_FragCoord.xy+fract(time*7.3)*91.0)-.5;
+  // Grain and the stipple are fixed to the band (no per-frame noise: a
+  // stepping grain reads as flicker).
+  vec2 cell=floor(vUv*vec2(270.0,480.0));
+  float grain=h21(cell)-.5;
   pic*=1.0-side*.35;
   pic+=grain*(.03+side*.16);
   // A hairline seam between shots.
@@ -95,7 +98,8 @@ void main(){
   float keep=1.0-smoothstep(.55,.98,abs(ndc.x))*.85;
   pic*=1.0+lift*.14;
   float a=solid*dim*smoothstep(.12,.45,-vView.z);
-  if(h21(gl_FragCoord.xy*.71+floor(time*24.0))>keep) a=0.0;
+  float r=h21(cell+7.7);
+  a*=smoothstep(r-.04,r+.04,keep);
   color=vec4(pic*a,a);
 }`;
 
@@ -369,6 +373,7 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
   };
   addEventListener("pointermove", onMove, { passive: true });
   let lastTime = -1;
+  let frameCount = 0;
   // The last frame's panel angles, for picking.
   let lastAngles: number[] = [];
   let lastNarrow = false;
@@ -417,6 +422,7 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
     render(f: StripFrame) {
       const delta = lastTime < 0 ? 1 / 60 : Math.min(0.05, Math.max(0, f.time - lastTime));
       lastTime = f.time;
+      frameCount++;
       const present = f.enter > 0.001 && f.leave < 0.999;
       const enter = ease(clamp(f.enter));
       // Straight ahead holds the middle shot of the film; it turns into the
@@ -439,7 +445,7 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
       lastNarrow = narrow;
       for (let i = 0; i < count; i++) {
         const p = panels[i];
-        const want = present && !reduced && f.leave < 0.4 && Math.abs(angles[i]) < view;
+        const want = present && !reduced && f.leave < 0.4 && f.openAmount < 0.5 && Math.abs(angles[i]) < view;
         if (want && !p.video) startVideo(p);
         if (want && !p.playing && p.video) {
           p.playing = true;
@@ -448,6 +454,10 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
           p.playing = false;
           p.video.pause();
         }
+        // The panels at the sides are smeared anyway: they take a new frame
+        // every third frame, the clear middle every frame.
+        const side = Math.abs(angles[i]) > 0.5;
+        if (side && (frameCount + i) % 3) continue;
         if (p.playing && p.video && p.video.readyState >= 2 && p.video.currentTime !== p.shown) {
           p.shown = p.video.currentTime;
           upload(p, p.video);
