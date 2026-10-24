@@ -19,12 +19,14 @@ export type Guide = {
   sections: GuideSection[];
   service: string; // service key this guide leads to
   work: string[]; // work slugs cited
+  keywords: string[]; // the searches this guide answers (meta keywords, Article schema, topic chips)
+  faq: { q: string; a: string }[]; // short answers, also as FAQPage data
 };
 
 type Guides = {
   base: string;
   hub: { title: string; description: string; h1: string; lead: string };
-  labels: { all: string; read: string; updated: string; related: string; service: string; cta: string };
+  labels: { all: string; read: string; updated: string; related: string; service: string; cta: string; toc: string; minutes: string; topics: string; faq: string; more: string; author: string; authorBio: string };
   items: Guide[];
 };
 
@@ -36,7 +38,12 @@ const tr: Guides = {
     h1: "Rehber",
     lead: "Bir projeye başlamadan önce sorulan sorulara uzun ve net cevaplar. Örnekler, yaptığım gerçek işlerden.",
   },
-  labels: { all: "Tüm yazılar", read: "Oku", updated: "Güncellendi", related: "Yazıda geçen işler", service: "İlgili hizmet", cta: "Kendi projen için konuşalım: aklındakini kısaca yaz." },
+  labels: {
+    all: "Tüm yazılar", read: "Oku", updated: "Güncellendi", related: "Yazıda geçen işler", service: "İlgili hizmet",
+    cta: "Kendi projen için konuşalım: aklındakini kısaca yaz.", toc: "Bu yazıda", minutes: "dk okuma", topics: "Konular",
+    faq: "Kısa cevaplar", more: "Diğer yazılar", author: "Yazar",
+    authorBio: "İstanbul'da tasarım, motion, yapay zekâ ve web geliştirmeyi tek üretim sürecinde birleştiren creative technologist.",
+  },
   items: [
     {
       key: "real-estate-launch",
@@ -50,6 +57,12 @@ const tr: Guides = {
       updated: "2026-10-25",
       service: "real-estate",
       work: ["ala-cekmekoy", "the-lock", "fidan-property"],
+      keywords: ["konut projesi web sitesi", "proje lansman sitesi", "gayrimenkul web sitesi", "inşaat firması web sitesi", "emlak projesi tanıtım sitesi", "konut projesi landing page"],
+      faq: [
+        { q: "Konut projesi sitesi tek sayfa mı olmalı?", a: "Tek bir projenin lansman sitesi için çoğu zaman evet: proje yukarıdan aşağı bir hikâye gibi anlatılır ve bilgi formu her an yakında olur. Birden fazla projesi olan geliştirici firmalar için çok sayfalı kurumsal site daha uygundur." },
+        { q: "Lansman sitesine ne zaman başlanmalı?", a: "Render, plan ve temel proje bilgileri hazır olduğunda. Site inşaat başlamadan yayına alınabilir ve proje ilerledikçe güncellenir." },
+        { q: "Formda hangi bilgiler istenmeli?", a: "Ad, telefon, e-posta ve ilgilenilen daire tipi çoğu zaman yeterli. Form kısaldıkça doldurulma ihtimali artar; KVKK onayı eklenmeli." },
+      ],
       sections: [
         {
           h2: "Lansman sitesinin tek bir işi var",
@@ -145,6 +158,12 @@ const tr: Guides = {
       updated: "2026-10-25",
       service: "ai",
       work: ["modd-ai", "web-development-agent"],
+      keywords: ["AI agent nedir", "özel AI agent geliştirme", "yapay zeka ajanı", "çok ajanlı sistem", "yapay zeka otomasyon", "işletmeler için yapay zeka"],
+      faq: [
+        { q: "AI agent ile chatbot aynı şey mi?", a: "Hayır. Chatbot soruya cevap verir; agent bir işi adım adım yürütür, araçlarını kullanır, çıktısını denetler ve onay gereken yerde durur." },
+        { q: "Bir AI agent hangi araçlara bağlanabilir?", a: "Dosyalar, veritabanları, takvim, e-posta, sosyal medya hesapları ve API'si olan çoğu sistem. Hangi araca hangi yetkiyle bağlanacağı baştan tanımlanır." },
+        { q: "Küçük bir işletme için AI agent mantıklı mı?", a: "Her hafta tekrar eden, kuralı tarif edilebilen bir iş varsa evet. En iyisi tek bir işle başlayıp sonucu görmek." },
+      ],
       sections: [
         {
           h2: "Chatbot ile agent arasındaki fark",
@@ -204,6 +223,153 @@ const tr: Guides = {
         },
       ],
     },
+    {
+      key: "website-cost",
+      slug: "web-sitesi-fiyatlari",
+      title: "Web Sitesi Fiyatları Neye Göre Değişir? Teklif İstemeden Önce Bilinmesi Gerekenler",
+      description:
+        "Kurumsal site, proje lansman sitesi ya da e-ticaret: bir web sitesinin fiyatını belirleyen şeyler, hazır tema ile özel tasarım farkı, gizli maliyetler ve doğru teklif için hazırlanacak brief.",
+      h1: "Web sitesi fiyatları neye göre değişir?",
+      lead: "“Bir web sitesi ne kadar?” sorusunun tek bir cevabı yok, çünkü “web sitesi” tek bir şey değil. Bu yazıda fiyatı neyin belirlediğini, hazır tema ile özel tasarımın farkını ve doğru teklif alabilmek için neleri hazırlaman gerektiğini anlatıyorum.",
+      published: "2026-10-25",
+      updated: "2026-10-25",
+      service: "web-design",
+      work: ["ucay-360", "the-lock", "fidan-property"],
+      keywords: ["web sitesi fiyatları", "web sitesi yaptırmak", "kurumsal web sitesi fiyat", "web tasarım fiyatları 2026", "özel web sitesi tasarımı", "web sitesi teklifi"],
+      faq: [
+        { q: "Hazır tema mı, özel tasarım mı?", a: "Hazır tema daha hızlı ve genellikle daha ucuzdur ama marka çoğu zaman temaya uyar. Özel tasarımda site markaya göre kurulur; farklılaşmak, hız ve uzun vadeli esneklik önemliyse özel tasarım öne çıkar." },
+        { q: "Teklif istemek için ne hazırlamalıyım?", a: "Sitenin amacı, hedef kitle, sayfa listesi, beğendiğin birkaç örnek site, elindeki içerikler (metin, görsel, logo) ve istediğin yayın tarihi. Bu bilgiler ne kadar netse teklif o kadar doğru olur." },
+        { q: "Site yayına çıktıktan sonra ek maliyet olur mu?", a: "Alan adı ve barındırma gibi düzenli giderler olur; içerik güncellemeleri, yeni sayfalar ve bakım ise anlaşmaya göre ayrıca planlanır. Teklifte bunların açıkça yazması gerekir." },
+      ],
+      sections: [
+        {
+          h2: "“Web sitesi” tek bir şey değil",
+          body: [
+            "Beş sayfalık bir kurumsal site ile kaydırdıkça oynayan videolu bir proje lansman sitesi, ya da filtreli arama yapılan çok dilli bir portföy aynı işler değildir. Fiyatı belirleyen ilk şey sitenin türü ve kapsamıdır.",
+            "Örneğin Üçay 360'ın kaydırmayla ilerleyen sinematik açılışı, The Lock'un projeyi, konumu, filmleri ve e-kataloğu taşıyan kurumsal akışı ve Fidan Property'nin konum, durum, tür ve fiyatla filtrelenen proje araması üç farklı iş yüküdür.",
+          ],
+        },
+        {
+          h2: "Fiyatı belirleyen başlıca şeyler",
+          body: ["Bir teklifin arkasında çoğu zaman şu kalemler vardır:"],
+          list: [
+            "Sayfa sayısı ve her sayfanın ne kadar özel tasarlandığı.",
+            "Hazır tema mı, sıfırdan özel tasarım mı.",
+            "Hareket, video, 3B ve etkileşim düzeyi.",
+            "Arama, filtreleme, form, üyelik, ödeme gibi işlevler.",
+            "Dil sayısı.",
+            "İçeriği kimin hazırladığı: metin, fotoğraf, video, çeviri.",
+            "Yönetim paneli ihtiyacı: içeriği kim, ne sıklıkla güncelleyecek.",
+            "Takvim: sıkışık bir yayın tarihi, işi yeniden planlamayı gerektirir.",
+          ],
+        },
+        {
+          h2: "Hazır tema ile özel tasarım arasındaki fark",
+          body: [
+            "Hazır temalar hızlı başlangıç sağlar; ama sayfa yapısı, hareket ve detay temanın izin verdiği kadardır. Çoğu zaman marka temaya uyar, tema markaya değil.",
+            "Özel tasarımda site markanın kendisinden çıkar: yapı, tipografi, hareket ve içerik akışı o markaya göre kurulur. Tasarımı ve kodu aynı kişi yaptığında, tasarımda görülen detay yayındaki sitede de aynen çalışır.",
+          ],
+        },
+        {
+          h2: "Sık gözden kaçan maliyetler",
+          body: ["Teklifleri karşılaştırırken şunların dahil olup olmadığına bak:"],
+          list: [
+            "Alan adı, barındırma ve e-posta.",
+            "Metin yazımı, fotoğraf ve video çekimi, çeviri.",
+            "Arama motoru için temel ayarlar: sayfa başlıkları, açıklamalar, site haritası, yapısal veri.",
+            "KVKK aydınlatma metni ve çerez bildirimi.",
+            "Yayından sonraki bakım, güncelleme ve küçük değişiklikler.",
+          ],
+        },
+        {
+          h2: "Ucuz site neden pahalıya gelebilir?",
+          body: [
+            "Yavaş açılan, telefonda bozulan ya da Google'da bulunmayan bir site, reklam ve sosyal medya bütçesinin bir kısmını boşa harcatır. Sonradan düzeltmek çoğu zaman baştan doğru yapmaktan daha fazla iş çıkarır.",
+            "Bu yüzden fiyatı sitenin ne iş yapacağıyla birlikte düşünmek gerekir: bir lansman sitesinin işi talep toplamaksa, form ve hız fiyattan önce gelir.",
+          ],
+        },
+        {
+          h2: "Doğru teklif için brief",
+          body: ["Kısa ama net bir brief, hem doğru fiyat hem de doğru iş demektir:"],
+          list: [
+            "Sitenin tek cümlelik amacı ve hedef kitlesi.",
+            "Sayfa listesi ve olmazsa olmaz işlevler.",
+            "Beğendiğin üç örnek site ve neden beğendiğin.",
+            "Elindeki içerikler: logo, metin, görsel, video.",
+            "Dil sayısı ve istenen yayın tarihi.",
+          ],
+        },
+      ],
+    },
+    {
+      key: "ai-commercial",
+      slug: "ai-reklam-filmi-nasil-uretilir",
+      title: "AI Reklam Filmi Nasıl Üretilir? Yapay Zeka ile Tanıtım Filmi Süreci",
+      description:
+        "Yapay zekâ destekli reklam ve tanıtım filmi nasıl üretilir: fikir ve senaryo, storyboard, görsel dil, üretim, kurgu ve ses. Neyin işe yaradığı, nerede dikkat edilmesi gerektiği ve marka tutarlılığı.",
+      h1: "AI reklam filmi nasıl üretilir?",
+      lead: "Yapay zekâ ile film üretmek bir komut yazıp sonucu beklemek değil. İyi bir AI reklam filmi, klasik bir prodüksiyonun disipliniyle başlar: fikir, senaryo, storyboard, ışık ve kurgu. Modeller bu sürecin araçlarıdır. Bu yazıda süreci adım adım anlatıyorum.",
+      published: "2026-10-25",
+      updated: "2026-10-25",
+      service: "ai-art",
+      work: ["oneavex-ai-studio", "ecombox"],
+      keywords: ["AI reklam filmi", "yapay zeka reklam filmi", "AI tanıtım filmi", "yapay zeka ile video üretimi", "AI video prodüksiyon", "yapay zeka reklam ajansı"],
+      faq: [
+        { q: "AI reklam filmi klasik çekimin yerini tutar mı?", a: "Bazı işlerde evet, bazılarında hayır. Henüz var olmayan bir mekânı, zor bir sahneyi ya da hızlı varyasyonları göstermekte çok güçlü; gerçek ürünün birebir doğruluğunun kritik olduğu yerlerde çekimle birlikte kullanmak daha güvenli." },
+        { q: "Marka logosu ve ürün doğru görünür mü?", a: "Ürün ve logo doğruluğu sürecin baştan planlanan parçası olmalı. Gerektiğinde ürün ve logo gerçek görsellerle yerleştirilir ve her kare yayından önce kontrol edilir." },
+        { q: "Dikey ve yatay formatlar birlikte üretilebilir mi?", a: "Evet. Storyboard aşamasında hedef formatlar belirlenirse, sosyal medya için dikey ve web ya da TV için yatay versiyonlar aynı görsel dille hazırlanabilir." },
+      ],
+      sections: [
+        {
+          h2: "Önce fikir, sonra model",
+          body: [
+            "Bir AI filmini iyi yapan şey modelin kendisi değil, arkasındaki fikirdir. Filmin tek cümlelik fikri, kime ne hissettireceği ve izleyiciye hangi aksiyonu aldıracağı en başta netleşmelidir.",
+            "Oneavex'te AI video üretimini gerçek sinematografi disipliniyle birleştiriyoruz: storyboard, ürün doğruluğu, ışık ve kurgu önce geliyor; modeller araç.",
+          ],
+        },
+        {
+          h2: "Senaryo ve storyboard",
+          body: [
+            "Senaryo, filmin süresine ve formatına göre sahnelere bölünür. Her sahne için kamera açısı, hareket, ışık ve geçiş bir storyboard üzerinde tarif edilir. Bu aşama, üretimde kaybolacak zamanı baştan kazandırır.",
+          ],
+        },
+        {
+          h2: "Görsel dil ve marka tutarlılığı",
+          body: [
+            "Bir markanın filmleri birbirine benzemeli: aynı palet, aynı ışık, aynı ton. Bunun için markanın renkleri, tipografisi ve kaçınılacak şeyler üretimden önce yazılır ve her sahne bu kurallara göre üretilir.",
+            "Metin ve logo yerleşimi ayrı bir dikkat ister; yanlış yazılmış bir logo ya da bozuk bir harf, en iyi görüntüyü bile yayınlanamaz hale getirir.",
+          ],
+        },
+        {
+          h2: "Üretim: sahne sahne",
+          body: [
+            "Her sahne ayrı üretilir, birkaç varyasyondan en iyisi seçilir. Aynı görüntü üzerinde tekrar tekrar düzeltme yapmak yerine, sahne gerektiğinde baştan ve temiz bir tarifle yeniden üretilir; bu, kalitenin kat kat bozulmasını önler.",
+          ],
+        },
+        {
+          h2: "Kurgu, ses ve son dokunuş",
+          body: [
+            "Sahneler bir araya geldiğinde film kurguda kurulur: ritim, geçişler, müzik ve ses efektleri. Motion design ile metinler, logolar ve ürün bilgileri eklenir; renk düzeltmesiyle bütün sahneler aynı görsel dile çekilir.",
+          ],
+        },
+        {
+          h2: "Formatlar ve yayın",
+          body: ["Film nerede yayınlanacaksa ona göre teslim edilir:"],
+          list: [
+            "Instagram ve TikTok için dikey, kısa versiyonlar.",
+            "Web sitesi ve YouTube için yatay versiyon.",
+            "Reklam için farklı uzunlukta kesitler.",
+            "Siteye gömülecekse hızlı yüklenecek şekilde sıkıştırılmış dosyalar.",
+          ],
+        },
+        {
+          h2: "Nerede dikkat etmeli?",
+          body: [
+            "Telif ve kullanım hakları, gerçek kişilerin benzerliği ve ürünün doğru temsili baştan konuşulmalı. Yapay zekâ ile üretilen görüntülerin markanın iddialarını abartmaması, özellikle gayrimenkul gibi alıcının karar verdiği sektörlerde önemlidir.",
+          ],
+        },
+      ],
+    },
   ],
 };
 
@@ -215,7 +381,12 @@ const en: Guides = {
     h1: "Guides",
     lead: "Long, plain answers to the questions people ask before starting a project. The examples come from work I have shipped.",
   },
-  labels: { all: "All guides", read: "Read", updated: "Updated", related: "Work cited", service: "Related service", cta: "Let's talk about your project: tell me what you have in mind." },
+  labels: {
+    all: "All guides", read: "Read", updated: "Updated", related: "Work cited", service: "Related service",
+    cta: "Let's talk about your project: tell me what you have in mind.", toc: "In this guide", minutes: "min read", topics: "Topics",
+    faq: "Short answers", more: "More guides", author: "Author",
+    authorBio: "Istanbul-based creative technologist joining design, motion, AI and web development in one production process.",
+  },
   items: [
     {
       key: "real-estate-launch",
@@ -229,6 +400,12 @@ const en: Guides = {
       updated: "2026-10-25",
       service: "real-estate",
       work: ["ala-cekmekoy", "the-lock", "fidan-property"],
+      keywords: ["real estate launch website", "property launch website", "residential project website", "real estate developer website", "property landing page", "real estate website design Turkey"],
+      faq: [
+        { q: "Should a project launch site be a single page?", a: "For one development, usually yes: the project is told top to bottom like a story and the enquiry form is always close. Developers with several projects are better served by a multi-page site." },
+        { q: "When should the launch site be built?", a: "Once renders, plans and the core project facts are ready. It can go live before construction starts and grow with the project." },
+        { q: "What should the enquiry form ask?", a: "Name, phone, email and unit type of interest are usually enough. Shorter forms get filled in more often; add the consent your privacy law requires." },
+      ],
       sections: [
         {
           h2: "A launch site has one job",
@@ -324,6 +501,12 @@ const en: Guides = {
       updated: "2026-10-25",
       service: "ai",
       work: ["modd-ai", "web-development-agent"],
+      keywords: ["what is an AI agent", "custom AI agent development", "AI agents for business", "multi-agent system", "AI workflow automation", "hire AI agent developer"],
+      faq: [
+        { q: "Is an AI agent the same as a chatbot?", a: "No. A chatbot answers questions; an agent carries out a task step by step, uses its tools, checks its output and stops where approval is needed." },
+        { q: "What tools can an AI agent connect to?", a: "Files, databases, calendars, email, social accounts and most systems with an API. Which tool it may use, and with what permission, is defined up front." },
+        { q: "Does an AI agent make sense for a small business?", a: "If there is a task repeated every week with rules you can describe, yes. Start with that one task and look at the result." },
+      ],
       sections: [
         {
           h2: "Chatbot or agent",
@@ -383,12 +566,173 @@ const en: Guides = {
         },
       ],
     },
+    {
+      key: "website-cost",
+      slug: "website-cost",
+      title: "What Does a Website Cost? What Drives the Price Before You Ask for a Quote",
+      description:
+        "Corporate site, launch site or e-commerce: what sets the price of a website, template versus custom design, the costs people miss, and the brief that gets you an accurate quote.",
+      h1: "What drives the cost of a website?",
+      lead: "“How much is a website?” has no single answer, because “a website” is not one thing. This guide covers what sets the price, the difference between a template and a custom design, and what to prepare to get an accurate quote.",
+      published: "2026-10-25",
+      updated: "2026-10-25",
+      service: "web-design",
+      work: ["ucay-360", "the-lock", "fidan-property"],
+      keywords: ["website cost", "how much does a website cost", "custom website design price", "website design quote", "hire a web designer", "website development cost 2026"],
+      faq: [
+        { q: "Template or custom design?", a: "A template is faster and usually cheaper, but the brand often bends to the template. A custom design is built from the brand; if standing out, speed and long-term flexibility matter, custom wins." },
+        { q: "What should I prepare before asking for a quote?", a: "The site's purpose, its audience, a page list, a few sites you like, the content you have (copy, images, logo) and the launch date you want. The clearer these are, the more accurate the quote." },
+        { q: "Are there costs after launch?", a: "Recurring costs such as domain and hosting, plus content updates, new pages and maintenance, planned separately by agreement. A good quote spells these out." },
+      ],
+      sections: [
+        {
+          h2: "“A website” is not one thing",
+          body: [
+            "A five-page corporate site, a launch site with scroll-driven video and a multilingual portfolio with filtered search are different jobs. The first thing that sets the price is the type and scope of the site.",
+            "Üçay 360's scroll-driven cinematic opening, The Lock's corporate flow carrying the project, location, films and e-catalogue, and Fidan Property's project search filtered by location, status, type and price are three different workloads.",
+          ],
+        },
+        {
+          h2: "What mainly drives the price",
+          body: ["Behind most quotes are these items:"],
+          list: [
+            "Number of pages, and how custom each one is.",
+            "A template or a design from scratch.",
+            "The level of motion, video, 3D and interaction.",
+            "Features such as search, filters, forms, accounts or payments.",
+            "Number of languages.",
+            "Who prepares the content: copy, photography, video, translation.",
+            "Whether a content management panel is needed, and who updates it how often.",
+            "Timeline: a tight launch date means replanning the work.",
+          ],
+        },
+        {
+          h2: "Template versus custom design",
+          body: [
+            "Templates give a quick start, but structure, motion and detail only go as far as the template allows. Most of the time the brand fits the template, not the other way round.",
+            "A custom design grows out of the brand: structure, type, motion and content flow are built for it. When the same person designs and codes, the detail in the design works the same way on the live site.",
+          ],
+        },
+        {
+          h2: "Costs people miss",
+          body: ["When comparing quotes, check whether these are included:"],
+          list: [
+            "Domain, hosting and email.",
+            "Copywriting, photo and video shoots, translation.",
+            "Search basics: page titles, descriptions, sitemap, structured data.",
+            "Privacy notice and cookie consent where required.",
+            "Maintenance, updates and small changes after launch.",
+          ],
+        },
+        {
+          h2: "Why a cheap site can end up expensive",
+          body: [
+            "A site that opens slowly, breaks on phones or can't be found on Google wastes part of the ad and social budget. Fixing it later is often more work than doing it right the first time.",
+            "So weigh the price against the site's job: if a launch site exists to collect enquiries, the form and speed come before the price.",
+          ],
+        },
+        {
+          h2: "The brief that gets an accurate quote",
+          body: ["A short, clear brief means both the right price and the right work:"],
+          list: [
+            "The site's one-line purpose and its audience.",
+            "A page list and the must-have features.",
+            "Three sites you like, and why.",
+            "The content you have: logo, copy, images, video.",
+            "Number of languages and the launch date you want.",
+          ],
+        },
+      ],
+    },
+    {
+      key: "ai-commercial",
+      slug: "how-ai-commercials-are-made",
+      title: "How Is an AI Commercial Made? The Process Behind AI Brand Films",
+      description:
+        "How an AI-driven commercial or brand film is made: idea and script, storyboard, visual language, production, edit and sound. What works, where to be careful, and keeping a brand consistent.",
+      h1: "How is an AI commercial made?",
+      lead: "Making a film with AI is not typing a prompt and waiting. A good AI commercial starts with the discipline of a classic production: idea, script, storyboard, light and edit. The models are tools within that process. This guide walks through it step by step.",
+      published: "2026-10-25",
+      updated: "2026-10-25",
+      service: "ai-art",
+      work: ["oneavex-ai-studio", "ecombox"],
+      keywords: ["AI commercial", "AI brand film", "AI video production", "AI advertising agency", "AI generated commercial", "hire AI video artist"],
+      faq: [
+        { q: "Can an AI commercial replace a live shoot?", a: "For some work, yes; for some, no. It is very strong at showing a place that doesn't exist yet, a difficult scene or fast variations; where exact product accuracy is critical, combining it with a shoot is safer." },
+        { q: "Will the logo and product look right?", a: "Product and logo accuracy should be planned from the start. Where needed they are placed from real assets, and every frame is checked before release." },
+        { q: "Can vertical and horizontal versions be made together?", a: "Yes. If the target formats are set at the storyboard stage, vertical cuts for social and horizontal ones for web or TV can share one visual language." },
+      ],
+      sections: [
+        {
+          h2: "Idea first, model second",
+          body: [
+            "What makes an AI film good is not the model but the idea behind it. The film's one-line idea, what it should make whom feel and what action it should prompt need to be clear at the start.",
+            "At Oneavex we join AI video production with the discipline of real cinematography: storyboard, product accuracy, light and edit come first; the models are tools.",
+          ],
+        },
+        {
+          h2: "Script and storyboard",
+          body: [
+            "The script is split into scenes to suit the film's length and format. For each scene, camera angle, movement, light and transition are described on a storyboard. This stage saves the time that would otherwise be lost in production.",
+          ],
+        },
+        {
+          h2: "Visual language and brand consistency",
+          body: [
+            "A brand's films should look like each other: the same palette, the same light, the same tone. So the brand's colours, type and things to avoid are written down before production and every scene is made to those rules.",
+            "Text and logo placement need their own care; a misspelled logo or a broken letter makes even the best shot unusable.",
+          ],
+        },
+        {
+          h2: "Production, scene by scene",
+          body: [
+            "Each scene is produced on its own and the best of several variations is chosen. Rather than correcting the same image again and again, a scene is regenerated from a clean description when needed, which keeps quality from degrading pass after pass.",
+          ],
+        },
+        {
+          h2: "Edit, sound and finishing",
+          body: [
+            "Once the scenes are in, the film is built in the edit: rhythm, transitions, music and sound effects. Motion design adds copy, logos and product details; colour grading pulls every scene into one look.",
+          ],
+        },
+        {
+          h2: "Formats and release",
+          body: ["The film is delivered for where it will run:"],
+          list: [
+            "Short vertical cuts for Instagram and TikTok.",
+            "A horizontal version for the website and YouTube.",
+            "Cut-downs of different lengths for ads.",
+            "Compressed files that load fast when embedded on a site.",
+          ],
+        },
+        {
+          h2: "Where to be careful",
+          body: [
+            "Copyright and usage rights, the likeness of real people and an accurate depiction of the product should be agreed up front. AI imagery should not overstate a brand's claims, especially in sectors like real estate where buyers make decisions based on it.",
+          ],
+        },
+      ],
+    },
   ],
 };
 
 export const guides: Record<Locale, Guides> = { tr, en };
 
 export const guidePath = (locale: Locale, slug?: string) => `/${locale}/${guides[locale].base}${slug ? `/${slug}` : ""}`;
+
+// Reading time at a steady 200 words a minute.
+export const readingMinutes = (g: Guide) =>
+  Math.max(1, Math.round([g.lead, ...g.sections.flatMap((s) => [...s.body, ...(s.list ?? [])])].join(" ").split(/\s+/).length / 200));
+
+// Anchor id for a section heading, for the table of contents.
+export const sectionId = (h2: string) =>
+  h2
+    .toLocaleLowerCase("tr")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 
 export const getGuide = (locale: Locale, slug: string) => guides[locale].items.find((g) => g.slug === slug);
 

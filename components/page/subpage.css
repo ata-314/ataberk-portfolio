@@ -1,0 +1,445 @@
+/* Inner pages in the home page's matter: ink, bone and lime, a still grain over
+   everything (never re-rolled per frame: that read as flicker), soft coloured
+   glows behind the opening, glass cards that light up under the pointer. */
+
+.sub-page {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  background: var(--ink);
+}
+.sub-page::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 120svh;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 50% at 82% 18%, rgb(200 255 62 / 0.1), transparent 70%),
+    radial-gradient(35% 45% at 12% 8%, rgb(138 230 255 / 0.08), transparent 70%),
+    radial-gradient(50% 40% at 60% 70%, rgb(167 139 250 / 0.06), transparent 70%);
+}
+.sub-page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Opening */
+.sub-hero {
+  margin-inline: auto;
+  max-width: 88rem;
+  padding: clamp(7.5rem, 16vh, 11rem) clamp(1.25rem, 4vw, 2.5rem) clamp(3rem, 8vh, 5rem);
+}
+.sub-hero-split {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
+@media (min-width: 1024px) {
+  .sub-hero-split {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    min-height: min(92svh, 60rem);
+    gap: 3rem;
+  }
+}
+.sub-crumbs {
+  font-size: 0.875rem;
+  color: var(--bone-dim);
+}
+.sub-title {
+  margin-top: 2rem;
+  font-size: clamp(2.6rem, 6.4vw, 6rem);
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+  text-wrap: balance;
+  background: linear-gradient(180deg, #fff 30%, #cfe3c4 75%, #9fb98f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-bottom: 0.08em;
+}
+.sub-hero-compact .sub-title {
+  font-size: clamp(2.3rem, 5vw, 4.6rem);
+}
+.sub-meta {
+  margin-top: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--bone-dim);
+}
+.sub-lead {
+  margin-top: 1.75rem;
+  max-width: 40rem;
+  font-size: clamp(1.1rem, 1.5vw, 1.3rem);
+  line-height: 1.6;
+  color: var(--bone-dim);
+}
+.sub-actions {
+  margin-top: 2.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.75rem;
+}
+.sub-hero-visual {
+  position: relative;
+  height: clamp(18rem, 52svh, 40rem);
+}
+@media (min-width: 1024px) {
+  .sub-hero-visual {
+    height: min(78svh, 46rem);
+  }
+}
+
+/* Body */
+.sub-body {
+  margin-inline: auto;
+  max-width: 88rem;
+  padding: 0 clamp(1.25rem, 4vw, 2.5rem) var(--space-section);
+  display: grid;
+  gap: clamp(5rem, 12vh, 8rem);
+  /* One column that never grows to fit its content (the logo band is max-content wide). */
+  grid-template-columns: minmax(0, 1fr);
+}
+.sub-section {
+  display: grid;
+  gap: 2rem;
+}
+@media (min-width: 900px) {
+  .sub-section {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: 3rem;
+  }
+  .sub-section > .sub-h2 {
+    position: sticky;
+    top: 7rem;
+    align-self: start;
+  }
+}
+.sub-h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+/* Glass cards: a hairline that brightens at the top, a glow that follows the pointer. */
+.sub-cards {
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 640px) {
+  .sub-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.sub-card {
+  --mx: 50%;
+  --my: 0%;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(1.5rem, 2.4vw, 2rem);
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015) 55%, rgba(255, 255, 255, 0.035));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transition: border-color 0.4s ease, transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.sub-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(320px circle at var(--mx) var(--my), rgb(200 255 62 / 0.12), transparent 65%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+@media (hover: hover) {
+  .sub-card:hover {
+    border-color: rgba(200, 255, 62, 0.35);
+  }
+  .sub-card:hover::before {
+    opacity: 1;
+  }
+}
+.sub-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--bone);
+}
+.sub-card p {
+  margin-top: 0.6rem;
+  line-height: 1.6;
+  color: var(--bone-dim);
+}
+.sub-card-dot {
+  display: block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-bottom: 1.4rem;
+  border-radius: 999px;
+  background: var(--lime);
+  box-shadow: 0 0 18px rgb(200 255 62 / 0.6);
+}
+
+/* Steps on a line with lime nodes. */
+.sub-steps {
+  position: relative;
+  display: grid;
+  gap: 1.75rem;
+  list-style: none;
+  padding-left: 1.75rem;
+}
+.sub-steps::before {
+  content: "";
+  position: absolute;
+  left: 0.3rem;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 1px;
+  background: linear-gradient(var(--lime), rgba(200, 255, 62, 0.05));
+}
+.sub-steps li {
+  position: relative;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--bone);
+}
+.sub-steps li::before {
+  content: "";
+  position: absolute;
+  left: -1.75rem;
+  top: 0.5em;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  background: var(--ink);
+  border: 2px solid var(--lime);
+}
+
+/* Questions */
+.sub-faq details {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+.sub-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.4rem 0;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 1.6vw, 1.3rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.sub-faq summary::-webkit-details-marker {
+  display: none;
+}
+.sub-faq-mark {
+  position: relative;
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: background 0.3s ease, transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.sub-faq-mark::before,
+.sub-faq-mark::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.7rem;
+  height: 1.5px;
+  background: var(--bone);
+  translate: -50% -50%;
+}
+.sub-faq-mark::after {
+  rotate: 90deg;
+  transition: rotate 0.4s ease;
+}
+.sub-faq details[open] .sub-faq-mark {
+  background: var(--lime);
+  border-color: var(--lime);
+}
+.sub-faq details[open] .sub-faq-mark::before,
+.sub-faq details[open] .sub-faq-mark::after {
+  background: var(--ink);
+}
+.sub-faq details[open] .sub-faq-mark::after {
+  rotate: 0deg;
+}
+.sub-faq details p {
+  padding: 0 3rem 1.5rem 0;
+  line-height: 1.7;
+  color: var(--bone-dim);
+}
+
+/* Work tiles: the capture large, lifting a little under the pointer. */
+.sub-work {
+  display: grid;
+  gap: 1.5rem;
+}
+@media (min-width: 768px) {
+  .sub-work {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.sub-work a {
+  display: block;
+}
+.sub-work-frame {
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.9);
+}
+.sub-work img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top;
+  transition: transform 1s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.sub-work a:hover img {
+  transform: scale(1.035);
+}
+.sub-work-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-top: 1rem;
+}
+
+/* Link rows */
+.sub-links {
+  display: grid;
+  list-style: none;
+}
+.sub-links a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 1.8vw, 1.45rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  transition: color 0.3s ease, padding 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.sub-links a:hover {
+  color: var(--lime);
+  padding-left: 0.5rem;
+}
+
+/* The bust's frame on the About page, the same composition as the home page. */
+.sub-portrait {
+  position: relative;
+  height: 100%;
+}
+
+/* A visual card holding a home-page service scene. */
+.sub-scene {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(170deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 50px 100px -50px rgba(0, 0, 0, 0.9);
+}
+.sub-scene .service-visual {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* Pills */
+.sub-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+}
+.sub-chips li {
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.9rem;
+  color: var(--bone);
+}
+
+/* Entrance (PageMotion.tsx): only once the script has armed it. */
+html[data-rise="ready"] [data-rise]:not([data-in]) {
+  opacity: 0;
+  transform: translateY(28px);
+}
+[data-rise] {
+  transition:
+    opacity 0.9s cubic-bezier(0.19, 1, 0.22, 1) var(--rd, 0s),
+    transform 1.1s cubic-bezier(0.19, 1, 0.22, 1) var(--rd, 0s);
+}
+
+/* Service hub: each service with its home-page scene on top. */
+.sub-hub-grid {
+  display: grid;
+  gap: 1rem;
+  list-style: none;
+}
+@media (min-width: 768px) {
+  .sub-hub-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1200px) {
+  .sub-hub-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.sub-hub-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.sub-hub-scene {
+  height: 13rem;
+  margin: -0.5rem -0.5rem 1.5rem;
+}
+.sub-hub-scene .sub-scene {
+  border-radius: 1.1rem;
+}
+.sub-hub-card > span:last-child {
+  margin-top: auto;
+  padding-top: 1.5rem;
+}
+
+@media (max-width: 1023px) {
+  .sub-hero-visual-first .sub-hero-visual {
+    order: -1;
+    height: 52svh;
+    margin: -2rem -1.25rem 0;
+  }
+}

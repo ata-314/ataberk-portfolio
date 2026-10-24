@@ -5,6 +5,15 @@ import { site } from "@/content/site";
 import { Footer } from "@/components/sections/HomeSections";
 import { ContactBlock } from "@/components/contact/ContactPage";
 import { BASE_URL, PERSON_ID } from "@/lib/url";
+import Link from "next/link";
+import { HologramBust } from "@/components/gl/HologramBust";
+import { CodeRain } from "@/components/sections/CodeRain";
+import { ClientStrip } from "@/components/sections/ClientStrip";
+import { PageHero, SubSection } from "@/components/page/PageHero";
+import { PageMotion } from "@/components/page/PageMotion";
+import { contactPage, contactPath } from "@/content/contact";
+import { services, servicePath } from "@/content/services";
+import "@/components/page/subpage.css";
 
 // Who the page is about, in the words people search with.
 const meta = {
@@ -14,6 +23,11 @@ const meta = {
       "Ataberk Soylu: İstanbul'da tasarım, motion, yapay zekâ ve web geliştirmeyi tek üretim sürecinde birleştiren creative technologist. Oneavex'in kurucusu, ModdTeam'in geliştiricisi.",
     h1: "Ataberk Soylu hakkında",
     cta: "Birlikte bir şey kuralım: aklındakini kısaca yaz.",
+    role: "Creative Technologist & Multi Designer · İstanbul",
+    work: "İşleri gör",
+    ventures: "Kurduklarım",
+    disciplines: "Disiplinler",
+    academic: "Akademik",
   },
   en: {
     title: "Who is Ataberk Soylu? Creative Technologist and AI Specialist",
@@ -21,6 +35,11 @@ const meta = {
       "Ataberk Soylu: an Istanbul-based creative technologist joining design, motion, AI and web development in one production process. Founder of Oneavex, builder of ModdTeam.",
     h1: "About Ataberk Soylu",
     cta: "Let's build something together: tell me what you have in mind.",
+    role: "Creative Technologist & Multi Designer · Istanbul",
+    work: "See the work",
+    ventures: "What I built",
+    disciplines: "Disciplines",
+    academic: "Academic",
   },
 };
 
@@ -55,56 +74,107 @@ export default async function AboutPage({
   if (!isLocale(locale)) notFound();
   const t = site[locale].about;
 
+  const m = meta[locale];
+  const systems = site[locale].capabilities.systems;
+
   return (
-    <main id="content" className="relative z-10 bg-ink">
-      <header className="px-6 pt-32 md:px-10 md:pt-44">
-        <div className="mx-auto max-w-7xl">
-          <h1 className="text-sm text-bone-dim">{meta[locale].h1}</h1>
-          <p
-            className="font-display mt-6 max-w-5xl leading-[1.05] font-semibold tracking-tight text-balance"
-            style={{ fontSize: "var(--text-h1)" }}
-          >
-            {t.intro}
-          </p>
-        </div>
-      </header>
+    <main id="content" className="sub-page relative z-10">
+      <PageMotion />
+      <PageHero
+        crumbs={[{ label: services[locale].labels.home, href: `/${locale}` }, { label: m.h1 }]}
+        title={<><span className="sr-only">{m.h1}: </span>{t.intro}</>}
+        visualFirst
+        meta={m.role}
+        lead={t.bio[0]}
+        actions={
+          <>
+            <Link href={contactPath(locale)} data-track="cta_contact" className="hero-cta">
+              {contactPage[locale].cta} <span aria-hidden>↗</span>
+            </Link>
+            <Link href={`/${locale}#work`} className="link-draw text-bone">{m.work}</Link>
+          </>
+        }
+        visual={
+          <div className="portrait-frame sub-portrait">
+            {/* The same scan and frame as the home page's About section. */}
+            <CodeRain className="absolute inset-0 h-full w-full opacity-70" />
+            <span className="portrait-mark portrait-mark-tl">[[&nbsp;&nbsp;001&nbsp;&nbsp;]]</span>
+            <span className="portrait-ticks portrait-ticks-top" />
+            <span className="portrait-ticks portrait-ticks-bottom" />
+            <span className="portrait-cross" style={{ left: "4%", top: "50%" }} />
+            <span className="portrait-cross" style={{ right: "4%", top: "50%" }} />
+            <section className="relative h-full w-full">
+              <HologramBust />
+            </section>
+          </div>
+        }
+      />
 
-      <div className="px-6 md:px-10" style={{ paddingBlock: "var(--space-section)" }}>
-        <div className="mx-auto max-w-7xl space-y-24">
-          <section className="grid grid-cols-12 gap-6">
-            <div className="col-span-12 space-y-6 md:col-span-7">
-              {t.bio.map((p) => (
-                <p key={p.slice(0, 24)} className="text-lg leading-relaxed text-bone-dim">
-                  {p}
-                </p>
-              ))}
-              <p className="text-sm leading-relaxed text-bone-dim">
-                {t.thesis}
+      <div className="sub-body">
+        <section className="sub-section">
+          <div aria-hidden />
+          <div data-rise className="space-y-6">
+            {t.bio.slice(1).map((p) => (
+              <p key={p.slice(0, 24)} className="font-display text-[clamp(1.4rem,2.6vw,2.2rem)] leading-[1.2] font-semibold tracking-[-0.03em] text-balance">
+                {p}
               </p>
-            </div>
-            <div className="col-span-12 md:col-span-4 md:col-start-9">
-              <dl className="space-y-10">
-                {t.ventures.map((v) => (
-                  <div key={v.name}>
-                    <dt className="font-display text-xl font-semibold">{v.name}</dt>
-                    <dd className="mt-2 text-sm leading-relaxed text-bone-dim">{v.desc}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          </section>
+            ))}
+          </div>
+        </section>
 
-          <section>
-            <h2 className="font-display text-2xl font-semibold tracking-tight">
-              {t.collaboration.heading}
-            </h2>
-            <p className="mt-5 max-w-3xl text-lg leading-relaxed text-bone-dim">
-              {t.collaboration.areas.join(", ")}.
-            </p>
-          </section>
+        <SubSection heading={m.ventures}>
+          <div className="sub-cards">
+            {t.ventures.map((v, i) => (
+              <div key={v.name} className="sub-card" data-rise style={{ ["--rd" as string]: `${i * 0.08}s` }}>
+                <span className="sub-card-dot" aria-hidden />
+                <h3 className="!text-2xl">{v.name}</h3>
+                <p>{v.desc}</p>
+                {v.name === "ModdTeam" && (
+                  <Link href={`/${locale}/work/modd-ai`} className="link-draw mt-5 inline-block text-sm text-bone">→</Link>
+                )}
+              </div>
+            ))}
+          </div>
+        </SubSection>
 
-          <ContactBlock locale={locale} heading={meta[locale].cta} />
+        <SubSection heading={m.disciplines}>
+          <div className="grid gap-10 sm:grid-cols-2">
+            {systems.map((sys) => (
+              <div key={sys.key} data-rise>
+                <h3 className="font-display text-xl font-semibold tracking-[-0.02em]">{sys.name}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-bone-dim">{sys.bridge}</p>
+                <ul className="sub-chips mt-4">
+                  {sys.items.map((i) => (
+                    <li key={i} lang="en">{i}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </SubSection>
+
+        <SubSection heading={m.academic}>
+          <p data-rise className="text-lg leading-relaxed text-bone-dim">{t.thesis}</p>
+        </SubSection>
+
+        <SubSection heading={t.collaboration.heading}>
+          <ul className="sub-links">
+            {services[locale].items.map((s) => (
+              <li key={s.slug}>
+                <Link href={servicePath(locale, s.slug)}>
+                  <span>{s.name}</span>
+                  <span aria-hidden>→</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </SubSection>
+
+        <div className="-mx-5 md:-mx-10">
+          <ClientStrip locale={locale} />
         </div>
+
+        <ContactBlock locale={locale} heading={m.cta} />
       </div>
       <Footer t={site[locale].footer} name={site[locale].name} locale={locale} />
       <script

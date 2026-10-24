@@ -8,6 +8,9 @@ import { Footer } from "@/components/sections/HomeSections";
 import { ContactForm } from "@/components/sections/ContactForm";
 import { ClientStrip } from "@/components/sections/ClientStrip";
 import "@/components/services/services-page.css";
+import "@/components/page/subpage.css";
+import { PageMotion } from "@/components/page/PageMotion";
+import { Faq } from "@/components/page/PageHero";
 import "./contact-page.css";
 
 const EMAIL = "ataberk@ataberksoylu.com";
@@ -69,12 +72,13 @@ export function ContactPage({ locale }: { locale: Locale }) {
   ];
 
   return (
-    <main id="content" className="relative z-10 bg-ink">
+    <main id="content" className="sub-page relative z-10">
+      <PageMotion />
       <div className="px-6 pt-32 md:px-10 md:pt-44">
         {/* Phones: intro, form, then the steps; desktop: the form beside both. */}
         <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-12 lg:gap-x-10 lg:gap-y-0">
           <header className="lg:col-span-5">
-            <h1 className="svc-title font-display font-semibold">{p.h1}</h1>
+            <h1 className="sub-title font-display">{p.h1}</h1>
             <p className="mt-8 max-w-xl text-lg leading-relaxed text-bone-dim">{p.lead}</p>
             <a href={`mailto:${EMAIL}`} data-track="email" className="link-draw mt-8 inline-block text-bone">
               {EMAIL} <span aria-hidden className="text-lime">↗</span>
@@ -117,12 +121,7 @@ export function ContactPage({ locale }: { locale: Locale }) {
           <section className="grid grid-cols-12 gap-6">
             <h2 className="svc-h2 col-span-12 md:col-span-4">{p.faq.heading}</h2>
             <div className="col-span-12 md:col-span-8">
-              {p.faq.items.map((f) => (
-                <div key={f.q} className="svc-faq">
-                  <h3 className="font-display text-lg font-semibold tracking-[-0.02em] md:text-xl">{f.q}</h3>
-                  <p className="mt-3 leading-relaxed text-bone-dim">{f.a}</p>
-                </div>
-              ))}
+              <Faq items={p.faq.items} />
             </div>
           </section>
         </div>
