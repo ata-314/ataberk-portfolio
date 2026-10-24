@@ -190,6 +190,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
           </Link>
           <Link
             href={otherPath}
+            data-track="lang_switch"
             className="nav-link glass-item relative z-[1] ml-1 bg-white/[0.07] px-3 py-2 text-[12px] text-bone/80"
             style={{ animationDelay: `${0.32 + links.length * 0.05}s` }}
             aria-label={other === "en" ? "Switch to English" : "Türkçeye geç"}
@@ -255,6 +256,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
           </Link>
           <Link
             href={otherPath}
+            data-track="lang_switch"
             onClick={close}
             className="nav-sheet-item mt-auto w-fit text-sm text-bone-dim"
             style={{ animationDelay: `${0.08 + 0.05 * links.length}s` }}

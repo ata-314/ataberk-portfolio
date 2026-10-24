@@ -19,7 +19,7 @@ export function ClientStrip({ locale, className = "" }: { locale: Locale; classN
     </ul>
   );
   return (
-    <section aria-label={contactPage[locale].clients} className={`client-strip ${className}`}>
+    <section data-section="clients" aria-label={contactPage[locale].clients} className={`client-strip ${className}`}>
       <p className="cs-label">{contactPage[locale].clients}</p>
       <div className="cs-track">
         {row(false)}

@@ -99,7 +99,7 @@ export function Strip({ locale }: { locale: Locale }) {
   const middle = (film: number) => film * STRIP_SHOTS + 1;
 
   return (
-    <section ref={root} data-strip data-open={open ? "true" : undefined} aria-label={t.label} className="strip relative z-20" style={{ height: `${RUNWAY_SVH + 100}svh` }}>
+    <section ref={root} data-strip data-section="strip" data-open={open ? "true" : undefined} aria-label={t.label} className="strip relative z-20" style={{ height: `${RUNWAY_SVH + 100}svh` }}>
       <div data-strip-lead aria-hidden className="pointer-events-none absolute left-0 top-0 w-px" style={{ height: `${STRIP_LEAD_SVH}svh` }} />
       <div className="strip-frame">
         <div className="strip-static">

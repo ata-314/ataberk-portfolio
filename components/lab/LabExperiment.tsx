@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { mountSketch, type SketchKind } from "./lab-sketches";
 import { mountBrain } from "../sections/brain-beads";
+import { trackEvent } from "@/components/track/Tracker";
 
 type Choice = { key: string; label: string; options: { value: string; label: string }[] };
 type Range = { key: string; label: string; range: true };
@@ -50,14 +51,23 @@ export function LabExperiment({
     return () => { io.disconnect(); e.destroy(); engine.current = null; };
   }, [entry.kind]);
 
+  // The first touch on the sketch and the first turn of each control, for the stats.
+  const played = useRef(new Set<string>());
+  const once = (what: string, data: Record<string, string>) => {
+    if (played.current.has(what)) return;
+    played.current.add(what);
+    trackEvent(what === "touch" ? "lab_touch" : "lab_control", { lab: entry.kind, ...data });
+  };
+
   const set = (key: string, value: string | number) => {
+    once(key, { control: key });
     setValues((v) => ({ ...v, [key]: value }));
     engine.current?.set?.(key, value);
   };
 
   return (
     <article ref={card} className={`lab-card${feature ? " lab-card-feature" : ""}`}>
-      <div className="lab-visual" onPointerDown={() => setTouched(true)}>
+      <div className="lab-visual" onPointerDown={() => { setTouched(true); once("touch", {}); }}>
         <canvas ref={canvas} aria-hidden="true" />
         {entry.phases && (
           <span className="lab-phase" data-on={phase === 1 || undefined}>{entry.phases[phase]}</span>

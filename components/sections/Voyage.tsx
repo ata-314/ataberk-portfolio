@@ -123,7 +123,7 @@ export function Voyage({ locale }: { locale: Locale }) {
   }, { scope: root });
 
   return (
-    <section ref={root} data-voyage aria-label={t.caption} className="voyage relative z-20" style={{ height: `${RUNWAY_SVH + 100 + REEL_SVH}svh` }}>
+    <section ref={root} data-voyage data-section="voyage" aria-label={t.caption} className="voyage relative z-20" style={{ height: `${RUNWAY_SVH + 100 + REEL_SVH}svh` }}>
       <div data-reel aria-hidden className="pointer-events-none absolute left-0 w-px" style={{ top: `${REEL_AT * RUNWAY_SVH}svh`, height: `${REEL_SVH}svh` }} />
       <div className="voyage-frame hero-copy">
         <ol aria-label={t.reel} className="reel-captions">
