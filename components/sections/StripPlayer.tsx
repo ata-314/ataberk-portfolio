@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import type { Locale } from "@/lib/i18n";
 import { STRIP_SHOTS, stripCopy, stripFilms, stripFilmSrc } from "@/content/strip";
 import { stripState } from "../three/scroll-state";
+import { trackEvent } from "@/components/track/Tracker";
 
 // How long the stage takes to unfold the shot into the frame (and to fold
 // it home), before the film takes over (or after it has left).
@@ -27,6 +28,7 @@ export function StripPlayer({ locale, film, panel, onClosed }: { locale: Locale;
   // loop has run (the loop keeps playing while it unfolds).
   const resumeAt = () => item.shots[shot] + (stripState.clipTime ? stripState.clipTime(panel) : 0);
   const [muted, setMuted] = useState(false);
+  const shownAt = useRef(0);
 
   // Publish the frame's box and open the film on the stage.
   useLayoutEffect(() => {
@@ -59,6 +61,8 @@ export function StripPlayer({ locale, film, panel, onClosed }: { locale: Locale;
     if (!v || phase !== "shown") return;
     const at = resumeAt();
     if (Math.abs(v.currentTime - at) > 0.3) v.currentTime = at;
+    shownAt.current = Date.now();
+    trackEvent("film_play", { film: item.slug });
     v.muted = false;
     v.play().catch(() => {
       v.muted = true;
@@ -69,6 +73,9 @@ export function StripPlayer({ locale, film, panel, onClosed }: { locale: Locale;
   }, [phase]);
 
   const close = useCallback(() => {
+    // How long the film stayed open, for the stats.
+    if (shownAt.current) trackEvent("film_close", { film: item.slug, watched: Math.round((Date.now() - shownAt.current) / 1000) });
+    shownAt.current = 0;
     setPhase((p) => {
       if (p === "leave") return p;
       video.current?.pause();
@@ -78,7 +85,7 @@ export function StripPlayer({ locale, film, panel, onClosed }: { locale: Locale;
       }, LEAVE_MS);
       return "leave";
     });
-  }, [onClosed]);
+  }, [onClosed, item.slug]);
 
   // The page holds still while the film is open: a deliberate scroll,
   // a swipe or Escape closes it instead.

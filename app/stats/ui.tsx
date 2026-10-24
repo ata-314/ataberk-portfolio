@@ -13,7 +13,7 @@ export function SignIn() {
   const [state, action, pending] = useActionState(signIn, { error: null as string | null });
   return (
     <form action={action} className="mx-auto mt-32 flex max-w-xs flex-col gap-3 px-4">
-      <h1 className="text-lg font-semibold">Ziyaretçiler</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">Ziyaretçiler</h1>
       <input name="password" type="password" placeholder="Şifre" autoFocus className={input} />
       <button disabled={pending} className={button}>Giriş</button>
       {state.error && <p className="text-sm text-red-400">{state.error}</p>}
