@@ -21,6 +21,8 @@ export type HeroStrings = {
   name: string;
   title: string;
   tagline: string;
+  ctaContact: string;
+  contactHref: string;
   ctaWork: string;
   ctaAbout: string;
   locale: string;
@@ -115,12 +117,13 @@ export function Hero({ t }: { t: HeroStrings }) {
                   </>
                 ) : null}
               </p>
-              <div className="flex gap-6 text-sm md:text-[15px]">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-4 text-sm md:justify-end md:text-[15px]">
+                <a href={t.contactHref} data-track="cta_contact" className="hero-cta group">
+                  {t.ctaContact}
+                  <span aria-hidden className="transition-transform duration-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">↗</span>
+                </a>
                 <a href="#work" data-cursor="view" className="link-draw text-bone">
                   {t.ctaWork}
-                </a>
-                <a href={`/${t.locale}/about`} className="link-draw text-bone-dim hover:text-bone">
-                  {t.ctaAbout}
                 </a>
               </div>
             </div>

@@ -22,6 +22,12 @@ export async function proxy(request: NextRequest) {
   }
 
   const slug = pathname.slice(1).toLowerCase();
+  // Short contact links to share: ataberksoylu.com/iletisim, /contact.
+  if (slug === "iletisim" || slug === "contact") {
+    url.pathname = slug === "iletisim" ? "/tr/iletisim" : "/en/contact";
+    url.search = search;
+    return NextResponse.redirect(url);
+  }
   if (RESERVED.has(slug) || !/^[a-z0-9-]{1,64}$/.test(slug)) return NextResponse.next();
   const found = (await sql()`select 1 from links where slug = ${slug}`.catch(() => [])) as unknown[];
   if (found.length === 0) return NextResponse.next();

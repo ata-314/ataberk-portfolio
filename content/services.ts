@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import { contactBase, contactPath } from "@/content/contact";
 
 // Service pages: one per discipline people search for, each grounded in real
 // work from content/work.ts. Same rule as the rest of the site: no invented
@@ -492,6 +493,7 @@ export function serviceAlternates(key: string) {
 // the path (/tr/hizmetler/web-tasarim ↔ /en/services/web-design).
 export function translatePath(pathname: string, from: Locale, to: Locale) {
   const [, , base, slug] = pathname.split("/");
+  if (base === contactBase[from]) return contactPath(to);
   if (base === services[from].base) {
     const key = slug ? getService(from, slug)?.key : undefined;
     const target = key ? services[to].items.find((s) => s.key === key) : undefined;

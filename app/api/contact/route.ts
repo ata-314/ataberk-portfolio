@@ -28,6 +28,7 @@ export async function POST(request: Request) {
   const name = field(body.name, 120);
   const email = field(body.email, 200);
   const company = field(body.company, 200) || null;
+  const phone = field(body.phone, 40).replace(/[^\d+()\s-]/g, "") || null;
   const intent = field(body.intent, 80) || null;
   const message = field(body.message, 5000);
   const locale = field(body.locale, 5) || null;
@@ -48,8 +49,8 @@ export async function POST(request: Request) {
   const deviceLabel = `${device} · ${os} · ${browser}`;
 
   const [{ id }] = (await sql()`insert into messages
-      (name, email, company, intent, message, locale, ref, visitor, network, city, country, device)
-    values (${name}, ${email}, ${company}, ${intent}, ${message}, ${locale}, ${ref}, ${visitor}, ${network},
+      (name, email, company, phone, intent, message, locale, ref, visitor, network, city, country, device)
+    values (${name}, ${email}, ${company}, ${phone}, ${intent}, ${message}, ${locale}, ${ref}, ${visitor}, ${network},
       ${city}, ${country}, ${deviceLabel})
     returning id`) as { id: string }[];
 
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
   const lines: (string | null)[] = [
     `${name} <${email}>`,
     company && `Şirket / site: ${company}`,
+    phone && `Telefon: ${phone}`,
     intent && `Konu: ${intent}`,
     "",
     message,
@@ -79,5 +81,17 @@ export async function POST(request: Request) {
   } catch (e) {
     await sql()`update messages set mail_error = ${String(e).slice(0, 300)} where id = ${id}`;
   }
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, whatsapp: whatsappLink(name, intent, locale) });
+}
+
+// The WhatsApp number is handed out only after a message is in, so it never sits in
+// the page source; it lives in the WHATSAPP_NUMBER env var (digits, country code first).
+function whatsappLink(name: string, intent: string | null, locale: string | null) {
+  const number = process.env.WHATSAPP_NUMBER?.replace(/\D/g, "");
+  if (!number) return null;
+  const text =
+    locale === "en"
+      ? `Hi Ataberk, I'm ${name}. I've just sent the form on your site${intent ? ` about: ${intent}` : ""}.`
+      : `Merhaba Ataberk, ben ${name}. Sitendeki formu az önce gönderdim${intent ? ` (${intent})` : ""}.`;
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }

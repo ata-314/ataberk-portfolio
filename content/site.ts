@@ -45,13 +45,13 @@ export type SiteContent = {
     heading: string;
     line: string;
     intents: string[];
-    cta: string;
     note: string;
     form: {
       intent: string;
       name: string;
       email: string;
       company: string;
+      phone: string;
       message: string;
       messageHint: string;
       send: string;
@@ -62,6 +62,8 @@ export type SiteContent = {
       error: string;
       tooFast: string;
       direct: string;
+      whatsapp: string;
+      whatsappNote: string;
     };
   };
   footer: { rights: string; built: string };
@@ -137,7 +139,7 @@ const tr: SiteContent = {
     thesis: "Akademik altyapım; üretken sanat, yapay zekâ yaratıcılığı ve NFT dönüşümü üzerine tamamladığım yüksek lisans tezine dayanıyor.",
     collaboration: {
       heading: "Birlikte çalışma alanları",
-      areas: ["Premium web deneyimleri", "AI içerik ve video sistemleri", "Marka ve kampanya sistemleri", "Creative direction / senior tasarım rolleri"],
+      areas: ["Premium web deneyimleri", "AI içerik ve video sistemleri", "Marka ve kampanya sistemleri", "AI agent ve otomasyon sistemleri"],
     },
   },
   lab: {
@@ -161,14 +163,14 @@ const tr: SiteContent = {
   contact: {
     heading: "İletişim",
     line: "Daha önce var olmayan bir şeyi birlikte tasarlayalım.",
-    intents: ["Yeni proje", "İş birliği", "Creative technology danışmanlığı", "Pozisyon / ekip görüşmesi"],
-    cta: "GitHub",
-    note: "Kısa bir proje özeti, zamanlama ve hedefle başlayabiliriz.",
+    intents: ["Web sitesi", "AI reklam filmi / video", "AI agent / otomasyon", "Marka ve grafik tasarım", "Başka bir şey"],
+    note: "Fiyat kapsama göre belirleniyor: kısa bir özet, zamanlama ve hedefle başlayabiliriz.",
     form: {
       intent: "Konu",
       name: "Adın",
       email: "E-posta",
       company: "Şirket / web sitesi",
+      phone: "Telefon (isteğe bağlı)",
       message: "Mesajın",
       messageHint: "Ne üretmek istiyorsun, ne zamana, hangi hedefle?",
       send: "Gönder",
@@ -179,6 +181,8 @@ const tr: SiteContent = {
       error: "Gönderilemedi. Tekrar dene ya da doğrudan e-posta at.",
       tooFast: "Biraz yavaş: birkaç saniye sonra tekrar dene.",
       direct: "ya da doğrudan",
+      whatsapp: "WhatsApp'tan yaz",
+      whatsappNote: "Beklemek istemezsen projeni WhatsApp'tan hemen konuşalım.",
     },
   },
   footer: { rights: "Tüm hakları saklıdır.", built: "Bu site, kendi geliştirdiğim web ajanının boru hattından çıktı." },
@@ -235,7 +239,7 @@ const en: SiteContent = {
     thesis: "My academic background is a master's thesis on generative art, AI creativity and the NFT transformation.",
     collaboration: {
       heading: "Collaboration areas",
-      areas: ["Premium web experiences", "AI content and video systems", "Brand and campaign systems", "Creative direction / senior design roles"],
+      areas: ["Premium web experiences", "AI content and video systems", "Brand and campaign systems", "AI agents and automation"],
     },
   },
   lab: {
@@ -259,14 +263,14 @@ const en: SiteContent = {
   contact: {
     heading: "Contact",
     line: "Let's create something that has never existed before.",
-    intents: ["A new project", "Collaboration", "Creative technology consulting", "A role / team conversation"],
-    cta: "GitHub",
-    note: "A short project outline, timeline and objective is enough to start.",
+    intents: ["A website", "AI commercial / video", "AI agent / automation", "Brand and graphic design", "Something else"],
+    note: "Pricing follows the scope: a short outline, timeline and objective is enough to start.",
     form: {
       intent: "Topic",
       name: "Your name",
       email: "Email",
       company: "Company / website",
+      phone: "Phone (optional)",
       message: "Your message",
       messageHint: "What do you want to make, by when, and to what end?",
       send: "Send",
@@ -277,6 +281,8 @@ const en: SiteContent = {
       error: "It didn't go through. Try again or email me directly.",
       tooFast: "A little too quick: try again in a few seconds.",
       direct: "or directly",
+      whatsapp: "Message on WhatsApp",
+      whatsappNote: "Rather not wait? Let's talk about your project on WhatsApp now.",
     },
   },
   footer: { rights: "All rights reserved.", built: "This site shipped through the web agent I build." },

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { translatePath } from "@/content/services";
+import { contactPage, contactPath } from "@/content/contact";
 import { scrollState } from "../three/scroll-state";
 
 // Apple-style liquid glass capsule floating at the top of every page, above
@@ -26,8 +27,9 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
     { href: `/${locale}#work`, id: "work", label: t.work },
     { href: `/${locale}#ai-systems`, id: "ai-systems", label: locale === "tr" ? "AI Sistemleri" : "AI Systems" },
     { href: `/${locale}/lab`, id: "lab", label: t.lab },
-    { href: `/${locale}#contact`, id: "contact", label: t.contact },
   ];
+  // The contact page, the one action, set apart from the section links.
+  const cta = { href: contactPath(locale), label: contactPage[locale].cta };
   // The sheet stays mounted for its closing animation.
   const [closing, setClosing] = useState(false);
   const close = () => {
@@ -179,6 +181,14 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
             </Link>
           ))}
           <Link
+            href={cta.href}
+            data-track="cta_contact"
+            className="nav-cta relative z-[1] ml-1 rounded-full px-4 py-2"
+            style={{ animationDelay: `${0.32 + links.length * 0.05}s` }}
+          >
+            {cta.label}
+          </Link>
+          <Link
             href={otherPath}
             className="nav-link glass-item relative z-[1] ml-1 bg-white/[0.07] px-3 py-2 text-[12px] text-bone/80"
             style={{ animationDelay: `${0.32 + links.length * 0.05}s` }}
@@ -187,6 +197,10 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
             {other.toUpperCase()}
           </Link>
         </nav>
+        <div className="flex items-center gap-1.5 md:hidden">
+        <Link href={cta.href} data-track="cta_contact" className="nav-cta rounded-full px-4 py-2 text-[13px]">
+          {cta.label}
+        </Link>
         <button
           ref={menuButton}
           type="button"
@@ -198,6 +212,7 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
         >
           {t.menu}
         </button>
+        </div>
       </div>
 
       {open && (
@@ -229,6 +244,15 @@ export function Nav({ locale, t }: { locale: Locale; t: SiteContent["nav"] }) {
               </div>
             ))}
           </nav>
+          <Link
+            href={cta.href}
+            onClick={close}
+            data-track="cta_contact"
+            className="nav-sheet-item hero-cta mt-10 w-fit text-lg"
+            style={{ animationDelay: `${0.08 + 0.05 * links.length}s` }}
+          >
+            {cta.label} <span aria-hidden>↗</span>
+          </Link>
           <Link
             href={otherPath}
             onClick={close}

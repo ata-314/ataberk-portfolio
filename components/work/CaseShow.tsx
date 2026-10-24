@@ -182,7 +182,7 @@ export function CaseShow({ locale, title, kicker, idea, live, contact, hero, des
                 <em>{live.host}</em>
               </a>
             )}
-            <a href={`/${locale}#contact`} className="cx-link link-draw">{contact} →</a>
+            <a href="#contact" data-track="cta_contact" className="cx-link link-draw">{contact} →</a>
           </div>
         </div>
         <div className="cx-hero-screen" data-hero-screen>

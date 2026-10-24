@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { preload } from "react-dom";
 import { isLocale } from "@/lib/i18n";
 import { site } from "@/content/site";
+import { contactPage, contactPath } from "@/content/contact";
 import StageLoader from "@/components/gl/StageLoader";
 import { Hero } from "@/components/hero/Hero";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
@@ -45,6 +46,8 @@ export default async function Home({
                 : "Ataberk Soylu: AI specialist, web and graphic designer",
             title: t.title,
             tagline: t.tagline,
+            ctaContact: contactPage[locale].cta,
+            contactHref: contactPath(locale),
             ctaWork: locale === "tr" ? "Seçili işler" : "Selected work",
             ctaAbout: t.nav.about,
             locale,

@@ -140,6 +140,37 @@ header {
   color: var(--bone);
 }
 
+/* The hero's one filled button: the way to the contact page. */
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.8rem 1.4rem;
+  background: var(--lime);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-shadow: none;
+  box-shadow: 0 12px 34px -14px rgba(200, 255, 62, 0.6);
+  transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1), box-shadow 0.4s ease;
+}
+.hero-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 44px -14px rgba(200, 255, 62, 0.8);
+}
+
+/* The nav's contact link, set apart as the one action. */
+.nav-cta {
+  background: var(--lime);
+  color: var(--ink);
+  font-weight: 600;
+  transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.3s ease;
+}
+.nav-cta:hover {
+  transform: translateY(-1px);
+}
+
 .hero-tagline {
   font-family: var(--font-space), sans-serif;
   font-weight: 500;

@@ -9,17 +9,18 @@ import { Footer } from "@/components/sections/HomeSections";
 import { site } from "@/content/site";
 import { galleries } from "@/content/work-gallery";
 import { CaseShow } from "@/components/work/CaseShow";
+import { ContactBlock } from "@/components/contact/ContactPage";
 
 const labels = {
   tr: {
     role: "Rol", year: "Yıl", category: "Kategori", next: "Sonraki proje", back: "Tüm işler",
     built: "Kullanılanlar", chapter: "Bölüm", phones: "Cepte de aynı his.", scroll: "Kaydır", screens: "Ekranlar", desktop: "Masaüstü", phone: "Mobil", app: "Uygulama ekranları",
-    ask: "Markan için benzerini birlikte kuralım.", askBody: "Bir site, bir uygulama ya da bir lansman deneyimi: fikrini anlat, nasıl kurulacağını birlikte çıkaralım.", askCta: "İletişime geç",
+    ask: "Markan için benzerini birlikte kuralım.", askCta: "İletişime geç",
   },
   en: {
     role: "Role", year: "Year", category: "Category", next: "Next project", back: "All work",
     built: "Built with", chapter: "Chapter", phones: "The same feel, in hand.", scroll: "Scroll", screens: "Screens", desktop: "Desktop", phone: "Mobile", app: "App screens",
-    ask: "Let's build something like this for your brand.", askBody: "A site, an app or a launch experience: tell me the idea and we'll work out how to build it together.", askCta: "Get in touch",
+    ask: "Let's build something like this for your brand.", askCta: "Get in touch",
   },
 };
 
@@ -218,12 +219,8 @@ export default async function CasePage({
 
       {/* The offer: a brief for the visitor's own project */}
       <section className="px-6 md:px-10" style={{ paddingTop: "var(--space-section)" }}>
-        <div className="case-ask case-rise mx-auto max-w-7xl">
-          <h2 className="font-display">{l.ask}</h2>
-          <p>{l.askBody}</p>
-          <Link href={`/${locale}#contact`} className="case-live">
-            {l.askCta} <span aria-hidden="true">→</span>
-          </Link>
+        <div className="mx-auto max-w-7xl">
+          <ContactBlock locale={locale} heading={l.ask} />
         </div>
       </section>
 

@@ -5,6 +5,7 @@ import { site } from "@/content/site";
 import { work } from "@/content/work";
 import { services, servicePath, type Service } from "@/content/services";
 import { Footer } from "@/components/sections/HomeSections";
+import { ContactBlock } from "@/components/contact/ContactPage";
 import "./services-page.css";
 
 // The service hub (/tr/hizmetler, /en/services) and one page per service.
@@ -34,16 +35,8 @@ function Crumbs({ locale, current }: { locale: Locale; current?: string }) {
   );
 }
 
-function Cta({ locale }: { locale: Locale }) {
-  const l = services[locale].labels;
-  return (
-    <section className="svc-cta">
-      <p className="max-w-xl text-lg text-bone-dim">{l.ctaLine}</p>
-      <Link href={`/${locale}#contact`} className="svc-pill">
-        {l.cta} <span aria-hidden>↗</span>
-      </Link>
-    </section>
-  );
+function Cta({ locale, serviceKey }: { locale: Locale; serviceKey?: string }) {
+  return <ContactBlock locale={locale} heading={services[locale].labels.ctaLine} serviceKey={serviceKey} />;
 }
 
 function OtherServices({ locale, except }: { locale: Locale; except?: string }) {
@@ -234,7 +227,7 @@ export function ServiceDetail({ locale, item }: { locale: Locale; item: Service 
             </div>
           </section>
 
-          <Cta locale={locale} />
+          <Cta locale={locale} serviceKey={item.key} />
 
           <section>
             <h2 className="svc-h2">{s.labels.all}</h2>

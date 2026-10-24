@@ -7,7 +7,6 @@ import { ContactForm } from "./ContactForm";
 import { services, servicePath } from "@/content/services";
 import { PROFILES } from "@/lib/url";
 
-const CONTACT_URL = "https://github.com/ata-314";
 const CONTACT_EMAIL = "ataberk@ataberksoylu.com";
 
 // Second act of the page: the About story, set openly beside the
@@ -91,15 +90,13 @@ export function ContactFinale({ locale, t }: { locale: Locale; t: SiteContent["c
           <span>{t.form.direct}</span>
           <a
             href={`mailto:${CONTACT_EMAIL}`}
+            data-track="email"
             className="contact-link group font-display inline-flex items-baseline gap-2 text-xl font-semibold tracking-[-0.02em] text-bone md:text-2xl"
           >
             <span className="link-draw">{CONTACT_EMAIL}</span>
             <span aria-hidden className="text-lime transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1">
               ↗
             </span>
-          </a>
-          <a href={CONTACT_URL} target="_blank" rel="noreferrer" className="link-draw">
-            {t.cta} ↗
           </a>
         </div>
       </div>

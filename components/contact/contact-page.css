@@ -1,0 +1,57 @@
+/* Contact page and the form block closing service and case pages. */
+
+.contact-steps {
+  display: grid;
+  gap: 1rem;
+  list-style: none;
+}
+.contact-steps li {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0 0 1rem 1.6rem;
+  position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.contact-steps li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--lime);
+}
+
+.contact-clients {
+  display: grid;
+  gap: 0;
+  list-style: none;
+}
+@media (min-width: 768px) {
+  .contact-clients {
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 3rem;
+  }
+}
+.contact-clients li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.contact-block {
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border-radius: 2rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  scroll-margin-top: 6rem;
+}

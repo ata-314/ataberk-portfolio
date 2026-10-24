@@ -274,6 +274,7 @@ export type Message = {
   name: string;
   email: string;
   company: string | null;
+  phone: string | null;
   intent: string | null;
   message: string;
   ref: string | null;
@@ -303,6 +304,12 @@ export function Messages({ list, labels }: { list: Message[]; labels: Map<string
             <p className="text-xs text-white/50">
               <a href={`mailto:${m.email}`} className="text-white/80 underline underline-offset-2">{m.email}</a>
               {m.company && ` · ${m.company}`}
+              {m.phone && (
+                <>
+                  {" · "}
+                  <a href={`tel:${m.phone}`} className="text-white/80 underline underline-offset-2">{m.phone}</a>
+                </>
+              )}
               {` · ${[m.city, m.country].filter(Boolean).join(", ") || "Konum bilinmiyor"}`}
               {m.device && ` · ${m.device}`}
             </p>

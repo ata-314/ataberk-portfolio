@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
+import { trackEvent } from "@/components/track/Tracker";
 import "./contact.css";
 
 // The contact finale's form, centred on frosted glass over the returning matter.
@@ -20,10 +21,12 @@ const read = (key: string) => {
 
 type Status = "idle" | "sending" | "sent" | "error" | "fast";
 type T = SiteContent["contact"]["form"];
-type Props = { locale: Locale; intents: string[]; t: T };
+// `initial` preselects a topic, e.g. "Web sitesi" on the web design page.
+type Props = { locale: Locale; intents: string[]; t: T; initial?: string };
 
 function useContactForm(locale: Locale, first: string) {
   const [status, setStatus] = useState<Status>("idle");
+  const [whatsapp, setWhatsapp] = useState<string | null>(null);
   const [intent, setIntent] = useState(first);
   // The thank-you pane keeps the form's height so the page doesn't jump.
   const [height, setHeight] = useState<number>();
@@ -51,7 +54,9 @@ function useContactForm(locale: Locale, first: string) {
       if (res.ok && out.ok) {
         setHeight(form.current?.offsetHeight);
         form.current?.reset();
+        setWhatsapp(typeof out.whatsapp === "string" ? out.whatsapp : null);
         setStatus("sent");
+        trackEvent("form_sent");
       } else setStatus(out.error === "fast" ? "fast" : "error");
     } catch {
       setStatus("error");
@@ -59,13 +64,15 @@ function useContactForm(locale: Locale, first: string) {
   }
 
   const onFocus = () => {
-    if (!opened.current) opened.current = Date.now();
+    if (opened.current) return;
+    opened.current = Date.now();
+    trackEvent("form_start");
   };
   const again = () => {
     opened.current = Date.now();
     setStatus("idle");
   };
-  return { status, intent, setIntent, height, form, submit, onFocus, again };
+  return { status, intent, setIntent, height, form, submit, onFocus, again, whatsapp };
 }
 
 // Plays the entrance once, when a quarter of the form is on screen.
@@ -97,12 +104,21 @@ function Honeypot() {
   return <input name="website" tabIndex={-1} autoComplete="off" aria-hidden className="absolute -left-[9999px] h-px w-px opacity-0" />;
 }
 
-function Sent({ t, height, again, className }: { t: T; height?: number; again: () => void; className: string }) {
+function Sent({ t, height, again, whatsapp, className }: { t: T; height?: number; again: () => void; whatsapp: string | null; className: string }) {
   return (
     <div role="status" style={{ minHeight: height }} className={`${className} cf-sent flex flex-col items-center justify-center text-center`}>
       <span aria-hidden className="cf-sent-dot mb-7 block h-3 w-3 rounded-full bg-lime" />
       <p className="font-display text-4xl font-semibold tracking-[-0.04em] md:text-5xl">{t.sentTitle}</p>
       <p className="mt-4 text-bone-dim">{t.sentBody}</p>
+      {whatsapp && (
+        <>
+          <p className="mt-8 max-w-sm text-sm text-bone-dim">{t.whatsappNote}</p>
+          <a href={whatsapp} target="_blank" rel="noopener noreferrer" data-track="whatsapp" className="cf-send group mt-4">
+            {t.whatsapp}
+            <span aria-hidden className="transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1">↗</span>
+          </a>
+        </>
+      )}
       <button type="button" onClick={again} className="link-draw mt-10 text-sm text-bone">
         {t.again} →
       </button>
@@ -206,13 +222,16 @@ function TopicSlider({ intents, intent, setIntent }: { intents: string[]; intent
   );
 }
 
-export function ContactForm({ locale, intents, t }: Props) {
-  const { status, intent, setIntent, height, form, submit, onFocus, again } = useContactForm(locale, intents[0]);
+export function ContactForm({ locale, intents, t, initial }: Props) {
+  const { status, intent, setIntent, height, form, submit, onFocus, again, whatsapp } = useContactForm(
+    locale,
+    initial && intents.includes(initial) ? initial : intents[0],
+  );
   const { ref, inView } = useEntrance();
   return (
     <div ref={ref} className="cf-stage" data-in={inView || undefined}>
       {status === "sent" ? (
-        <Sent t={t} height={height} again={again} className="cf-glass cf-pane p-10" />
+        <Sent t={t} height={height} again={again} whatsapp={whatsapp} className="cf-glass cf-pane p-10" />
       ) : (
         <form ref={form} onSubmit={submit} onFocus={onFocus} className="cf-glass cf-pane cf-sheen relative flex flex-col gap-5 p-6 md:p-10">
           <p data-a style={order(0)} className="cf-label text-center">{t.intent}</p>
@@ -227,16 +246,22 @@ export function ContactForm({ locale, intents, t }: Props) {
               <input name="email" type="email" required maxLength={200} autoComplete="email" className="cf-input" />
             </label>
           </div>
-          <label data-a style={order(5)} className="cf-well">
-            <span className="cf-label">{t.company}</span>
-            <input name="company" maxLength={200} autoComplete="organization" className="cf-input" />
-          </label>
-          <label data-a style={order(6)} className="cf-well">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label data-a style={order(5)} className="cf-well">
+              <span className="cf-label">{t.company}</span>
+              <input name="company" maxLength={200} autoComplete="organization" className="cf-input" />
+            </label>
+            <label data-a style={order(6)} className="cf-well">
+              <span className="cf-label">{t.phone}</span>
+              <input name="phone" type="tel" maxLength={40} autoComplete="tel" className="cf-input" />
+            </label>
+          </div>
+          <label data-a style={order(7)} className="cf-well">
             <span className="cf-label">{t.message}</span>
             <textarea name="message" required rows={4} maxLength={5000} placeholder={t.messageHint} data-lenis-prevent className="cf-input resize-none" />
           </label>
           <Honeypot />
-          <SendRow t={t} status={status} i={7} wide />
+          <SendRow t={t} status={status} i={8} wide />
         </form>
       )}
     </div>

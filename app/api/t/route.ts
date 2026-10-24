@@ -3,7 +3,8 @@ import { isBot, parseUa } from "@/lib/track/ua";
 import { networkOf } from "@/lib/track/network";
 
 // Page-view beacon from components/track/Tracker.tsx.
-// { id, visitor, ref, path, referrer } records a view; { id, duration } closes it.
+// { id, visitor, ref, path, referrer } records a view; { id, duration } closes it;
+// { event, visitor, path } records a conversion step.
 
 const UUID = /^[0-9a-f-]{36}$/i;
 const REF = /^[a-z0-9-]{1,64}$/;
@@ -20,6 +21,17 @@ export async function POST(request: Request) {
   } catch {
     return new Response(null, { status: 400 });
   }
+  // A conversion step (Tracker.tsx trackEvent).
+  if (typeof body.event === "string") {
+    const event = /^[a-z_]{2,40}$/.test(body.event) ? body.event : null;
+    const visitor = typeof body.visitor === "string" && UUID.test(body.visitor) ? body.visitor : null;
+    if (!event || !visitor) return new Response(null, { status: 400 });
+    const ref = typeof body.ref === "string" && REF.test(body.ref) ? body.ref : null;
+    await sql()`insert into events (visitor, ref, name, path, country)
+      values (${visitor}, ${ref}, ${event}, ${clip(body.path, 300)}, ${request.headers.get("x-vercel-ip-country")})`;
+    return new Response(null, { status: 204 });
+  }
+
   const id = typeof body.id === "string" && UUID.test(body.id) ? body.id : null;
   if (!id) return new Response(null, { status: 400 });
 

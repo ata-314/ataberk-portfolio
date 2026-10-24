@@ -8,6 +8,14 @@ import { type LinkRow, type Message, type Visit, Messages, People, Tally, Visito
 export const dynamic = "force-dynamic";
 
 const RANGES = [1, 7, 30, 90];
+// Conversion steps from Tracker.tsx, in the order a visitor takes them (people, not clicks).
+const FUNNEL = [
+  ["cta_contact", "İletişim butonuna tıkladı"],
+  ["form_start", "Formu doldurmaya başladı"],
+  ["form_sent", "Formu gönderdi"],
+  ["whatsapp", "WhatsApp'a geçti"],
+  ["email", "E-posta linkine tıkladı"],
+] as const;
 
 export default async function StatsPage({ searchParams }: { searchParams: Promise<{ gun?: string }> }) {
   if (!(await isSignedIn())) return <SignIn />;
@@ -24,6 +32,10 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
 
   const messages = (await db`select * from messages order by created_at desc limit 200`) as Message[];
   const labels = new Map(links.map((l) => [l.slug, l.label]));
+  const steps = (await db`select name, count(distinct visitor)::int as n from events
+    where created_at > now() - make_interval(days => ${days}) group by name`) as { name: string; n: number }[];
+  const stepCount = new Map(steps.map((e) => [e.name, e.n]));
+  const funnel = FUNNEL.map(([name, label]) => [label, stepCount.get(name) ?? 0] as [string, number]);
   const wrote = new Set(messages.map((m) => m.ref).filter(Boolean));
 
   const byRef = new Map<string, Visit[]>();
@@ -48,6 +60,10 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
       <section className="mb-10">
         <h2 className="mb-3 text-sm font-medium">Mesajlar ({messages.length})</h2>
         <Messages list={messages} labels={labels} />
+      </section>
+
+      <section className="mb-10">
+        <Tally title={`Dönüşüm hunisi · son ${days} gün · kişi`} rows={funnel} />
       </section>
 
       <section className="mb-10 rounded-xl border border-white/10 p-4">

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { BASE_URL } from "@/lib/url";
 import { work } from "@/content/work";
+import { contactPath } from "@/content/contact";
 import { services, servicePath, serviceAlternates } from "@/content/services";
 
 const BASE = BASE_URL;
@@ -22,6 +23,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     ...pair("", 1),
     ...pair("/about", 0.8),
+    ...(["tr", "en"] as const).map((l) => ({
+      url: `${BASE}${contactPath(l)}`,
+      lastModified,
+      changeFrequency: "monthly" as const,
+      priority: 0.9,
+      alternates: { languages: abs({ tr: contactPath("tr"), en: contactPath("en"), "x-default": contactPath("tr") }) },
+    })),
     ...pair("/lab", 0.6),
     ...work.tr.items.flatMap((w) => pair(`/work/${w.slug}`, 0.8)),
     ...(["tr", "en"] as const).map((l) => ({

@@ -29,6 +29,15 @@ function send(body: object) {
 
 let firstView = true;
 
+// Conversion steps (contact buttons, form start and send, WhatsApp, email) go to the
+// same beacon as { event, visitor, path }. Links carry data-track="<name>"; code
+// calls trackEvent directly.
+export function trackEvent(name: string) {
+  const visitor = read("ab_visitor");
+  if (!visitor || read("ab_notrack") || navigator.webdriver) return;
+  send({ event: name, visitor, ref: read("ab_ref"), path: window.location.pathname });
+}
+
 // Campaign tags, or the click id an ad or a social app appends, as one short label.
 function campaign(params: URLSearchParams) {
   const utm = ["utm_source", "utm_medium", "utm_campaign"].map((k) => params.get(k)).filter(Boolean);
@@ -104,6 +113,16 @@ export function Tracker() {
       report();
     };
   }, [pathname]);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as Element | null)?.closest?.("[data-track]");
+      const name = el?.getAttribute("data-track");
+      if (name) trackEvent(name);
+    };
+    document.addEventListener("click", onClick, { capture: true });
+    return () => document.removeEventListener("click", onClick, { capture: true });
+  }, []);
 
   return null;
 }
