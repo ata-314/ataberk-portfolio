@@ -27,6 +27,7 @@ uniform float arc;
 uniform float time;
 uniform vec2 tilt; // about x, about y
 uniform float part; // this panel's shift along the drum (the band parting)
+uniform float lift; // the shot under the cursor easing forward, toward the camera
 vec3 turn(vec3 p){
   float cx=cos(tilt.x), sx=sin(tilt.x), cy=cos(tilt.y), sy=sin(tilt.y);
   p=vec3(p.x, p.y*cx-p.z*sx, p.y*sx+p.z*cx);
@@ -43,7 +44,9 @@ vec3 band(vec2 uv){
   float h=height*mix(1.0,(back+cos(a))/(back+radius),.78)*(1.0+bend*.28);
   float wave=sin(a*2.6-time*.7)*.045+sin(a*5.3+time*1.1+v*.8)*.022*v;
   float y=v*.5*h+wave*(.5+bend);
-  return centre+turn(vec3(radius*sin(a),y,-radius*cos(a)));
+  // Forward off the band, most at its middle, so the shot bows out a little.
+  float r=radius*(1.0-lift*(.13+.05*sin(uv.x*3.1416)));
+  return centre+turn(vec3(r*sin(a),y*(1.0-lift*.04),-r*cos(a)));
 }`;
 
 const meshVertex = `#version 300 es
@@ -76,8 +79,7 @@ uniform sampler2D picture;
 uniform vec2 resolution;
 uniform float time;
 uniform float solid;
-uniform float dim; // this panel's share of the picture (open film, hover)
-uniform float lift;
+uniform float dim; // this panel's share of the picture while a film is open
 out vec4 color;
 float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 void main(){
@@ -104,7 +106,6 @@ void main(){
   pic*=mix(.35,1.0,smoothstep(0.0,.006,min(vUv.x,1.0-vUv.x)));
   // Stippled fade into the grain cloud at the sides.
   float keep=1.0-smoothstep(.55,.98,abs(ndc.x))*.85;
-  pic*=1.0+lift*.14;
   float a=solid*dim*smoothstep(.12,.45,-vView.z);
   float r=h21(cell+7.7);
   a*=smoothstep(r-.04,r+.04,keep);
@@ -246,7 +247,7 @@ export type StripFrame = {
   // The code swarm's grains, null until sampled.
   swarm: { texture: WebGLTexture; cols: number; rows: number } | null;
   // The player: which shot was clicked (-1 none), how far open (0..1),
-  // its frame in NDC (left, bottom, right, top), and the film under the
+  // its frame in NDC (left, bottom, right, top), and the shot under the
   // cursor.
   openPanel: number;
   openAmount: number;
@@ -376,6 +377,7 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
   // The last frame's panel angles, for picking.
   let lastAngles: number[] = [];
   let lastOpenAngles: number[] = [];
+  const lifts = new Float32Array(panels.length);
   let lastNarrow = false;
 
   const shared = (u: Record<string, WebGLUniformLocation | null>, f: StripFrame, narrow: boolean) => {
@@ -460,6 +462,12 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
       });
       lastAngles = present && f.enter > 0.7 && f.leave < 0.02 ? angles : [];
       lastOpenAngles = angles;
+      // The shot under the cursor eases forward; the others settle back.
+      const ease6 = Math.min(1, delta * 6);
+      for (let i = 0; i < count; i++) {
+        const target = i === f.hover && f.openAmount < 0.01 ? 1 : 0;
+        lifts[i] += (target - lifts[i]) * ease6;
+      }
       lastNarrow = narrow;
       for (let i = 0; i < count; i++) {
         const p = panels[i];
@@ -511,7 +519,7 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
           gl.uniform1f(um.part, o.part);
           gl.uniform1f(um.morph, o.morph);
           gl.uniform1f(um.dim, o.dim);
-          gl.uniform1f(um.lift, Math.floor(i / STRIP_SHOTS) === f.hover && f.openAmount < 0.01 ? 1 : 0);
+          gl.uniform1f(um.lift, lifts[i]);
           gl.drawArrays(gl.TRIANGLES, 0, COLUMNS * 6);
         }
       }
@@ -552,6 +560,7 @@ export async function createStripLayer(gl: WebGL2RenderingContext, mobile: boole
         gl.bindTexture(gl.TEXTURE_2D, panels[i].texture);
         gl.uniform1f(up.start, angles[i] - STEP * 0.5);
         gl.uniform1f(up.part, o.part);
+        gl.uniform1f(up.lift, lifts[i]);
         gl.uniform1f(up.fade, o.fade);
         gl.drawArrays(gl.POINTS, 0, GRAINS);
       }

@@ -76,12 +76,13 @@ export function Strip({ locale }: { locale: Locale }) {
   };
 
   // The band is drawn on the stage: the hit layer asks it which shot is
-  // under the pointer, for the cursor, the hover lift and the click.
+  // under the pointer, for the cursor, the hover (the shot eases forward)
+  // and the click.
   const pickAt = (e: { clientX: number; clientY: number }) => (stripState.pick ? stripState.pick(e.clientX, e.clientY) : -1);
   const openShot = (panel: number) => setOpen({ film: Math.floor(panel / STRIP_SHOTS), panel });
   const onHitMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const hit = e.pointerType === "mouse" && !open ? pickAt(e) : -1;
-    stripState.hover = hit >= 0 ? Math.floor(hit / STRIP_SHOTS) : -1;
+    stripState.hover = hit;
     e.currentTarget.style.cursor = hit >= 0 ? "pointer" : "";
     e.currentTarget.toggleAttribute("data-cursor", hit >= 0);
   };

@@ -34,7 +34,7 @@ export const workState = {
 export const stripState = {
   open: -1, // film being played, -1 when none
   panel: -1, // the shot (band panel) it was opened from
-  hover: -1, // film under the cursor
+  hover: -1, // shot under the cursor
   rect: [0, 0, 0, 0] as [number, number, number, number], // player frame, client px (l, t, r, b)
   pick: null as null | ((clientX: number, clientY: number) => number), // the shot under a point
   clipTime: null as null | ((panel: number) => number), // where a shot's loop is (s)
