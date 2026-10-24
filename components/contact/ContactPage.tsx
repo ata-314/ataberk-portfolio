@@ -6,6 +6,7 @@ import { work } from "@/content/work";
 import { contactPage, contactPath, clientWork } from "@/content/contact";
 import { Footer } from "@/components/sections/HomeSections";
 import { ContactForm } from "@/components/sections/ContactForm";
+import { ClientStrip } from "@/components/sections/ClientStrip";
 import "@/components/services/services-page.css";
 import "./contact-page.css";
 
@@ -95,6 +96,8 @@ export function ContactPage({ locale }: { locale: Locale }) {
           </section>
         </div>
       </div>
+
+      <ClientStrip locale={locale} className="mt-16" />
 
       <div className="px-6 md:px-10" style={{ paddingBlock: "var(--space-section)" }}>
         <div className="mx-auto max-w-7xl space-y-24">

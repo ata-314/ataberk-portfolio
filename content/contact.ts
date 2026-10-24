@@ -21,6 +21,16 @@ type ContactPage = {
 // Client work shown on the contact page as proof, linked to its case page.
 export const clientWork = ["ala-cekmekoy", "ucay-360", "dbh-group", "the-lock", "fidan-property", "ecombox"];
 
+// The logo band (components/sections/ClientStrip.tsx): each client's own mark, taken
+// from the sites built for them. `h` evens out how large each reads (wide marks lower).
+export const clientLogos = [
+  { slug: "ucay-360", name: "Üçay 360", src: "/clients/ucay-360.svg", w: 334, hgt: 132, h: 0.95 },
+  { slug: "the-lock", name: "The Lock Adres Barbarossa", src: "/clients/the-lock.png", w: 164, hgt: 160, h: 1.35 },
+  { slug: "dbh-group", name: "DBH Group", src: "/clients/dbh-group.svg", w: 167, hgt: 49, h: 0.7 },
+  { slug: "ala-cekmekoy", name: "A'lâ Çekmeköy Nefes", src: "/clients/ala-cekmekoy.png", w: 276, hgt: 160, h: 1.25 },
+  { slug: "fidan-property", name: "Fidan Property", src: "/clients/fidan-property.png", w: 448, hgt: 160, h: 0.95 },
+];
+
 export const contactPage: Record<Locale, ContactPage> = {
   tr: {
     title: "İletişim ve Proje Teklifi | Yapay Zeka, Web ve Tasarım",

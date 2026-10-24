@@ -1,0 +1,77 @@
+/* Client logo band: every mark in the site's bone, drifting left; it slows under the
+   pointer, and the edges dissolve into the page. */
+
+.client-strip {
+  position: relative;
+  z-index: 20;
+  padding-block: clamp(2.5rem, 6vw, 4.5rem);
+}
+.cs-label {
+  margin: 0 auto 1.75rem;
+  padding-inline: 1.25rem;
+  max-width: 88rem;
+  font-size: 0.9rem;
+  color: var(--bone-dim);
+  text-align: center;
+}
+.cs-track {
+  display: flex;
+  width: max-content;
+  animation: cs-drift 38s linear infinite;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.client-strip {
+  overflow: hidden;
+}
+.client-strip:hover .cs-track {
+  animation-duration: 90s;
+}
+.cs-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(3rem, 7vw, 6.5rem);
+  padding-right: clamp(3rem, 7vw, 6.5rem);
+  list-style: none;
+}
+.cs-logo {
+  display: block;
+}
+.cs-logo img {
+  display: block;
+  width: auto;
+  height: calc(clamp(2rem, 3.4vw, 2.9rem) * var(--h, 1));
+  /* One colour for every mark, whatever its own palette. */
+  filter: brightness(0) invert(0.93) drop-shadow(0 2px 10px rgba(10, 10, 11, 0.8));
+  opacity: 0.72;
+  transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.cs-logo:hover img,
+.cs-logo:focus-visible img {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+
+@keyframes cs-drift {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-track {
+    animation: none;
+    width: auto;
+    justify-content: center;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .cs-row {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-right: 0;
+  }
+  .cs-row[aria-hidden] {
+    display: none;
+  }
+}

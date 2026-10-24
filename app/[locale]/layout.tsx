@@ -9,6 +9,7 @@ import { PERSON_ID, PROFILES } from "@/lib/url";
 
 import { Nav } from "@/components/nav/Nav";
 import { Tracker } from "@/components/track/Tracker";
+import { ContactFab } from "@/components/contact/ContactFab";
 import "../globals.css";
 
 // The width axis gives the film strip its condensed titles.
@@ -152,6 +153,7 @@ export default async function LocaleLayout({
         </a>
         <Nav locale={locale} t={t.nav} />
         {children}
+        <ContactFab locale={locale} />
         <Tracker />
         <script
           type="application/ld+json"

@@ -1,0 +1,128 @@
+/* The bird in the corner (ContactFab.tsx): a lime disc carrying the site's mark in
+   ink. It lands with a small overshoot, floats now and then, and under the pointer
+   lifts its wing while the label slides out of it. */
+
+.fab {
+  position: fixed;
+  right: clamp(1rem, 2.4vw, 1.75rem);
+  bottom: calc(clamp(1rem, 2.4vw, 1.75rem) + env(safe-area-inset-bottom));
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(36px) scale(0.6) rotate(-18deg);
+  transition:
+    opacity 0.4s ease,
+    transform 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.fab[data-shown] {
+  pointer-events: auto;
+  opacity: 1;
+  transform: none;
+}
+html[data-menu-open] .fab {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fab-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3.6rem;
+  height: 3.6rem;
+  flex: none;
+  border-radius: 999px;
+  background: var(--lime);
+  box-shadow:
+    0 14px 34px -12px rgba(200, 255, 62, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+}
+/* A ring leaves the disc every few seconds, like a wingbeat in still air. */
+.fab-mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1.5px solid var(--lime);
+  opacity: 0;
+  animation: fab-ring 4.8s cubic-bezier(0.22, 1, 0.36, 1) 1.2s infinite;
+}
+.fab-bird {
+  width: 56%;
+  height: 56%;
+  background: var(--ink);
+  -webkit-mask: url("/brand/logo.png") center / contain no-repeat;
+  mask: url("/brand/logo.png") center / contain no-repeat;
+  transform-origin: 40% 60%;
+  animation: fab-float 4.8s ease-in-out 1.2s infinite;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fab-label {
+  margin-right: -1.8rem;
+  padding: 0.85rem 2.4rem 0.85rem 1.2rem;
+  border-radius: 999px 0 0 999px;
+  background: rgba(16, 17, 15, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  color: var(--bone);
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+  clip-path: inset(0 0 0 100% round 999px);
+  opacity: 0;
+  transition:
+    clip-path 0.7s cubic-bezier(0.19, 1, 0.22, 1),
+    opacity 0.3s ease;
+}
+
+.fab[data-peek] .fab-label,
+.fab:focus-visible .fab-label {
+  clip-path: inset(0 0 0 0 round 999px);
+  opacity: 1;
+}
+@media (hover: hover) {
+  .fab:hover .fab-label {
+    clip-path: inset(0 0 0 0 round 999px);
+    opacity: 1;
+  }
+  .fab:hover .fab-mark {
+    transform: scale(1.06);
+  }
+  .fab:hover .fab-bird {
+    animation-play-state: paused;
+    transform: translateY(-3px) rotate(-14deg) scale(1.05);
+  }
+}
+
+@keyframes fab-float {
+  0%, 62%, 100% { transform: none; }
+  72% { transform: translateY(-4px) rotate(-9deg); }
+  82% { transform: translateY(-1px) rotate(4deg); }
+  90% { transform: translateY(-2px) rotate(-2deg); }
+}
+@keyframes fab-ring {
+  0%, 60% { opacity: 0; transform: scale(1); }
+  64% { opacity: 0.7; }
+  100% { opacity: 0; transform: scale(1.65); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fab,
+  .fab-label,
+  .fab-bird {
+    transition: opacity 0.3s ease;
+  }
+  .fab {
+    transform: none;
+  }
+  .fab-bird,
+  .fab-mark::after {
+    animation: none;
+  }
+}

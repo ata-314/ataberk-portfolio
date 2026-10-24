@@ -6,6 +6,7 @@ import { work } from "@/content/work";
 import { services, servicePath, type Service } from "@/content/services";
 import { Footer } from "@/components/sections/HomeSections";
 import { ContactBlock } from "@/components/contact/ContactPage";
+import { ClientStrip } from "@/components/sections/ClientStrip";
 import "./services-page.css";
 
 // The service hub (/tr/hizmetler, /en/services) and one page per service.
@@ -226,6 +227,10 @@ export function ServiceDetail({ locale, item }: { locale: Locale; item: Service 
               ))}
             </div>
           </section>
+
+          <div className="-mx-6 md:-mx-10">
+            <ClientStrip locale={locale} />
+          </div>
 
           <Cta locale={locale} serviceKey={item.key} />
 
