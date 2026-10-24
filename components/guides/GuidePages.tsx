@@ -105,16 +105,14 @@ export function GuideHub({ locale }: { locale: Locale }) {
   return (
     <main id="content" className="sub-page relative z-10">
       <PageMotion />
-      <PageHero
-        crumbs={[{ label: services[locale].labels.home, href: `/${locale}` }, { label: g.hub.h1 }]}
-        title={g.hub.h1}
-        lead={g.hub.lead}
-        visual={
-          <div className="portrait-frame h-full">
-            <CodeRain className="absolute inset-0 h-full w-full opacity-80" />
-          </div>
-        }
-      />
+      <div className="guide-hub-head">
+        <CodeRain className="guide-hub-rain" />
+        <PageHero
+          crumbs={[{ label: services[locale].labels.home, href: `/${locale}` }, { label: g.hub.h1 }]}
+          title={g.hub.h1}
+          lead={g.hub.lead}
+        />
+      </div>
       <div className="sub-body">
         <ul className="guide-grid">
           {g.items.map((item, i) => (
@@ -291,7 +289,6 @@ export function GuideArticle({ locale, guide }: { locale: Locale; guide: Guide }
             </ul>
           </SubSection>
         )}
-        <ContactBlock locale={locale} heading={g.labels.cta} serviceKey={guide.service} />
         {others.length > 0 && (
           <section>
             <h2 className="sub-h2">{g.labels.more}</h2>
@@ -303,6 +300,7 @@ export function GuideArticle({ locale, guide }: { locale: Locale; guide: Guide }
           </section>
         )}
       </div>
+      <ContactBlock locale={locale} heading={g.labels.cta} serviceKey={guide.service} />
       <Footer t={site[locale].footer} name={site[locale].name} locale={locale} />
       <JsonLd data={schema} />
     </main>

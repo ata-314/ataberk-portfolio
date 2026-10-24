@@ -134,8 +134,8 @@ export function ServiceHub({ locale }: { locale: Locale }) {
         <div className="-mx-5 md:-mx-10">
           <ClientStrip locale={locale} />
         </div>
-        <Cta locale={locale} />
       </div>
+      <Cta locale={locale} />
       <Footer t={site[locale].footer} name={site[locale].name} locale={locale} />
       <JsonLd data={schema} />
     </main>
@@ -274,12 +274,11 @@ export function ServiceDetail({ locale, item }: { locale: Locale; item: Service 
           <ClientStrip locale={locale} />
         </div>
 
-        <Cta locale={locale} serviceKey={item.key} />
-
         <SubSection heading={s.labels.all}>
           <OtherServices locale={locale} except={item.slug} />
         </SubSection>
       </div>
+      <Cta locale={locale} serviceKey={item.key} />
       <Footer t={site[locale].footer} name={site[locale].name} locale={locale} />
       <JsonLd data={schema} />
     </main>

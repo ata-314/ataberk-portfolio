@@ -130,7 +130,9 @@ export default async function AboutPage({
                 <h3 className="!text-2xl">{v.name}</h3>
                 <p>{v.desc}</p>
                 {v.name === "ModdTeam" && (
-                  <Link href={`/${locale}/work/modd-ai`} className="link-draw mt-5 inline-block text-sm text-bone">→</Link>
+                  <Link href={`/${locale}/work/modd-ai`} className="link-draw mt-5 inline-block text-sm text-bone">
+                    {locale === "tr" ? "Vakayı incele" : "See the case"} →
+                  </Link>
                 )}
               </div>
             ))}
@@ -173,9 +175,8 @@ export default async function AboutPage({
         <div className="-mx-5 md:-mx-10">
           <ClientStrip locale={locale} />
         </div>
-
-        <ContactBlock locale={locale} heading={m.cta} />
       </div>
+      <ContactBlock locale={locale} heading={m.cta} />
       <Footer t={site[locale].footer} name={site[locale].name} locale={locale} />
       <script
         type="application/ld+json"

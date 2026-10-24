@@ -19,17 +19,38 @@ const EMAIL = "ataberk@ataberksoylu.com";
 // as an index into site.contact.intents.
 const SERVICE_INTENT: Record<string, number> = { "web-design": 0, "web-dev": 0, ux: 0, "real-estate": 0, "ai-art": 1, motion: 1, ai: 2, graphic: 3 };
 
-// The form with a line above it, closing service and case pages so a visitor can
-// write from where they are instead of being sent to the home page.
+// The full-width band closing inner pages: the line, what happens next and the
+// address beside a form that fills its column, so a visitor writes from where they
+// are instead of being sent to the home page. Rendered outside the page's column.
 export function ContactBlock({ locale, heading, serviceKey }: { locale: Locale; heading: string; serviceKey?: string }) {
   const c = site[locale].contact;
   const at = serviceKey ? SERVICE_INTENT[serviceKey] : undefined;
   return (
-    <section id="contact" className="contact-block">
-      <h2 className="svc-h2 max-w-2xl text-balance">{heading}</h2>
-      <p className="mt-4 max-w-xl text-bone-dim">{c.note}</p>
-      <div className="mt-10 max-w-[46rem]">
-        <ContactForm locale={locale} intents={c.intents} t={c.form} initial={at === undefined ? undefined : c.intents[at]} />
+    <section id="contact" className="contact-band">
+      <div className="contact-band-inner">
+        <div className="contact-band-head">
+          <h2 className="contact-band-title">{heading}</h2>
+          <p className="mt-5 max-w-md text-lg leading-relaxed text-bone-dim">{c.note}</p>
+        </div>
+        {/* Phones: the form right under the line, what happens next after it. */}
+        <div className="contact-band-form">
+          <ContactForm locale={locale} intents={c.intents} t={c.form} initial={at === undefined ? undefined : c.intents[at]} />
+        </div>
+        <div className="contact-band-more">
+          <ul className="contact-band-points">
+            {contactPage[locale].steps.items.map((s) => (
+              <li key={s.name}>
+                <span>
+                  <span className="font-semibold">{s.name}</span>
+                  <span className="text-bone-dim"> · {s.desc}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <a href={`mailto:${EMAIL}`} data-track="email" className="link-draw mt-8 inline-block text-bone">
+            {EMAIL} <span aria-hidden className="text-lime">↗</span>
+          </a>
+        </div>
       </div>
     </section>
   );
@@ -106,7 +127,7 @@ export function ContactPage({ locale }: { locale: Locale }) {
       <div className="px-6 md:px-10" style={{ paddingBlock: "var(--space-section)" }}>
         <div className="mx-auto max-w-7xl space-y-24">
           <section>
-            <h2 className="svc-h2">{p.clients}</h2>
+            <h2 className="svc-h2">{locale === "tr" ? "Bu markalar için yaptıklarım" : "What I made for them"}</h2>
             <ul className="contact-clients mt-8">
               {clients.map((w) => (
                 <li key={w.slug}>

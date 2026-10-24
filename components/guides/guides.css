@@ -139,3 +139,21 @@
 .guide-author {
   margin-top: 2rem;
 }
+
+/* Hub opening: the falling code as a band behind the title, fading at its edges. */
+.guide-hub-head {
+  position: relative;
+}
+.guide-hub-rain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(60% 80% at 75% 45%, #000, transparent 75%);
+  mask-image: radial-gradient(60% 80% at 75% 45%, #000, transparent 75%);
+}
+.guide-hub-head .sub-hero {
+  position: relative;
+}

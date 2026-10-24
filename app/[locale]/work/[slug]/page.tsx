@@ -242,11 +242,9 @@ export default async function CasePage({
       </div>
 
       {/* The offer: a brief for the visitor's own project */}
-      <section className="px-6 md:px-10" style={{ paddingTop: "var(--space-section)" }}>
-        <div className="mx-auto max-w-7xl">
-          <ContactBlock locale={locale} heading={l.ask} />
-        </div>
-      </section>
+      <div style={{ paddingTop: "var(--space-section)" }}>
+        <ContactBlock locale={locale} heading={l.ask} />
+      </div>
 
       {/* Next project */}
       <Link

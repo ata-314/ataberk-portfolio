@@ -174,9 +174,9 @@ textarea.cf-well:focus {
   pointer-events: auto;
   transform: translateY(-50%);
 }
-/* Phones and touch: no slider. All topics wrap, centred, always in view — a
-   sliding row there flickered at its end, where the iOS bounce toggled the fade. */
-@media (hover: none), (max-width: 767px) {
+/* No slider: all topics wrap, centred, always in view. A sliding row flickered at
+   its end on phones (the iOS bounce toggled the fade) and hid topics on desktop. */
+@media all {
   .cf-arrow {
     display: none;
   }
