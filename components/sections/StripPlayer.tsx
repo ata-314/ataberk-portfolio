@@ -2,26 +2,30 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n";
-import { stripCopy, stripFilms, stripFilmSrc } from "@/content/strip";
+import { STRIP_SHOTS, stripCopy, stripFilms, stripFilmSrc } from "@/content/strip";
 import { stripState } from "../three/scroll-state";
 
-// How long the stage takes to fly the film's grains into the frame (and
-// home again), before the picture takes over (or after it has left).
-const GATHER_MS = 780;
+// How long the stage takes to unfold the shot into the frame (and to fold
+// it home), before the film takes over (or after it has left).
+const UNFOLD_MS = 760;
 const LEAVE_MS = 260;
 
-// The full film, opened from the strip. The frame is placed first so the
-// stage can fly the film's grains into it (stripState.rect); once they have
-// gathered the picture rises out of them with a light sweeping across, and
-// plays with sound. Closing (the button, Escape, the veil, or a deliberate
-// scroll) lets the picture go and the grains fly home to the band.
-export function StripPlayer({ locale, film, onClosed }: { locale: Locale; film: number; onClosed: () => void }) {
+// The full film, opened from a shot on the strip. The frame is placed first
+// so the stage can unfold the shot into it (stripState.rect); then the film
+// takes over from the very frame the shot was showing, and plays with sound.
+// Closing (the button, Escape, the veil, or a deliberate scroll) lets the
+// film go and the shot folds back into the band.
+export function StripPlayer({ locale, film, panel, onClosed }: { locale: Locale; film: number; panel: number; onClosed: () => void }) {
   const t = stripCopy[locale];
   const item = stripFilms[film];
   const frame = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const bar = useRef<HTMLElement>(null);
-  const [phase, setPhase] = useState<"gather" | "shown" | "leave">("gather");
+  const [phase, setPhase] = useState<"unfold" | "shown" | "leave">("unfold");
+  const shot = panel % STRIP_SHOTS;
+  // Where the film carries on from: the shot's place in it plus how far its
+  // loop has run (the loop keeps playing while it unfolds).
+  const resumeAt = () => item.shots[shot] + (stripState.clipTime ? stripState.clipTime(panel) : 0);
   const [muted, setMuted] = useState(false);
 
   // Publish the frame's box and open the film on the stage.
@@ -31,28 +35,37 @@ export function StripPlayer({ locale, film, onClosed }: { locale: Locale; film: 
       if (r) stripState.rect = [r.left, r.top, r.right, r.bottom];
     };
     place();
+    stripState.panel = panel;
     stripState.open = film;
     stripState.hover = -1;
+    // Seek ahead to where the shot will be once unfolded, so the decoder is
+    // there in time.
+    const v = video.current;
+    if (v) v.currentTime = resumeAt() + UNFOLD_MS / 1000;
     addEventListener("resize", place);
-    // Without the stage there are no grains to wait for.
-    const wait = stripState.pick ? GATHER_MS : 0;
-    const timer = setTimeout(() => setPhase((p) => (p === "gather" ? "shown" : p)), wait);
+    // Without the stage there is nothing to unfold.
+    const wait = stripState.pick ? UNFOLD_MS : 0;
+    const timer = setTimeout(() => setPhase((p) => (p === "unfold" ? "shown" : p)), wait);
     return () => {
       clearTimeout(timer);
       removeEventListener("resize", place);
     };
-  }, [film]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on open only
+  }, [film, panel]);
 
   // Plays with sound once shown (the click allows it); muted if refused.
   useEffect(() => {
     const v = video.current;
     if (!v || phase !== "shown") return;
+    const at = resumeAt();
+    if (Math.abs(v.currentTime - at) > 0.3) v.currentTime = at;
     v.muted = false;
     v.play().catch(() => {
       v.muted = true;
       setMuted(true);
       void v.play().catch(() => {});
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once shown
   }, [phase]);
 
   const close = useCallback(() => {
@@ -61,7 +74,7 @@ export function StripPlayer({ locale, film, onClosed }: { locale: Locale; film: 
       video.current?.pause();
       setTimeout(() => {
         stripState.open = -1;
-        setTimeout(onClosed, stripState.pick ? GATHER_MS : 0);
+        setTimeout(onClosed, stripState.pick ? UNFOLD_MS : 0);
       }, LEAVE_MS);
       return "leave";
     });
@@ -127,14 +140,13 @@ export function StripPlayer({ locale, film, onClosed }: { locale: Locale; film: 
         <video
           ref={video}
           src={stripFilmSrc(item.slug)}
-          poster={`/strip/${item.slug}-1.jpg`}
+          poster={`/strip/${item.slug}-${shot + 1}.jpg`}
           playsInline
           loop
           preload="auto"
           aria-label={t.pause}
           onClick={toggle}
         />
-        <span className="strip-player-sweep" aria-hidden />
         <span className="strip-player-track" aria-hidden><i ref={bar} /></span>
       </div>
       <div className="strip-player-meta">

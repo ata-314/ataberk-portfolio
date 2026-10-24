@@ -1,19 +1,21 @@
 import type { Locale } from "@/lib/i18n";
 
-// The film strip between the hero and the X: the vertical AI brand films set
-// round the inside of a drum, three shots per film (public/strip/<slug>-<n>.mp4,
-// 4.5 s muted loops cut from the delivered piece, poster <slug>-<n>.jpg). The
-// scroll turns the drum film by film; at its end the camera backs out of the
-// drum, which spins down into the grains of the X. Only work the owner has
-// cleared for the portfolio goes here (the same films as the reel).
+// The film strip between the hero and the X: the vertical AI brand films side
+// by side on a band, three shots per film (public/strip/<slug>-<n>.mp4, 4.5 s
+// muted loops cut from the delivered piece, poster <slug>-<n>.jpg). The scroll
+// turns the band film by film; at its end it breaks into the grains of the X.
+// Only work the owner has cleared for the portfolio goes here (the same films
+// as the reel).
 
-export type StripFilm = { slug: string; title: string };
+// `shots`: where each shot was cut from the full film (s), so the player can
+// carry on from the very frame the clicked shot is showing.
+export type StripFilm = { slug: string; title: string; shots: number[] };
 
 export const stripFilms: StripFilm[] = [
-  { slug: "piyes-levent", title: "Piyes Levent" },
-  { slug: "elega-gunesli", title: "Elega Güneşli" },
-  { slug: "eska-edition", title: "Eska Édition" },
-  { slug: "en-bostanci", title: "eN Bostancı" },
+  { slug: "piyes-levent", title: "Piyes Levent", shots: [5.5, 13, 34] },
+  { slug: "elega-gunesli", title: "Elega Güneşli", shots: [2, 8, 13] },
+  { slug: "eska-edition", title: "Eska Édition", shots: [0.2, 13, 24] },
+  { slug: "en-bostanci", title: "eN Bostancı", shots: [0.2, 11, 21] },
 ];
 
 export const STRIP_SHOTS = 3;
