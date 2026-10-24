@@ -1,6 +1,31 @@
 @import "tailwindcss";
 
+/* The site's palette and display face (app/globals.css), for the private dashboard. */
+@theme inline {
+  --color-ink: #0a0a0b;
+  --color-coal: #131316;
+  --color-graphite: #1e1e23;
+  --color-bone: #f3efe7;
+  --color-bone-dim: #b9b5ac;
+  --color-lime: #c8ff3e;
+  --color-cyan: #8ae6ff;
+  --font-display: var(--font-archivo), system-ui, sans-serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
 body {
-  background: #0b0b0c;
-  color: #ece8df;
+  background: #0a0a0b;
+  color: #f3efe7;
+}
+
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
 }
