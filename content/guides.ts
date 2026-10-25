@@ -33,7 +33,7 @@ type Guides = {
 const tr: Guides = {
   base: "rehber",
   hub: {
-    title: "Rehber: Web Sitesi, Yapay Zeka ve Tasarım Üzerine Yazılar",
+    title: "Rehber: Web Sitesi, Yapay Zeka ve Tasarım",
     description: "Konut projesi lansman sitesinden özel AI agent'lara: proje başlatmadan önce sorulan sorulara, gerçek işlerden örneklerle cevaplar.",
     h1: "Rehber",
     lead: "Bir projeye başlamadan önce sorulan sorulara uzun ve net cevaplar. Örnekler, yaptığım gerçek işlerden.",
@@ -48,7 +48,7 @@ const tr: Guides = {
     {
       key: "real-estate-launch",
       slug: "konut-projesi-lansman-sitesi",
-      title: "Konut Projesi Lansman Sitesi Nasıl Olmalı? Satışa Çalışan Sitenin Parçaları",
+      title: "Konut Projesi Lansman Sitesi Nasıl Olmalı?",
       description:
         "Bir konut projesinin lansman sitesinde neler olmalı: ilk ekran, proje rakamları, plan tipleri, konum, her an görünen bilgi formu, telefon hızı, yabancı alıcı ve arama motoru. Kontrol listesiyle.",
       h1: "Konut projesi lansman sitesi nasıl olmalı?",
@@ -149,7 +149,7 @@ const tr: Guides = {
     {
       key: "custom-ai-agent",
       slug: "ozel-ai-agent-nedir",
-      title: "Özel AI Agent Nedir? İşletmeler İçin Ne Yapar, Nasıl Kurulur?",
+      title: "Özel AI Agent Nedir, Nasıl Kurulur?",
       description:
         "Özel AI agent ile hazır chatbot arasındaki fark, bir agent'ın parçaları, hangi işlerin yapay zekâya devredilebileceği, çok ajanlı sistemler ve küçük başlayıp büyütmenin yolu. Gerçek sistemlerden örneklerle.",
       h1: "Özel AI agent nedir, işletmene ne kazandırır?",
@@ -226,7 +226,7 @@ const tr: Guides = {
     {
       key: "website-cost",
       slug: "web-sitesi-fiyatlari",
-      title: "Web Sitesi Fiyatları Neye Göre Değişir? Teklif İstemeden Önce Bilinmesi Gerekenler",
+      title: "Web Sitesi Fiyatları 2026: Neye Göre Değişir?",
       description:
         "Kurumsal site, proje lansman sitesi ya da e-ticaret: bir web sitesinin fiyatını belirleyen şeyler, hazır tema ile özel tasarım farkı, gizli maliyetler ve doğru teklif için hazırlanacak brief.",
       h1: "Web sitesi fiyatları neye göre değişir?",
@@ -304,7 +304,7 @@ const tr: Guides = {
     {
       key: "ai-commercial",
       slug: "ai-reklam-filmi-nasil-uretilir",
-      title: "AI Reklam Filmi Nasıl Üretilir? Yapay Zeka ile Tanıtım Filmi Süreci",
+      title: "AI Reklam Filmi Nasıl Üretilir? Adım Adım Süreç",
       description:
         "Yapay zekâ destekli reklam ve tanıtım filmi nasıl üretilir: fikir ve senaryo, storyboard, görsel dil, üretim, kurgu ve ses. Neyin işe yaradığı, nerede dikkat edilmesi gerektiği ve marka tutarlılığı.",
       h1: "AI reklam filmi nasıl üretilir?",
@@ -370,6 +370,199 @@ const tr: Guides = {
         },
       ],
     },
+    {
+      key: "corporate-website",
+      slug: "kurumsal-web-sitesi-nasil-olmali",
+      title: "Kurumsal Web Sitesi Nasıl Olmalı? Kontrol Listesi",
+      description:
+        "Bir şirketin kurumsal web sitesinde neler olmalı: ilk ekran, hizmet yapısı, güven veren bölümler, telefon hızı, arama motoru ve yapay zekâ için hazırlık, yayından sonrası. Gerçek projelerden örnekler ve kontrol listesiyle.",
+      h1: "Kurumsal web sitesi nasıl olmalı?",
+      lead: "Bir şirketle ilk tanışma çoğu zaman sitesinde olur: müşteri, yatırımcı, iş ortağı, aday çalışan. Kurumsal sitenin işi, şirketin ne yaptığını birkaç saniyede anlatmak ve doğru kişiyi iletişime geçirmek. Aşağıda böyle bir sitenin parçaları ve yayından önce bakılacaklar var.",
+      published: "2026-10-25",
+      updated: "2026-10-25",
+      service: "web-design",
+      work: ["dbh-group", "ucay-360", "the-lock"],
+      keywords: ["kurumsal web sitesi", "kurumsal web sitesi nasıl olmalı", "kurumsal web tasarım", "şirket web sitesi", "kurumsal site yaptırmak", "firma web sitesi"],
+      faq: [
+        { q: "Kurumsal web sitesinde hangi sayfalar olmalı?", a: "Çoğu şirket için ana sayfa, hizmetler (her ana hizmete ayrı sayfa), projeler ya da referanslar, hakkımızda ve iletişim yeterli. Blog ya da rehber, arama motorundan müşteri getirmek isteniyorsa eklenir." },
+        { q: "Kurumsal site tek sayfa olabilir mi?", a: "Tek bir ürün ya da proje için olabilir. Birden fazla hizmeti olan şirketlerde her hizmetin kendi sayfası olması hem ziyaretçi hem arama motoru için daha iyidir." },
+        { q: "Hazır tema yeterli mi?", a: "Kısa sürede yayına çıkmak gerekiyorsa iş görür. Şirket kendini rakiplerinden ayırmak istiyorsa özel tasarım fark yaratır; farkları web sitesi fiyatları rehberinde anlattım." },
+      ],
+      sections: [
+        {
+          h2: "Kurumsal sitenin üç sorusu",
+          body: [
+            "Ziyaretçi ilk ekranda üç sorunun cevabını arar: bu şirket ne yapıyor, kimin için yapıyor ve neden ona güvenmeliyim. Sitedeki her bölüm bu üç sorudan birine cevap vermeli; vermiyorsa yer kaplıyordur.",
+            "Kurumsal sitelerde en sık görülen sorun, şirketin kendisini değil sektörünü anlatması: “kaliteli hizmet”, “müşteri memnuniyeti” gibi her firmanın söyleyebileceği cümleler. Somut olan akılda kalır: kaç proje, hangi alanlar, hangi şehirler, hangi işler.",
+          ],
+        },
+        {
+          h2: "İlk ekran: şirketi tek sahnede anlatmak",
+          body: [
+            "İlk ekran şirketin ölçeğini ve karakterini hemen hissettirmeli. Bunu bazen tek bir güçlü görüntü, bazen hareket yapar.",
+            "Üçay 360'ta açılış kaydırmayla ilerleyen bir film: mağazadan eve, ısı pompasından bataryaya, elektrikli araç şarjından güneş panellerine markanın bütün hizmetleri tek sahnede dolaşılıyor. DBH Group'ta ise grubun logosu bir mozaikten kurulup sahneye dönüşüyor; ziyaretçi daha ilk saniyede birden fazla alanda çalışan bir grupla karşı karşıya olduğunu anlıyor.",
+          ],
+        },
+        {
+          h2: "Hizmet yapısı: her alanın kendi yeri",
+          body: [
+            "Birden fazla alanda çalışan şirketlerde en kritik karar, hizmetlerin nasıl gruplanacağı. Ziyaretçi kendi ihtiyacını iki tıklamada bulmalı; menü şirketin iç organizasyonunu değil, müşterinin aradığını yansıtmalı.",
+            "DBH Group'un ana sayfasında grubun altı alanı (inşaat, gayrimenkul, maden, teknoloji, enerji ve turizm) kaydırdıkça tam ekran bölümler halinde akıyor. Her alan kendi görüntüsü ve kısa açıklamasıyla ayrı bir durak; hepsi tek bir grup kimliğinin altında.",
+            "Arama motoru açısından da her ana hizmetin kendi sayfası olması önemli: “ısı pompası”, “güneş paneli” ya da “elektrikli araç şarj istasyonu” arayan biri, tüm hizmetlerin tek paragrafta geçtiği bir sayfaya değil, o hizmetin anlatıldığı sayfaya gelmeli.",
+          ],
+        },
+        {
+          h2: "Güven veren bölümler",
+          body: ["Kurumsal sitede güven, iddiayla değil kanıtla kurulur:"],
+          list: [
+            "Gerçek projeler ve referanslar: mümkünse görselleri ve kısa sonuçlarıyla.",
+            "Gerçek fotoğraflar: stok görsel yerine şirketin kendi işleri, mekânı, ekibi.",
+            "Açık iletişim: adres, telefon, e-posta ve her sayfadan ulaşılabilen bir form.",
+            "Yasal metinler: KVKK aydınlatma metni ve çerez bilgilendirmesi.",
+            "Tanıtım materyali: indirilebilir katalog ya da tanıtım filmi varsa siteden erişilebilir olmalı.",
+          ],
+        },
+        {
+          h2: "Tasarım dili şirketin karakterini taşımalı",
+          body: [
+            "Renk, tipografi ve hareket şirket hakkında cümlelerden önce konuşur. Ölçülü bir mimari marka ile genç bir teknoloji markası aynı dili kullanmamalı.",
+            "The Lock Adres Barbarossa'da projenin taş, ışık ve suyla kurulan mimari dili sitenin tonunu belirliyor: gün batımında bir açılış, ölçülü tipografi ve projeyi, konumu, tanıtım filmlerini ve e-kataloğu taşıyan sade bir akış. Sitedeki sakinlik, projenin “zamanın içinde zamansız mimari” fikrinin bir parçası.",
+          ],
+        },
+        {
+          h2: "Telefon ve hız",
+          body: [
+            "Kurumsal sitelerin ziyaretçilerinin büyük kısmı telefondan gelir; tasarım masaüstünde güzel görünüp telefonda yavaş açılıyorsa ilk izlenim kaybedilir.",
+            "Videolar ve büyük görseller sitenin karakterini taşır ama doğru hazırlanmazlarsa sayfayı ağırlaştırır. Görseller ekran boyutuna göre sunulmalı, video telefon için ayrıca sıkıştırılmalı, hareketler cihazı yormayacak şekilde kurulmalı ve her şey gerçek telefonlarda denenmeli.",
+          ],
+        },
+        {
+          h2: "Arama motoru ve yapay zekâ için hazırlık",
+          body: [
+            "Bir site yayına çıktığında kendiliğinden bulunmaz. Temelden doğru kurulmuş bir site, sonradan yapılacak her SEO çalışmasının zeminidir:",
+          ],
+          list: [
+            "Her sayfanın kendi başlığı ve açıklaması; başlıkta o sayfanın arandığı ifade.",
+            "Metnin görselin ya da animasyonun içinde değil, sayfanın kendisinde olması.",
+            "Şirket, hizmet ve iletişim bilgilerini arama motorlarına tarif eden yapılandırılmış veri (schema).",
+            "Site haritası ve Google Search Console kaydı.",
+            "Birden fazla dil varsa her dilin kendi adresi ve aralarındaki bağlantı (hreflang).",
+            "ChatGPT, Perplexity gibi yapay zekâ arama motorlarının siteyi okuyabilmesi için açık bir robots.txt.",
+          ],
+        },
+        {
+          h2: "Yayından sonra",
+          body: [
+            "Kurumsal site bir kez yapılıp bırakılan bir broşür değil. Yeni projeler, haberler ve referanslar eklendikçe site güncel kalır, arama motoru da bunu fark eder.",
+            "Yayından önce kimin hangi içeriği güncelleyeceği, form mesajlarının kime düşeceği ve ziyaretçi verisinin nasıl izleneceği netleşmeli. Formu dolduran bir müşterinin mesajı kimsenin bakmadığı bir kutuya düşüyorsa, sitenin bütün emeği boşa gider.",
+          ],
+        },
+        {
+          h2: "Yayından önce kontrol listesi",
+          body: ["Kurumsal sitenizi yayına almadan önce bunlara bakın:"],
+          list: [
+            "İlk ekran şirketin ne yaptığını tek cümlede söylüyor mu?",
+            "Her ana hizmetin kendi sayfası var mı?",
+            "Gerçek projeler ve görseller kullanıldı mı?",
+            "İletişim formu her sayfadan ulaşılabilir mi, mesajlar doğru kişiye gidiyor mu?",
+            "Site telefonda, mobil veriyle hızlı açılıyor mu?",
+            "Her sayfanın başlığı ve açıklaması ayrı mı?",
+            "KVKK ve çerez metinleri yerinde mi?",
+            "Site haritası Search Console'a gönderildi mi?",
+          ],
+        },
+      ],
+    },
+    {
+      key: "interactive-website",
+      slug: "interaktif-3d-web-sitesi",
+      title: "İnteraktif ve 3D Web Sitesi: Ne Zaman İşe Yarar?",
+      description:
+        "Kaydırmalı anlatım, kaydırmayla oynayan video, WebGL ve Three.js ile 3B sahneler: interaktif bir web sitesi ne zaman markaya değer katar, ne zaman yük olur? Telefon performansı, arama motoru ve doğru brief.",
+      h1: "İnteraktif ve 3D web sitesi ne zaman işe yarar?",
+      lead: "Kaydırdıkça oynayan bir film, imleçle hareket eden partiküller, tarayıcıda dönen bir 3B model. İnteraktif siteler akılda kalır, ama her marka için doğru seçim değildir. Bu yazıda türlerini, ne zaman işe yaradıklarını ve dikkat edilmesi gerekenleri gerçek projelerden örneklerle anlatıyorum.",
+      published: "2026-10-25",
+      updated: "2026-10-25",
+      service: "web-dev",
+      work: ["ala-cekmekoy", "modd-ai-web-experience", "spatial-3d-web"],
+      keywords: ["interaktif web sitesi", "3D web sitesi", "WebGL web sitesi", "Three.js web sitesi", "scroll animasyonlu web sitesi", "sinematik web tasarım"],
+      faq: [
+        { q: "3D web sitesi telefonda çalışır mı?", a: "Doğru kurulursa evet. Sahne telefonun gücüne göre sadeleştirilmeli, hareket azaltma tercihi olan kullanıcıya sakin bir sürüm gösterilmeli ve gerçek cihazlarda denenmeli." },
+        { q: "İnteraktif site SEO'ya zarar verir mi?", a: "Metin canvas'ın ya da videonun içine gömülürse verir. Metin sayfanın kendisinde, sunucudan gelirse arama motoru siteyi normal bir site gibi okur." },
+        { q: "Her site interaktif olmalı mı?", a: "Hayır. Ziyaretçinin hızla bilgi bulması gereken sitelerde fazla hareket yük olur. İnteraktivite, bir şeyi göstermenin en iyi yolu olduğunda işe yarar." },
+      ],
+      sections: [
+        {
+          h2: "İnteraktif site ne demek?",
+          body: [
+            "İnteraktif site, ziyaretçinin hareketine cevap veren sitedir: kaydırma, imleç, dokunuş. Bu cevap bazen bir başlığın yumuşakça belirmesi kadar küçük, bazen bütün sayfanın bir film gibi ilerlemesi kadar büyüktür.",
+            "Pratikte üç katmandan söz edilebilir: kaydırmaya bağlı anlatım, kaydırmayla oynayan video ve tarayıcıda gerçek zamanlı çizilen 3B sahneler. Bir proje bunlardan birini, ikisini ya da hepsini kullanabilir.",
+          ],
+        },
+        {
+          h2: "Kaydırmaya bağlı anlatım ve video",
+          body: [
+            "En yaygın ve çoğu zaman en verimli katman bu. Sayfa yukarıdan aşağı bir hikâye anlatır; bölümler, rakamlar ve görüntüler kaydırdıkça sahneye girer. GSAP ve Lenis gibi kütüphaneler hareketin akıcı ve titremesiz olmasını sağlar.",
+            "A'lâ Çekmeköy Nefes'te proje videosu kaydırmayla ilerliyor; cam paneller projenin rakamlarını (14.300 m² arazi, 9 blok, 72 konut) ve yaşam alanlarını taşıyor, bilgi formu her an elinizin altında. Ziyaretçi videoyu izlemiyor, kendi hızında içinde dolaşıyor.",
+          ],
+        },
+        {
+          h2: "WebGL ve Three.js: tarayıcıda gerçek zamanlı sahneler",
+          body: [
+            "WebGL, tarayıcının ekran kartını kullanarak 3B grafik çizmesini sağlar; Three.js bunun üstünde en yaygın kullanılan kütüphanedir. Bu sayede partikül sistemleri, shader efektleri ve ziyaretçinin çevirebildiği 3B modeller doğrudan sitenin içinde çalışır.",
+            "MODD-AI Web Experience'ta üretken sistemler sayfanın dokusunu oluşturuyor, kaydırma anlatının zamanlamasını yönetiyor; landing bir broşür değil, ürünün kendisinin bir kanıtı. Bu sitenin ana sayfasındaki partikül büst ve Lab sayfasındaki altı canlı deney de aynı teknolojiyle, Three.js ve React Three Fiber ile kuruldu.",
+          ],
+        },
+        {
+          h2: "3D modeller ve dijital ikiz",
+          body: [
+            "Bir mekânı, binayı ya da ürünü tarayıcıda gezilebilir hale getirmek de mümkün. Burada model dosyalarının (çoğu zaman GLB) web için hafifletilmesi, yükleme sırasının iyi kurulması ve verinin sahneye bağlanması gerekir.",
+            "3D Web & Digital Twin araştırmalarımda mekânın dijital ikizini yalnızca geometri olarak değil, veri, durum ve etkileşimin aynı sahnede yaşadığı bir yüzey olarak ele alıyorum: GLB boru hatları, CRM bağlantıları ve VR/AR yüzeyleri.",
+          ],
+        },
+        {
+          h2: "Ne zaman işe yarar?",
+          body: ["İnteraktivite bir amaca hizmet ettiğinde değer katar. İyi adaylar:"],
+          list: [
+            "Görsel bir deneyim satan işler: konut projeleri, mimari, otomotiv, moda, ürün lansmanları.",
+            "Rakiplerinden ayrışması gereken, ilk izlenimin satışı doğrudan etkilediği markalar.",
+            "Bir sistemi ya da ürünü anlatmanın en iyi yolu onu göstermek olduğunda.",
+            "Kısa ömürlü kampanya ve lansman siteleri.",
+          ],
+        },
+        {
+          h2: "Ne zaman yük olur?",
+          body: [
+            "Öte yandan bilgi yoğun sitelerde (geniş ürün katalogları, sık güncellenen içerik, ziyaretçinin hızla bir şey bulması gereken sayfalar) fazla hareket yük olur. Böyle sitelerde interaktiviteyi küçük dokunuşlarla sınırlamak daha doğru.",
+          ],
+        },
+        {
+          h2: "Telefon performansı",
+          body: [
+            "İnteraktif sitelerin en çok zorlandığı yer telefon. Masaüstünde akıcı çalışan bir sahne, telefonun ekran kartında takılabilir; bazı Android telefonların grafik işlemcileri de farklı davranır.",
+            "Bu yüzden sahne cihazın gücüne göre sadeleştirilmeli, ağır parçalar ilk ekrandan sonra yüklenmeli, hareket azaltma tercihi olan kullanıcıya sakin bir sürüm gösterilmeli ve site yayından önce birden fazla gerçek telefonda denenmeli. Simülatörde çalışması yetmez.",
+          ],
+        },
+        {
+          h2: "Arama motoru ile çatışır mı?",
+          body: [
+            "Çatışmak zorunda değil. Sorun, metnin canvas'ın ya da videonun içine gömülmesiyle başlar: arama motoru ve yapay zekâ botları resmin içindeki yazıyı okuyamaz.",
+            "Doğru kurulumda sahne bir katman, metin başka bir katmandır: başlıklar, açıklamalar ve proje bilgileri sayfanın kendisinde, sunucudan hazır gelir. Bu sitede de her 3B sahnenin yanındaki metin bu şekilde sunuluyor; Google siteyi animasyonları çalıştırmadan okuyabiliyor.",
+          ],
+        },
+        {
+          h2: "Doğru brief",
+          body: ["İnteraktif bir site için konuşmaya başlamadan önce bunları netleştirmek işi hızlandırır:"],
+          list: [
+            "Ziyaretçinin siteden sonra ne yapmasını istiyorsunuz: form, arama, satın alma?",
+            "Gösterilecek malzeme hazır mı: render, video, 3B model, fotoğraf?",
+            "Ziyaretçilerin çoğu telefondan mı geliyor?",
+            "Site kısa bir lansman için mi, yıllarca kullanılacak bir kurumsal site mi?",
+            "Beğendiğiniz ve beğenmediğiniz birkaç örnek site.",
+          ],
+        },
+      ],
+    },
   ],
 };
 
@@ -391,7 +584,7 @@ const en: Guides = {
     {
       key: "real-estate-launch",
       slug: "real-estate-launch-website",
-      title: "What a Real Estate Launch Website Needs: The Parts That Sell Homes",
+      title: "What a Real Estate Launch Website Needs",
       description:
         "What belongs on a residential project's launch website: the first screen, project figures, unit types, location, an always-visible enquiry form, phone speed, foreign buyers and search. With a launch checklist.",
       h1: "What a real estate launch website needs",
@@ -492,7 +685,7 @@ const en: Guides = {
     {
       key: "custom-ai-agent",
       slug: "what-is-a-custom-ai-agent",
-      title: "What Is a Custom AI Agent? What It Does for a Business and How to Start",
+      title: "What Is a Custom AI Agent? How to Start",
       description:
         "How a custom AI agent differs from a chatbot, the parts of an agent, which work can be handed to AI, multi-agent systems and how to start small and grow. With examples from working systems.",
       h1: "What is a custom AI agent, and what can it do for your business?",
@@ -569,7 +762,7 @@ const en: Guides = {
     {
       key: "website-cost",
       slug: "website-cost",
-      title: "What Does a Website Cost? What Drives the Price Before You Ask for a Quote",
+      title: "How Much Does a Website Cost in 2026?",
       description:
         "Corporate site, launch site or e-commerce: what sets the price of a website, template versus custom design, the costs people miss, and the brief that gets you an accurate quote.",
       h1: "What drives the cost of a website?",
@@ -647,7 +840,7 @@ const en: Guides = {
     {
       key: "ai-commercial",
       slug: "how-ai-commercials-are-made",
-      title: "How Is an AI Commercial Made? The Process Behind AI Brand Films",
+      title: "How Is an AI Commercial Made? The Process",
       description:
         "How an AI-driven commercial or brand film is made: idea and script, storyboard, visual language, production, edit and sound. What works, where to be careful, and keeping a brand consistent.",
       h1: "How is an AI commercial made?",
@@ -709,6 +902,197 @@ const en: Guides = {
           h2: "Where to be careful",
           body: [
             "Copyright and usage rights, the likeness of real people and an accurate depiction of the product should be agreed up front. AI imagery should not overstate a brand's claims, especially in sectors like real estate where buyers make decisions based on it.",
+          ],
+        },
+      ],
+    },
+    {
+      key: "corporate-website",
+      slug: "what-a-corporate-website-needs",
+      title: "What a Corporate Website Needs: A Checklist",
+      description:
+        "What belongs on a company website: the first screen, how services are structured, the sections that build trust, phone speed, readiness for search engines and AI search, and life after launch. With examples from real projects and a checklist.",
+      h1: "What does a corporate website need?",
+      lead: "Most people meet a company on its website first: clients, investors, partners, future hires. A corporate site has to say what the company does within seconds and move the right person to get in touch. Below are the parts of such a site and what to check before launch.",
+      published: "2026-10-25",
+      updated: "2026-10-25",
+      service: "web-design",
+      work: ["dbh-group", "ucay-360", "the-lock"],
+      keywords: ["corporate website", "what a corporate website needs", "corporate website design", "company website design", "business website checklist", "corporate web design Istanbul"],
+      faq: [
+        { q: "Which pages should a corporate website have?", a: "For most companies: home, services (one page per main service), projects or references, about and contact. A blog or guides section is added when the site should bring in clients from search." },
+        { q: "Can a corporate site be a single page?", a: "For one product or one project, yes. When a company offers several services, a page per service works better for visitors and for search engines." },
+        { q: "Is a ready-made template enough?", a: "It works when the site has to go live fast. When a company needs to stand apart from its competitors, custom design makes the difference; the website cost guide covers the trade-off." },
+      ],
+      sections: [
+        {
+          h2: "The three questions a corporate site answers",
+          body: [
+            "On the first screen a visitor looks for three answers: what does this company do, who does it do it for, and why should I trust it. Every section on the site should answer one of the three; if it does not, it is taking up space.",
+            "The most common problem on corporate sites is describing the industry rather than the company: lines like “quality service” and “customer satisfaction” that any firm could claim. Concrete things stay in mind: how many projects, which fields, which cities, which work.",
+          ],
+        },
+        {
+          h2: "The first screen: the company in one scene",
+          body: [
+            "The first screen should make the company's scale and character felt at once. Sometimes a single strong image does it, sometimes motion does.",
+            "On Üçay 360 the opening is a film played by scrolling: from the store to the home, from heat pump to battery, from EV charging to solar panels, every service of the brand in one scene. On DBH Group the group's logo assembles from a mosaic and becomes the stage, so in the first second the visitor knows this is a group working across several fields.",
+          ],
+        },
+        {
+          h2: "Service structure: every field gets its place",
+          body: [
+            "For companies working in several fields, the key decision is how services are grouped. Visitors should find their need in two clicks; the menu should mirror what clients look for, not the company's org chart.",
+            "DBH Group's homepage runs the group's six fields (construction, real estate, mining, technology, energy and tourism) as full-screen sections as you scroll. Each field is its own stop with its own image and short text, all under one group identity.",
+            "For search engines a page per main service matters too: someone searching for “heat pump”, “solar panels” or “EV charging station” should land on the page about that service, not on a page that names every service in one paragraph.",
+          ],
+        },
+        {
+          h2: "Sections that build trust",
+          body: ["On a corporate site trust comes from proof, not claims:"],
+          list: [
+            "Real projects and references: with images and short outcomes where possible.",
+            "Real photography: the company's own work, places and people instead of stock images.",
+            "Open contact: address, phone, email and a form reachable from every page.",
+            "Legal pages: privacy notice and cookie information.",
+            "Brochures: a downloadable catalogue or a brand film, if there is one, linked from the site.",
+          ],
+        },
+        {
+          h2: "The design language should carry the company's character",
+          body: [
+            "Colour, type and motion speak about a company before any sentence does. A restrained architectural brand and a young tech brand should not share one language.",
+            "On The Lock Adres Barbarossa the project's architecture of stone, light and water sets the site's tone: an opening at sunset, restrained typography and a calm flow carrying the project, the location, the films and the e-catalogue. The calm of the site is part of the project's idea, “timeless architecture within time”.",
+          ],
+        },
+        {
+          h2: "Phones and speed",
+          body: [
+            "Most visitors to corporate sites arrive on a phone; a design that looks great on desktop but opens slowly on a phone loses the first impression.",
+            "Videos and large images carry a site's character, but prepared badly they weigh the page down. Images should be served at the size of the screen, video compressed separately for phones, motion built so it does not strain the device, and everything tried on real phones.",
+          ],
+        },
+        {
+          h2: "Ready for search engines and AI search",
+          body: ["A site is not found just because it is live. A site built right from the ground up is the base for every later SEO effort:"],
+          list: [
+            "Each page with its own title and description, the title carrying the phrase the page is searched for.",
+            "Text on the page itself, not inside an image or an animation.",
+            "Structured data (schema) describing the company, its services and contact details to search engines.",
+            "A sitemap and a Google Search Console property.",
+            "With several languages, an address per language and the links between them (hreflang).",
+            "A robots.txt open to AI search engines such as ChatGPT and Perplexity, so they can read the site.",
+          ],
+        },
+        {
+          h2: "After launch",
+          body: [
+            "A corporate site is not a brochure made once and left. As new projects, news and references are added the site stays current, and search engines notice.",
+            "Before launch, settle who updates which content, whose inbox the form messages land in and how visits are measured. If a client's message lands in a box nobody checks, all the work on the site is wasted.",
+          ],
+        },
+        {
+          h2: "Pre-launch checklist",
+          body: ["Before your corporate site goes live, check:"],
+          list: [
+            "Does the first screen say what the company does in one sentence?",
+            "Does every main service have its own page?",
+            "Are real projects and images used?",
+            "Is the contact form reachable from every page, and do messages reach the right person?",
+            "Does the site open fast on a phone, on mobile data?",
+            "Does every page have its own title and description?",
+            "Are the privacy and cookie notices in place?",
+            "Has the sitemap been submitted to Search Console?",
+          ],
+        },
+      ],
+    },
+    {
+      key: "interactive-website",
+      slug: "interactive-3d-website",
+      title: "Interactive and 3D Websites: When Do They Work?",
+      description:
+        "Scroll-told stories, video played by scrolling, 3D scenes in WebGL and Three.js: when does an interactive website add value to a brand and when does it get in the way? Phone performance, search engines and the right brief.",
+      h1: "When does an interactive or 3D website work?",
+      lead: "A film that plays as you scroll, particles that follow the cursor, a 3D model turning in the browser. Interactive sites stay in mind, but they are not the right choice for every brand. This guide covers the kinds, when they work and what to watch, with examples from real projects.",
+      published: "2026-10-25",
+      updated: "2026-10-25",
+      service: "web-dev",
+      work: ["ala-cekmekoy", "modd-ai-web-experience", "spatial-3d-web"],
+      keywords: ["interactive website", "3D website design", "WebGL website", "Three.js website", "scroll animation website", "creative web developer"],
+      faq: [
+        { q: "Do 3D websites work on phones?", a: "Built right, yes. The scene is simplified to the phone's power, visitors who prefer reduced motion get a calm version, and it is tested on real devices." },
+        { q: "Does an interactive site hurt SEO?", a: "It does when the text is baked into a canvas or a video. With the text on the page itself, served from the server, search engines read the site like any other." },
+        { q: "Should every site be interactive?", a: "No. On sites where visitors need to find information fast, heavy motion gets in the way. Interactivity works when it is the best way to show something." },
+      ],
+      sections: [
+        {
+          h2: "What makes a site interactive?",
+          body: [
+            "An interactive site answers the visitor's movement: scroll, cursor, touch. The answer can be as small as a heading easing in, or as large as the whole page moving like a film.",
+            "In practice there are three layers: scroll-tied storytelling, video played by scrolling, and 3D scenes drawn in real time in the browser. A project can use one, two or all three.",
+          ],
+        },
+        {
+          h2: "Scroll-tied storytelling and video",
+          body: [
+            "This is the most common layer and often the most efficient. The page tells a story from top to bottom; sections, figures and images enter as you scroll. Libraries such as GSAP and Lenis keep the motion smooth and free of jitter.",
+            "On A'lâ Çekmeköy Nefes the project film advances with the scroll; glass panels carry the project's figures (14,300 m² of land, 9 blocks, 72 homes) and its living spaces, with the enquiry form always at hand. The visitor does not watch the film, they move through it at their own pace.",
+          ],
+        },
+        {
+          h2: "WebGL and Three.js: real-time scenes in the browser",
+          body: [
+            "WebGL lets the browser draw 3D graphics on the graphics card; Three.js is the most widely used library on top of it. With them, particle systems, shader effects and 3D models the visitor can turn run right inside the site.",
+            "In MODD-AI Web Experience generative systems form the texture of the page and the scroll sets the timing of the story; the landing is not a brochure but proof of the product itself. The particle bust on this site's home page and the six live experiments on the Lab page are built with the same technology, Three.js and React Three Fiber.",
+          ],
+        },
+        {
+          h2: "3D models and digital twins",
+          body: [
+            "A place, a building or a product can also be made explorable in the browser. That takes model files (usually GLB) slimmed for the web, a well-planned loading order and data wired into the scene.",
+            "In my 3D Web & Digital Twin research I treat a place's digital twin not just as geometry but as a surface where data, state and interaction live in one scene: GLB pipelines, CRM connections and VR/AR surfaces.",
+          ],
+        },
+        {
+          h2: "When does it work?",
+          body: ["Interactivity adds value when it serves a purpose. Good candidates:"],
+          list: [
+            "Work that sells a visual experience: residential projects, architecture, automotive, fashion, product launches.",
+            "Brands that need to stand apart, where the first impression drives the sale.",
+            "Cases where the best way to explain a system or product is to show it.",
+            "Short-lived campaign and launch sites.",
+          ],
+        },
+        {
+          h2: "When does it get in the way?",
+          body: [
+            "On information-heavy sites (large product catalogues, content updated often, pages where visitors need to find something fast) heavy motion becomes a burden. There it is better to keep interactivity to small touches.",
+          ],
+        },
+        {
+          h2: "Phone performance",
+          body: [
+            "Phones are where interactive sites struggle most. A scene that runs smoothly on desktop can stutter on a phone's graphics chip, and some Android graphics processors behave differently.",
+            "So the scene should be simplified to the device's power, heavy parts loaded after the first screen, visitors who prefer reduced motion shown a calm version, and the site tried on several real phones before launch. Working in a simulator is not enough.",
+          ],
+        },
+        {
+          h2: "Does it clash with search engines?",
+          body: [
+            "It does not have to. The trouble starts when text is baked into a canvas or a video: search engines and AI bots cannot read writing inside a picture.",
+            "Built right, the scene is one layer and the text another: headings, descriptions and project details sit on the page itself, ready from the server. On this site the text beside every 3D scene is served that way, and Google can read the site without running the animations.",
+          ],
+        },
+        {
+          h2: "The right brief",
+          body: ["Before talking about an interactive site, settling these speeds things up:"],
+          list: [
+            "What should visitors do after the site: fill a form, call, buy?",
+            "Is the material ready: renders, video, 3D models, photography?",
+            "Do most visitors come on a phone?",
+            "Is it for a short launch, or a corporate site used for years?",
+            "A few example sites you like and dislike.",
           ],
         },
       ],

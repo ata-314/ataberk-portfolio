@@ -53,7 +53,7 @@ const tr: Services = {
       key: "ai",
       slug: "yapay-zeka-uzmani",
       name: "Yapay Zeka Uzmanı",
-      title: "Yapay Zeka Uzmanı & Mühendisi, AI Agent Geliştirme | İstanbul",
+      title: "Yapay Zeka Uzmanı & AI Agent Geliştirme | İstanbul",
       description:
         "İstanbul'da yapay zeka uzmanı ve yapay zeka mühendisi: özel AI agent geliştirme, çok ajanlı sistemler, iş akışı otomasyonu ve marka hafızası kuran içerik zekâsı.",
       h1: "Yapay zeka uzmanı ve AI agent geliştirici",
@@ -78,13 +78,13 @@ const tr: Services = {
         { q: "Yapay zekâ markamın sesini bozmaz mı?", a: "Bu yüzden her sistemin merkezinde marka hafızası var: ses, palet ve yasaklı ifadeler tanımlı, her üretim yayından önce bunlara göre kontrol ediliyor." },
         { q: "İstanbul dışından çalışabilir miyiz?", a: "Evet. İstanbul merkezliyim; Türkiye genelinde ve uzaktan çalışıyorum." },
       ],
-      terms: ["yapay zeka uzmanı", "yapay zeka mühendisi", "yapay zeka danışmanı", "AI agent geliştirme", "yapay zeka otomasyon uzmanı", "üretken yapay zeka uzmanı", "çok ajanlı sistemler"],
+      terms: ["yapay zeka uzmanı", "yapay zeka mühendisi", "yapay zeka danışmanı", "AI agent geliştirme", "yapay zeka otomasyon uzmanı", "üretken yapay zeka uzmanı", "çok ajanlı sistemler", "yapay zeka danışmanlığı"],
     },
     {
       key: "ai-art",
       slug: "yapay-zeka-artist",
       name: "Yapay Zeka Artist",
-      title: "Yapay Zeka Artist & AI Video, Yapay Zeka Reklam Filmi | İstanbul",
+      title: "Yapay Zeka Reklam Filmi & AI Video | İstanbul",
       description:
         "İstanbul'da yapay zeka artist: yapay zekâ destekli reklam filmleri, AI video prodüksiyon, sinematik kampanya görselleri ve üretken sanat.",
       h1: "Yapay zeka artist: AI video, reklam filmi ve görsel",
@@ -113,7 +113,7 @@ const tr: Services = {
       key: "web-design",
       slug: "web-tasarim",
       name: "Web Tasarımcısı",
-      title: "Web Tasarımcısı & Kurumsal Web Sitesi Tasarımı | İstanbul",
+      title: "Web Sitesi Yaptırmak: Kurumsal Web Tasarım | İstanbul",
       description:
         "İstanbul'da web tasarımcısı: kurumsal web sitesi, gayrimenkul ve proje lansman siteleri, sinematik ve interaktif web tasarımı. Tasarım ve geliştirme tek elden.",
       h1: "Web tasarımcısı: markanı taşıyan siteler",
@@ -137,13 +137,13 @@ const tr: Services = {
         { q: "Site telefonda da iyi çalışır mı?", a: "Her site masaüstü ve telefon için birlikte tasarlanıyor ve gerçek cihazlarda test ediliyor; ağır efektler zayıf cihazlarda hafifletiliyor." },
         { q: "Site Google'da bulunur mu?", a: "Sayfa başlıkları, açıklamalar, yapısal veri, site haritası ve hız arama motorları için baştan ayarlanıyor." },
       ],
-      terms: ["web tasarımcısı", "web tasarım İstanbul", "kurumsal web sitesi tasarımı", "gayrimenkul web sitesi", "interaktif web sitesi", "freelance web tasarımcı"],
+      terms: ["web tasarımcısı", "web tasarım İstanbul", "kurumsal web sitesi tasarımı", "gayrimenkul web sitesi", "interaktif web sitesi", "freelance web tasarımcı", "web sitesi yaptırmak", "kurumsal site yaptırmak"],
     },
     {
       key: "web-dev",
       slug: "web-gelistirme",
       name: "Web Geliştiricisi",
-      title: "Web Geliştiricisi: Next.js, React, WebGL ve Three.js | İstanbul",
+      title: "Web Geliştirici: Next.js, WebGL, 3D Web | İstanbul",
       description:
         "İstanbul'da web geliştiricisi ve frontend geliştirici: Next.js ve React ile hızlı siteler, WebGL ve Three.js ile 3B ve interaktif deneyimler, web ve mobil uygulamalar.",
       h1: "Web geliştiricisi: Next.js, WebGL ve 3B web",
@@ -166,13 +166,13 @@ const tr: Services = {
         { q: "3B ve partikül efektleri siteyi yavaşlatmaz mı?", a: "Doğru kurulursa yavaşlatmaz. Bu sitede shader'lar paralel derleniyor, çözünürlük cihaza göre ayarlanıyor ve zayıf cihazlarda daha hafif bir sürüm çalışıyor." },
         { q: "Mobil uygulama da geliştiriyor musun?", a: "Evet. Patika, React Native ile iOS ve Android için geliştirdiğim bir odak uygulaması." },
       ],
-      terms: ["web geliştiricisi", "frontend geliştirici", "Next.js geliştirici", "React geliştirici", "WebGL geliştirici", "Three.js", "mobil uygulama geliştirme"],
+      terms: ["web geliştiricisi", "frontend geliştirici", "Next.js geliştirici", "React geliştirici", "WebGL geliştirici", "Three.js", "mobil uygulama geliştirme", "3D web sitesi", "interaktif web sitesi"],
     },
     {
       key: "graphic",
       slug: "grafik-tasarim",
       name: "Grafik Tasarımcı",
-      title: "Grafik Tasarımcı, Marka Kimliği ve Art Direction | İstanbul",
+      title: "Grafik Tasarımcı & Marka Kimliği | İstanbul",
       description:
         "İstanbul'da grafik tasarımcı ve art director: marka kimliği, görsel sistemler, kampanya ve sosyal medya tasarımı, yapay zekâ destekli tasarım.",
       h1: "Grafik tasarımcı ve art director",
@@ -201,7 +201,7 @@ const tr: Services = {
       key: "ux",
       slug: "ui-ux-tasarim",
       name: "UI/UX Tasarımcı",
-      title: "UI/UX Tasarımcı ve Ürün Tasarımcısı | İstanbul",
+      title: "UI/UX Tasarım & Mobil Uygulama Arayüzü | İstanbul",
       description:
         "İstanbul'da UI/UX tasarımcı ve ürün tasarımcısı: web ve mobil uygulama arayüz tasarımı, kullanıcı deneyimi, tasarım sistemleri ve prototipleme.",
       h1: "UI/UX ve ürün tasarımcısı",
@@ -229,7 +229,7 @@ const tr: Services = {
       key: "motion",
       slug: "motion-tasarim",
       name: "Motion Tasarımcı",
-      title: "Motion Tasarımcı, 3D Görselleştirme ve Animasyon | İstanbul",
+      title: "Motion Tasarım & 3D Animasyon | İstanbul",
       description:
         "İstanbul'da motion tasarımcı: motion graphics, 3D görselleştirme, web animasyonu, yapay zekâ destekli video ve sinematik reklam kurgusu.",
       h1: "Motion tasarımcı ve 3D görselleştirme",
@@ -256,7 +256,7 @@ const tr: Services = {
       key: "real-estate",
       slug: "gayrimenkul-web-sitesi",
       name: "Gayrimenkul Web Sitesi",
-      title: "Gayrimenkul ve Konut Projesi Web Sitesi Tasarımı | İstanbul",
+      title: "Konut Projesi & Gayrimenkul Web Sitesi | İstanbul",
       description:
         "Konut ve ticari projeler için lansman sitesi: kaydırdıkça anlatan proje sitesi, lead formu, e-katalog, yabancı yatırımcı için çok dilli portföy ve AI tanıtım filmi. İstanbul.",
       h1: "Gayrimenkul ve konut projesi web siteleri",
@@ -311,7 +311,7 @@ const en: Services = {
       key: "ai",
       slug: "ai-specialist",
       name: "AI Specialist",
-      title: "AI Specialist & AI Engineer, Custom AI Agents | Istanbul",
+      title: "AI Specialist & Custom AI Agent Developer | Istanbul",
       description:
         "AI specialist and AI engineer in Istanbul: custom AI agents, multi-agent systems, workflow automation and content intelligence that keeps a brand's memory.",
       h1: "AI specialist and AI agent developer",
@@ -341,7 +341,7 @@ const en: Services = {
       key: "ai-art",
       slug: "ai-artist",
       name: "AI Artist",
-      title: "AI Artist, AI Video and AI Commercials | Istanbul",
+      title: "AI Commercials & AI Video Production | Istanbul",
       description:
         "AI artist in Istanbul: AI-driven commercials, AI video production, cinematic campaign visuals and generative art.",
       h1: "AI artist: AI video, commercials and visuals",
@@ -397,7 +397,7 @@ const en: Services = {
       key: "web-dev",
       slug: "web-development",
       name: "Web Developer",
-      title: "Web Developer: Next.js, React, WebGL and Three.js | Istanbul",
+      title: "Creative Web Developer: WebGL, Three.js | Istanbul",
       description:
         "Web and frontend developer in Istanbul: fast sites in Next.js and React, 3D and interactive experiences in WebGL and Three.js, web and mobile apps.",
       h1: "Web developer: Next.js, WebGL and 3D web",
@@ -419,13 +419,13 @@ const en: Services = {
         { q: "Which technologies do you use?", a: "Next.js, React, TypeScript, Tailwind CSS, GSAP, Three.js, WebGL/GLSL; Expo and React Native for mobile; WordPress when it fits." },
         { q: "Don't 3D and particles slow a site down?", a: "Not when built right. Here shaders compile in parallel, resolution adapts to the device and weak devices get a lighter version." },
       ],
-      terms: ["web developer", "frontend developer", "Next.js developer", "React developer", "WebGL developer", "Three.js developer"],
+      terms: ["web developer", "frontend developer", "Next.js developer", "React developer", "WebGL developer", "Three.js developer", "creative developer", "creative web developer"],
     },
     {
       key: "graphic",
       slug: "graphic-design",
       name: "Graphic Designer",
-      title: "Graphic Designer, Brand Identity and Art Direction | Istanbul",
+      title: "Graphic Designer & Brand Identity | Istanbul",
       description:
         "Graphic designer and art director in Istanbul: brand identity, visual systems, campaign and social design, AI-assisted design.",
       h1: "Graphic designer and art director",
@@ -480,7 +480,7 @@ const en: Services = {
       key: "motion",
       slug: "motion-design",
       name: "Motion Designer",
-      title: "Motion Designer, 3D Visualization and Animation | Istanbul",
+      title: "Motion Designer & 3D Animation | Istanbul",
       description:
         "Motion designer in Istanbul: motion graphics, 3D visualization, web animation, AI-driven video and cinematic commercial editing.",
       h1: "Motion designer and 3D visualization",
@@ -506,7 +506,7 @@ const en: Services = {
       key: "real-estate",
       slug: "real-estate-website-design",
       name: "Real Estate Website",
-      title: "Real Estate and Property Launch Website Design | Istanbul, Türkiye",
+      title: "Real Estate Website Design | Istanbul, Türkiye",
       description:
         "Launch websites for residential and commercial projects: scroll-told project sites, enquiry forms, e-catalogues, multilingual portfolios for foreign investors and AI launch films.",
       h1: "Real estate and residential project websites",

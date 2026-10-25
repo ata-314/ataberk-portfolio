@@ -19,7 +19,7 @@ export async function generateMetadata({
   const { locale } = await params;
   const l: Locale = isLocale(locale) ? locale : "tr";
   return {
-    title: site[l].lab.heading,
+    title: site[l].lab.metaTitle,
     description: site[l].lab.lead,
     alternates: {
       canonical: `/${l}/lab`,

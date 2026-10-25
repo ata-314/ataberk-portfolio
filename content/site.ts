@@ -32,6 +32,7 @@ export type SiteContent = {
   };
   lab: {
     heading: string;
+    metaTitle: string; // <title>: the page's search phrase
     label: string;
     lead: string;
     stats: string[];
@@ -144,6 +145,7 @@ const tr: SiteContent = {
   },
   lab: {
     heading: "Lab",
+    metaTitle: "Lab: İnteraktif Web ve WebGL Deneyleri",
     label: "Lab · Oyun alanı",
     lead: "Bu sitede gördüğün her hareketin arkasındaki sistemler, şimdi senin elinde. Sürükle, ayarla, boz ve yeniden kur; beğendiğin her deney markan için kurulabilir.",
     stats: ["6 canlı deney", "Sürükle · ayarla · dene", "Sitenin gerçek verisi", "Markana uyarlanır"],
@@ -244,6 +246,7 @@ const en: SiteContent = {
   },
   lab: {
     heading: "Lab",
+    metaTitle: "Lab: Interactive Web and WebGL Experiments",
     label: "Lab · Playground",
     lead: "The systems behind every motion on this site, now in your hands. Drag, tune, break and rebuild; every experiment you like can be built for your brand.",
     stats: ["6 live experiments", "Drag · tune · play", "The site's real data", "Made for your brand"],
