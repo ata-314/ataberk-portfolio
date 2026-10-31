@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import { hiringGuides } from "@/content/guides-hiring";
 
 // Guides (/tr/rehber, /en/guides): long answers to the questions clients search
 // before they hire, each tied to a service and to real work. Same rule as the
@@ -235,7 +236,7 @@ const tr: Guides = {
       updated: "2026-10-25",
       service: "web-design",
       work: ["ucay-360", "the-lock", "fidan-property"],
-      keywords: ["web sitesi fiyatları", "web sitesi yaptırmak", "kurumsal web sitesi fiyat", "web tasarım fiyatları 2026", "özel web sitesi tasarımı", "web sitesi teklifi"],
+      keywords: ["web sitesi fiyatları", "web sitesi yaptırma fiyatları", "kurumsal web sitesi fiyat", "web tasarım fiyatları 2026", "özel web sitesi tasarımı", "web sitesi teklifi"],
       faq: [
         { q: "Hazır tema mı, özel tasarım mı?", a: "Hazır tema daha hızlı ve genellikle daha ucuzdur ama marka çoğu zaman temaya uyar. Özel tasarımda site markaya göre kurulur; farklılaşmak, hız ve uzun vadeli esneklik önemliyse özel tasarım öne çıkar." },
         { q: "Teklif istemek için ne hazırlamalıyım?", a: "Sitenin amacı, hedef kitle, sayfa listesi, beğendiğin birkaç örnek site, elindeki içerikler (metin, görsel, logo) ve istediğin yayın tarihi. Bu bilgiler ne kadar netse teklif o kadar doğru olur." },
@@ -1099,6 +1100,10 @@ const en: Guides = {
     },
   ],
 };
+
+// Guides kept in their own files, newest last.
+tr.items.push(...hiringGuides.tr);
+en.items.push(...hiringGuides.en);
 
 export const guides: Record<Locale, Guides> = { tr, en };
 
