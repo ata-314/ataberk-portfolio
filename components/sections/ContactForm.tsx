@@ -1,15 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import type { SiteContent } from "@/content/site";
 import { trackEvent } from "@/components/track/Tracker";
+import { readConsent } from "@/lib/track/consent";
+import { privacy, privacyPath } from "@/content/privacy";
 import "./contact.css";
 
 // The contact finale's form, centred on frosted glass over the returning matter.
 // One frosted slab: it rises and grows into place as it scrolls into view, a light
 // sweeps across it, then its parts follow in order (contact.css). Sends to
-// /api/contact with the personal link and visitor from Tracker.tsx.
+// /api/contact, with the personal link and visitor from Tracker.tsx only when the
+// visitor accepted statistics.
 
 const read = (key: string) => {
   try {
@@ -36,6 +40,7 @@ function useContactForm(locale: Locale, first: string) {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.currentTarget));
+    const linked = readConsent() === "granted";
     setStatus("sending");
     try {
       const res = await fetch("/api/contact", {
@@ -45,8 +50,8 @@ function useContactForm(locale: Locale, first: string) {
           ...data,
           intent,
           locale,
-          ref: read("ab_ref"),
-          visitor: read("ab_visitor"),
+          ref: linked ? read("ab_ref") : null,
+          visitor: linked ? read("ab_visitor") : null,
           elapsed: Date.now() - opened.current,
         }),
       });
@@ -123,6 +128,18 @@ function Sent({ t, height, again, whatsapp, className }: { t: T; height?: number
         {t.again} →
       </button>
     </div>
+  );
+}
+
+// The privacy notice at the point of collection (KVKK m.10).
+function FormNote({ locale }: { locale: Locale }) {
+  const n = privacy[locale].formNote;
+  return (
+    <p data-a style={order(9)} className="text-center text-xs text-bone-dim">
+      {n.before}
+      <Link href={privacyPath(locale)} target="_blank" className="link-draw text-bone">{n.link}</Link>
+      {n.after}
+    </p>
   );
 }
 
@@ -262,6 +279,7 @@ export function ContactForm({ locale, intents, t, initial }: Props) {
           </label>
           <Honeypot />
           <SendRow t={t} status={status} i={8} wide />
+          <FormNote locale={locale} />
         </form>
       )}
     </div>

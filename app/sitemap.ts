@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { BASE_URL } from "@/lib/url";
 import { work } from "@/content/work";
 import { contactPath } from "@/content/contact";
+import { privacyPath } from "@/content/privacy";
 import { guides, guidePath, guideAlternates } from "@/content/guides";
 import { services, servicePath, serviceAlternates } from "@/content/services";
 
@@ -32,6 +33,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       alternates: { languages: abs({ tr: contactPath("tr"), en: contactPath("en"), "x-default": contactPath("tr") }) },
     })),
     ...pair("/lab", 0.6),
+    ...(["tr", "en"] as const).map((l) => ({
+      url: `${BASE}${privacyPath(l)}`,
+      lastModified,
+      changeFrequency: "yearly" as const,
+      priority: 0.2,
+      alternates: { languages: abs({ tr: privacyPath("tr"), en: privacyPath("en"), "x-default": privacyPath("tr") }) },
+    })),
     ...work.tr.items.flatMap((w) => pair(`/work/${w.slug}`, 0.8)),
     ...(["tr", "en"] as const).map((l) => ({
       url: `${BASE}${servicePath(l)}`,

@@ -9,6 +9,7 @@ import { PERSON_ID, PROFILES } from "@/lib/url";
 
 import { Nav } from "@/components/nav/Nav";
 import { Tracker } from "@/components/track/Tracker";
+import { ConsentBanner } from "@/components/track/ConsentBanner";
 import { ContactFab } from "@/components/contact/ContactFab";
 import "../globals.css";
 
@@ -163,6 +164,7 @@ export default async function LocaleLayout({
         {children}
         <ContactFab locale={locale} />
         <Tracker />
+        <ConsentBanner locale={locale} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}

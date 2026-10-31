@@ -88,10 +88,8 @@ export async function POST(request: Request) {
 
   const network = networkOf(request);
   const region = header(request, "x-vercel-ip-country-region");
-  // City-level coordinates Vercel derives from the IP; not the visitor's position.
-  const latitude = num(Number(request.headers.get("x-vercel-ip-latitude") || NaN), -90, 90);
-  const longitude = num(Number(request.headers.get("x-vercel-ip-longitude") || NaN), -180, 180);
-  const postal = clip(header(request, "x-vercel-ip-postal-code"), 20);
+  // City is as fine as location goes: coordinates and postal code are no longer
+  // stored (data minimisation, KVKK m.4); their columns stay for older rows.
   const lang = clip(body.lang, 20);
   const screen = typeof body.screen === "string" && /^\d{2,5}x\d{2,5}$/.test(body.screen) ? body.screen : null;
   const viewport = typeof body.viewport === "string" && /^\d{2,5}x\d{2,5}$/.test(body.viewport) ? body.viewport : null;
@@ -110,10 +108,10 @@ export async function POST(request: Request) {
 
   await sql()`insert into visits (id, visitor, ref, path, referrer, country, city, device, browser, os, network,
       region, lang, screen, tz, utm, viewport, dpr, scheme, reduced_motion, pointer, connection, memory_gb, cores,
-      ttfb_ms, dom_ms, session_n, latitude, longitude, postal)
+      ttfb_ms, dom_ms, session_n)
     values (${id}, ${visitor}, ${ref}, ${path}, ${referrer}, ${country}, ${city}, ${device}, ${browser}, ${os}, ${network},
       ${region}, ${lang}, ${screen}, ${tz}, ${utm}, ${viewport}, ${dpr}, ${scheme}, ${reducedMotion}, ${pointer},
-      ${connection}, ${memory}, ${cores}, ${ttfb}, ${dom}, ${session}, ${latitude}, ${longitude}, ${postal})
+      ${connection}, ${memory}, ${cores}, ${ttfb}, ${dom}, ${session})
     on conflict (id) do nothing`;
   return new Response(null, { status: 204 });
 }

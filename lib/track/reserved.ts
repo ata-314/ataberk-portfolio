@@ -2,4 +2,5 @@
 export const RESERVED = new Set([
   "tr", "en", "stats", "api", "_next", "media", "models", "reel", "work", "about", "lab",
   "opengraph-image", "robots", "sitemap", "hizmetler", "services", "llms", "iletisim", "contact", "rehber", "guides",
+  "gizlilik", "privacy",
 ]);

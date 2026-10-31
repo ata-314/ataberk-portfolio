@@ -2,7 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { readConsent, useConsent } from "@/lib/track/consent";
 
+// Runs only after the visitor accepts statistics in the consent banner
+// (lib/track/consent.ts); until then nothing is sent or stored.
+//
 // Personal-link tracking. A link like /?ref=ahmet-x1y2 tags this browser as that
 // recipient (kept in localStorage, so later visits count too); every page view is
 // sent to /api/t, and its time on page and scroll depth when the page is left.
@@ -36,6 +40,8 @@ function send(body: object) {
 }
 
 let firstView = true;
+// A personal link's ?ref= waits here, in memory only, until the visitor decides.
+let pendingRef: string | null = null;
 let firstId: string | null = null;
 let lcp = 0;
 let errors = 0;
@@ -48,7 +54,7 @@ type EventData = Record<string, string | number | boolean>;
 // flat object, e.g. { film: "piyes-levent" }.
 export function trackEvent(name: string, data?: EventData) {
   const visitor = read("ab_visitor");
-  if (!visitor || read("ab_notrack") || navigator.webdriver) return;
+  if (!visitor || readConsent() !== "granted" || read("ab_notrack") || navigator.webdriver) return;
   send({ event: name, visitor, ref: read("ab_ref"), path: window.location.pathname, data });
 }
 
@@ -115,16 +121,24 @@ const label = (el: Element) =>
 
 export function Tracker() {
   const pathname = usePathname();
+  const allowed = useConsent() === "granted";
 
   useEffect(() => {
-    if (read("ab_notrack") || navigator.webdriver) return;
-
     const url = new URL(window.location.href);
     const fromLink = url.searchParams.get("ref")?.toLowerCase();
     if (fromLink && /^[a-z0-9-]{1,64}$/.test(fromLink)) {
-      write("ab_ref", fromLink);
+      pendingRef = fromLink;
       url.searchParams.delete("ref");
       window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!allowed || read("ab_notrack") || navigator.webdriver) return;
+    const url = new URL(window.location.href);
+    if (pendingRef) {
+      write("ab_ref", pendingRef);
+      pendingRef = null;
     }
 
     let visitor = read("ab_visitor");
@@ -202,6 +216,8 @@ export function Tracker() {
     let since = document.visibilityState === "visible" ? Date.now() : 0;
     let hiddenAt = 0;
     const report = () => {
+      // Withdrawn meanwhile: nothing more is sent or stored.
+      if (readConsent() !== "granted") return;
       if (since) visible += Date.now() - since;
       since = 0;
       write("ab_seen", String(Date.now()));
@@ -228,7 +244,7 @@ export function Tracker() {
       window.removeEventListener("pagehide", report);
       report();
     };
-  }, [pathname]);
+  }, [pathname, allowed]);
 
   useEffect(() => {
     // Named clicks (data-track), links out to other sites, and the in-site links

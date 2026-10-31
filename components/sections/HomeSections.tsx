@@ -7,6 +7,8 @@ import { ContactForm } from "./ContactForm";
 import { services, servicePath } from "@/content/services";
 import { guides, guidePath } from "@/content/guides";
 import { PROFILES } from "@/lib/url";
+import { OWNER, privacy, privacyPath } from "@/content/privacy";
+import { ConsentSettings } from "@/components/track/ConsentBanner";
 
 const CONTACT_EMAIL = "ataberk@ataberksoylu.com";
 
@@ -107,6 +109,7 @@ export function ContactFinale({ locale, t }: { locale: Locale; t: SiteContent["c
 
 export function Footer({ t, name, locale }: { t: SiteContent["footer"]; name: string; locale: Locale }) {
   const s = services[locale];
+  const legal = privacy[locale].footer;
   return (
     <footer className="relative z-20 bg-ink px-5 py-10 md:px-10">
       <nav aria-label={s.labels.all} className="mx-auto mb-8 flex max-w-[88rem] flex-wrap gap-x-6 gap-y-2 border-b border-white/10 pb-8 text-sm text-bone-dim">
@@ -131,6 +134,14 @@ export function Footer({ t, name, locale }: { t: SiteContent["footer"]; name: st
         <p>
           © {new Date().getFullYear()} {t.rights}
         </p>
+      </div>
+      {/* Who runs the site, as the e-commerce law asks of a service provider. */}
+      <div className="mx-auto mt-6 flex max-w-[88rem] flex-wrap gap-x-4 gap-y-1 text-xs text-bone-dim">
+        <span>{OWNER.name}</span>
+        <span>{OWNER.city[locale]}</span>
+        <a href={`mailto:${CONTACT_EMAIL}`} className="link-draw hover:text-bone">{CONTACT_EMAIL}</a>
+        <Link href={privacyPath(locale)} className="link-draw hover:text-bone">{legal.privacy}</Link>
+        <ConsentSettings label={legal.cookies} className="link-draw hover:text-bone" />
       </div>
     </footer>
   );
