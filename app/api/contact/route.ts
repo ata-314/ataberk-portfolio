@@ -42,15 +42,11 @@ export async function POST(request: Request) {
       where network = ${network} and created_at > now() - interval '1 hour'`) as { n: number }[];
     if (n >= 5) return Response.json({ error: "limit" }, { status: 429 });
   }
-  // Place and device only join a message whose sender accepted statistics (the form
-  // sends `visitor` only then); content/privacy.ts says so. The network hash above
-  // is kept for every message: it is the abuse limit.
-  const linked = visitor !== null;
-  const cityRaw = linked ? request.headers.get("x-vercel-ip-city") : null;
+  const cityRaw = request.headers.get("x-vercel-ip-city");
   const city = cityRaw ? decodeURIComponent(cityRaw) : null;
-  const country = linked ? request.headers.get("x-vercel-ip-country") : null;
+  const country = request.headers.get("x-vercel-ip-country");
   const { device, os, browser } = parseUa(ua);
-  const deviceLabel = linked ? `${device} · ${os} · ${browser}` : null;
+  const deviceLabel = `${device} · ${os} · ${browser}`;
 
   const [{ id }] = (await sql()`insert into messages
       (name, email, company, phone, intent, message, locale, ref, visitor, network, city, country, device)
@@ -71,10 +67,8 @@ export async function POST(request: Request) {
     "",
     "—",
     label ? `Kişiye özel link: ${label} (ataberksoylu.com/${ref})` : "Kişiye özel link yok",
-    linked
-      ? `Yer: ${[city, country].filter(Boolean).join(", ") || "bilinmiyor"} · ${deviceLabel} · dil: ${locale ?? "?"}`
-      : `İstatistik onayı yok · dil: ${locale ?? "?"}`,
-    linked ? "Ziyaret geçmişi: https://www.ataberksoylu.com/stats" : null,
+    `Yer: ${[city, country].filter(Boolean).join(", ") || "bilinmiyor"} · ${deviceLabel} · dil: ${locale ?? "?"}`,
+    "Ziyaret geçmişi: https://www.ataberksoylu.com/stats",
   ];
 
   try {

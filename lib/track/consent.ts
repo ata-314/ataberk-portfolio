@@ -1,7 +1,6 @@
-// The visitor's choice about statistics (KVKK açık rıza, cookie guideline): nothing
-// in components/track/Tracker.tsx runs and nothing is stored for it until the
-// visitor accepts. The choice itself is the only key kept without consent.
-// Withdrawing deletes what was stored for statistics.
+// Statistics are on by default (owner decision 2026-11-01); a visitor can turn them
+// off from the footer or the privacy page ("denied"). Turning off deletes what was
+// stored for statistics and stops components/track/Tracker.tsx.
 
 import { useSyncExternalStore } from "react";
 
@@ -39,7 +38,7 @@ function subscribe(onChange: () => void) {
   };
 }
 
-// The current choice, live; null on the server and before any choice.
+// The current choice, live; null on the server and before any choice (= on).
 export function useConsent() {
   return useSyncExternalStore(subscribe, readConsent, () => null);
 }

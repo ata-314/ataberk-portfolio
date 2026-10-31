@@ -12,8 +12,8 @@ import "./contact.css";
 // The contact finale's form, centred on frosted glass over the returning matter.
 // One frosted slab: it rises and grows into place as it scrolls into view, a light
 // sweeps across it, then its parts follow in order (contact.css). Sends to
-// /api/contact, with the personal link and visitor from Tracker.tsx only when the
-// visitor accepted statistics.
+// /api/contact with the personal link and visitor from Tracker.tsx (unless the
+// visitor turned statistics off).
 
 const read = (key: string) => {
   try {
@@ -40,7 +40,7 @@ function useContactForm(locale: Locale, first: string) {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.currentTarget));
-    const linked = readConsent() === "granted";
+    const linked = readConsent() !== "denied";
     setStatus("sending");
     try {
       const res = await fetch("/api/contact", {

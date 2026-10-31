@@ -1,7 +1,8 @@
 import type { Locale } from "@/lib/i18n";
 
 // Privacy notice (KVKK m.10 aydınlatma, GDPR Art. 13), the consent banner and the
-// legal lines in the footer and under the contact form. The site is run by a real
+// legal lines in the footer and under the contact form. Statistics are on by
+// default with an opt-out (owner decision 2026-11-01). The site is run by a real
 // person, not a company. Keep every statement true to the code: what Tracker.tsx,
 // /api/t and /api/contact collect, and the retention in app/api/cron/purge.
 
@@ -45,13 +46,13 @@ const tr: PrivacyContent = {
       body: [
         "Formu gönderdiğinde adın, e-posta adresin, mesajın, seçtiğin konu ve sayfanın dili; yazarsan şirket/site adın ve telefonun kaydedilir. Formu kötüye kullanımdan (spam, aşırı gönderim) korumak için IP adresinin tuzlanmış, geri çevrilemeyen bir özeti de saklanır; ham IP adresin saklanmaz.",
         "Amaç: talebine dönüş yapmak, proje ve teklif görüşmesini yürütmek. Hukuki sebep: bir sözleşmenin kurulmasıyla doğrudan ilgili olması (KVKK m.5/2-c) ve formu güvende tutmaktaki meşru menfaatim (m.5/2-f).",
-        "Ziyaret istatistiklerine onay verdiysen, mesajın bu tarayıcıdaki ziyaret kaydına bağlanır; IP adresinden çıkarılan yaklaşık şehir/ülke ve cihaz türü (ör. “Mobil · iOS · Safari”) mesaja eklenir. Onay vermediysen bu bağlantı kurulmaz.",
+        "Mesajın bu tarayıcıdaki ziyaret kaydına bağlanır; IP adresinden çıkarılan yaklaşık şehir/ülke ve cihaz türü (ör. “Mobil · iOS · Safari”) mesaja eklenir. İstatistikleri kapattıysan bu bağlantı kurulmaz.",
       ],
     },
     {
-      heading: "Ziyaret istatistikleri (yalnızca onay verirsen)",
+      heading: "Ziyaret istatistikleri",
       body: [
-        "Sitede Google Analytics, reklam pikseli veya başka bir üçüncü taraf takip aracı yok. Kendi yazdığım basit bir istatistik sistemi var ve yalnızca alttaki banner'da “Kabul et” dersen çalışır. Çalıştığında şunları kaydeder:",
+        "Sitede Google Analytics, reklam pikseli veya başka bir üçüncü taraf takip aracı yok. Kendi yazdığım bir istatistik sistemi var; sitenin nasıl kullanıldığını ve gönderdiğim tanıtımların ilgi görüp görmediğini anlamak için şunları kaydeder. Hukuki sebep: meşru menfaatim (KVKK m.5/2-f). Footer'daki “Çerez tercihleri” ile istediğin an kapatabilirsin.",
       ],
       items: [
         "Tarayıcında saklanan rastgele bir ziyaretçi kimliği ve oturum sayısı",
@@ -59,14 +60,14 @@ const tr: PrivacyContent = {
         "Tıkladığın bağlantı ve butonlar; bir form alanına odaklandığın (yazdığın içerik değil); bir şey kopyaladığın (metnin kendisi değil, yalnızca uzunluğu); sayfa hataları",
         "Nereden geldiğin: önceki sayfa adresi, kampanya etiketleri (UTM), reklam tıklamasının türü (ör. “Google Ads”)",
         "Dil, saat dilimi, ekran ve pencere boyutu, cihaz/tarayıcı/işletim sistemi türü, açık/koyu tema, bağlantı hızı türü, sayfa yüklenme süresi",
-        "IP adresinden çıkarılan yaklaşık ülke, bölge ve şehir; IP adresinin tuzlanmış özeti (aynı ağdan gelen ziyaretleri gruplamak için)",
+        "IP adresinden çıkarılan yaklaşık ülke, bölge, şehir, posta kodu ve şehir düzeyinde koordinat; IP adresinin tuzlanmış özeti (aynı ağdan gelen ziyaretleri gruplamak için)",
       ],
     },
     {
       heading: "Kişiye özel bağlantılar",
       body: [
-        "Bazı kişilere portfolyomu ataberksoylu.com/isim biçiminde, o kişiye özel bir bağlantıyla gönderiyorum. Böyle bir bağlantıyla geldiysen ve istatistiklere onay verirsen, ziyaretin o bağlantıyla eşleşir: bağlantıyı gönderdiğim kişinin siteyi açıp açmadığını, hangi sayfalara baktığını ve bağlantının başka bir ağdan ya da şehirden açılıp açılmadığını görebilirim. Onay vermezsen bağlantı adresten silinir ve hiçbir şey kaydedilmez.",
-        "Amaç: gönderdiğim tanıtımın ilgi görüp görmediğini anlamak. Hukuki sebep: açık rızan (m.5/1).",
+        "Bazı kişilere portfolyomu ataberksoylu.com/isim biçiminde, o kişiye özel bir bağlantıyla gönderiyorum. Böyle bir bağlantıyla geldiysen ziyaretin o bağlantıyla eşleşir: bağlantıyı gönderdiğim kişinin siteyi açıp açmadığını, hangi sayfalara baktığını ve bağlantının başka bir ağdan ya da şehirden açılıp açılmadığını görebilirim. İstatistikleri kapatırsan bu eşleşme silinir ve kayıt durur.",
+        "Amaç: gönderdiğim tanıtımın ilgi görüp görmediğini anlamak. Hukuki sebep: meşru menfaatim (m.5/2-f).",
       ],
     },
     {
@@ -74,7 +75,7 @@ const tr: PrivacyContent = {
       items: [
         "Parmak izi (canvas, ses, font taraması) yok; tarayıcını gizlice tanımlayan bir kimlik üretilmiyor",
         "Formu doldururken yazdıkların, gönder'e basmadan hiçbir yere gitmiyor",
-        "Ham IP adresi ve tam konum saklanmıyor",
+        "Ham IP adresi ve cihazın gerçek (GPS) konumu saklanmıyor",
         "Verilerin satılmıyor, reklam için kullanılmıyor, kimseyle paylaşılmıyor (aşağıdaki hizmet sağlayıcılar dışında)",
       ],
     },
@@ -82,7 +83,7 @@ const tr: PrivacyContent = {
       heading: "Verilerin kime ve nereye aktarılır",
       body: [
         "Site ve veriler şu hizmet sağlayıcıların altyapısında çalışır: Vercel Inc. (barındırma ve sunucu, ABD), Neon (veritabanı, sunucular Frankfurt/Almanya), Google LLC (Google Workspace e-postası; form mesajları e-posta olarak bana iletilir). Sunucular Türkiye dışında olduğu için verilerin yurt dışına aktarılır (KVKK m.9).",
-        "İstatistik verilerinin aktarımı için dayanak, banner'da verdiğin açık rızadır. Form mesajlarının aktarımı, talebini yanıtlayabilmem için zorunludur.",
+        "Form mesajlarının aktarımı, talebini yanıtlayabilmem için zorunludur.",
         "Kanunen yetkili bir kamu kurumu talep ederse veriler yalnızca bu talep kapsamında paylaşılır.",
       ],
     },
@@ -91,7 +92,7 @@ const tr: PrivacyContent = {
       items: [
         "Form mesajları: 2 yıl, sonra otomatik silinir",
         "Ziyaret ve etkileşim kayıtları: 12 ay, sonra otomatik silinir",
-        "Tarayıcındaki istatistik verileri: onayını geri çektiğinde hemen silinir",
+        "Tarayıcındaki istatistik verileri: istatistikleri kapattığında hemen silinir",
         "Daha erken silinmesini istersen yazman yeterli",
       ],
     },
@@ -118,23 +119,23 @@ const tr: PrivacyContent = {
     heading: "Tarayıcında sakladıklarım",
     cols: ["Anahtar", "Ne için", "Tür", "Süre"],
     rows: [
-      { key: "ab_consent", what: "İstatistik tercihin (kabul / ret)", kind: "Zorunlu", keep: "Sen silene kadar" },
+      { key: "ab_consent", what: "İstatistikleri kapattıysan bu tercihin", kind: "Zorunlu", keep: "Sen silene kadar" },
       { key: "ab_fab", what: "Köşedeki iletişim butonunun açıklamasını bir kez göstermek", kind: "İşlevsel", keep: "Sekme kapanınca" },
-      { key: "ab_visitor, ab_session, ab_seen", what: "Rastgele ziyaretçi kimliği ve oturum sayımı", kind: "İstatistik (onaylı)", keep: "Onayını geri çekene kadar" },
-      { key: "ab_ref", what: "Kişiye özel bağlantının adı", kind: "İstatistik (onaylı)", keep: "Onayını geri çekene kadar" },
+      { key: "ab_visitor, ab_session, ab_seen", what: "Rastgele ziyaretçi kimliği ve oturum sayımı", kind: "İstatistik", keep: "Kapatana kadar" },
+      { key: "ab_ref", what: "Kişiye özel bağlantının adı", kind: "İstatistik", keep: "Kapatana kadar" },
     ],
   },
   manage: {
     heading: "Tercihini değiştir",
-    body: "Onayını istediğin zaman geri çekebilir ya da yeniden verebilirsin. Geri çektiğinde tarayıcındaki istatistik verileri silinir ve kayıt durur.",
+    body: "İstatistikleri istediğin zaman kapatabilir ya da yeniden açabilirsin. Kapattığında tarayıcındaki istatistik verileri silinir ve kayıt durur.",
     button: "Çerez tercihlerini aç",
   },
   banner: {
     title: "Ziyaret istatistikleri",
-    body: "Kabul edersen hangi sayfalara baktığın, nereden geldiğin ve yaklaşık konumun kendi istatistik sistemimde (sunucular yurt dışında) kaydedilir. Reddedersen hiçbir şey kaydedilmez; site aynen çalışır.",
+    body: "Hangi sayfalara baktığın, nereden geldiğin ve yaklaşık konumun kendi istatistik sistemimde (sunucular yurt dışında) kaydedilir. Kapatırsan kayıt durur ve tarayıcındaki istatistik verileri silinir; site aynen çalışır.",
     more: "Ayrıntılar",
-    accept: "Kabul et",
-    reject: "Reddet",
+    accept: "Açık kalsın",
+    reject: "Kapat",
   },
   footer: { privacy: "Gizlilik ve KVKK", cookies: "Çerez tercihleri" },
   formNote: {
@@ -161,13 +162,13 @@ const en: PrivacyContent = {
       body: [
         "When you send the form, your name, email address, message, the topic you picked and the page language are stored; your company/site and phone too, if you fill them in. To protect the form from abuse (spam, flooding), a salted, irreversible hash of your IP address is kept; your raw IP address is not stored.",
         "Purpose: to reply to you and run the project and quote conversation. Legal basis: steps prior to entering a contract (KVKK Art. 5/2-c; GDPR Art. 6(1)(b)) and my legitimate interest in keeping the form safe (KVKK Art. 5/2-f; GDPR Art. 6(1)(f)).",
-        "If you accepted visit statistics, your message is linked to this browser's visit record, and the approximate city/country derived from your IP and your device type (e.g. “Mobile · iOS · Safari”) are added to it. Without consent, no such link is made.",
+        "Your message is linked to this browser's visit record, and the approximate city/country derived from your IP and your device type (e.g. “Mobile · iOS · Safari”) are added to it. If you turned statistics off, no such link is made.",
       ],
     },
     {
-      heading: "Visit statistics (only with your consent)",
+      heading: "Visit statistics",
       body: [
-        "The site has no Google Analytics, ad pixels or other third-party trackers. It has a simple statistics system I wrote myself, which runs only if you choose “Accept” in the banner. When it runs, it records:",
+        "The site has no Google Analytics, ad pixels or other third-party trackers. It has a statistics system I wrote myself, which records the following to understand how the site is used and whether what I send is of interest. Legal basis: my legitimate interest (KVKK Art. 5/2-f; GDPR Art. 6(1)(f)). You can turn it off at any time with “Cookie settings” in the footer.",
       ],
       items: [
         "A random visitor ID stored in your browser, and a session count",
@@ -175,14 +176,14 @@ const en: PrivacyContent = {
         "The links and buttons you click; that you focused a form field (not what you typed); that you copied something (only its length, never the text); page errors",
         "Where you came from: the previous page address, campaign tags (UTM), the type of ad click (e.g. “Google Ads”)",
         "Language, time zone, screen and window size, device/browser/OS type, light/dark theme, connection speed type, page load time",
-        "The approximate country, region and city derived from your IP address; a salted hash of your IP address (to group visits from the same network)",
+        "The approximate country, region, city, postal code and city-level coordinates derived from your IP address; a salted hash of your IP address (to group visits from the same network)",
       ],
     },
     {
       heading: "Personal links",
       body: [
-        "I send my portfolio to some people with a link made for them, like ataberksoylu.com/name. If you came through such a link and accept statistics, your visit is matched to it: I can see whether the person I sent it to opened the site, which pages they viewed, and whether the link was opened from another network or city. If you don't consent, the link is removed from the address and nothing is recorded.",
-        "Purpose: to learn whether what I sent was of interest. Legal basis: your explicit consent (KVKK Art. 5/1; GDPR Art. 6(1)(a)).",
+        "I send my portfolio to some people with a link made for them, like ataberksoylu.com/name. If you came through such a link, your visit is matched to it: I can see whether the person I sent it to opened the site, which pages they viewed, and whether the link was opened from another network or city. Turning statistics off deletes this match and stops recording.",
+        "Purpose: to learn whether what I sent was of interest. Legal basis: my legitimate interest (KVKK Art. 5/2-f; GDPR Art. 6(1)(f)).",
       ],
     },
     {
@@ -190,7 +191,7 @@ const en: PrivacyContent = {
       items: [
         "No fingerprinting (canvas, audio, font probing); no hidden ID is built from your browser",
         "Nothing you type in the form goes anywhere until you press send",
-        "No raw IP address or precise location is stored",
+        "No raw IP address or device (GPS) location is stored",
         "Your data is not sold, used for advertising or shared (except with the providers below)",
       ],
     },
@@ -198,7 +199,7 @@ const en: PrivacyContent = {
       heading: "Who receives your data, and where",
       body: [
         "The site and its data run on these providers: Vercel Inc. (hosting and servers, USA), Neon (database, servers in Frankfurt, Germany), Google LLC (Google Workspace email; form messages are forwarded to me by email). As the servers are outside Türkiye, your data is transferred abroad (KVKK Art. 9).",
-        "The basis for transferring statistics is the explicit consent you give in the banner. Transferring form messages is necessary to answer your request.",
+        "Transferring form messages is necessary to answer your request.",
         "Data is disclosed to a public authority only when the law requires it, and only within that request.",
       ],
     },
@@ -207,14 +208,14 @@ const en: PrivacyContent = {
       items: [
         "Form messages: 2 years, then deleted automatically",
         "Visit and interaction records: 12 months, then deleted automatically",
-        "Statistics data in your browser: deleted as soon as you withdraw consent",
+        "Statistics data in your browser: deleted as soon as you turn statistics off",
         "Write to me if you want anything deleted sooner",
       ],
     },
     {
       heading: "Your rights",
       body: [
-        "Under KVKK Art. 11 and the GDPR you can ask to know whether and how your data is processed, its purpose and who receives it; to have it corrected, deleted or restricted; to object to processing; to receive it in a portable form (GDPR); to withdraw consent at any time; and to be compensated for damage from unlawful processing.",
+        "Under KVKK Art. 11 and the GDPR you can ask to know whether and how your data is processed, its purpose and who receives it; to have it corrected, deleted or restricted; to object to processing; to receive it in a portable form (GDPR); to turn statistics off at any time; and to be compensated for damage from unlawful processing.",
       ],
     },
     {
@@ -228,23 +229,23 @@ const en: PrivacyContent = {
     heading: "What I store in your browser",
     cols: ["Key", "Purpose", "Type", "Kept"],
     rows: [
-      { key: "ab_consent", what: "Your statistics choice (accept / reject)", kind: "Necessary", keep: "Until you clear it" },
+      { key: "ab_consent", what: "Your choice, if you turned statistics off", kind: "Necessary", keep: "Until you clear it" },
       { key: "ab_fab", what: "Showing the corner contact button's label once", kind: "Functional", keep: "Until the tab closes" },
-      { key: "ab_visitor, ab_session, ab_seen", what: "Random visitor ID and session count", kind: "Statistics (consented)", keep: "Until you withdraw consent" },
-      { key: "ab_ref", what: "The name of a personal link", kind: "Statistics (consented)", keep: "Until you withdraw consent" },
+      { key: "ab_visitor, ab_session, ab_seen", what: "Random visitor ID and session count", kind: "Statistics", keep: "Until you turn it off" },
+      { key: "ab_ref", what: "The name of a personal link", kind: "Statistics", keep: "Until you turn it off" },
     ],
   },
   manage: {
     heading: "Change your choice",
-    body: "You can withdraw or give consent again at any time. Withdrawing deletes the statistics data in your browser and stops recording.",
+    body: "You can turn statistics off or on again at any time. Turning off deletes the statistics data in your browser and stops recording.",
     button: "Open cookie settings",
   },
   banner: {
     title: "Visit statistics",
-    body: "If you accept, the pages you view, where you came from and your approximate location are recorded in my own statistics system (servers outside Türkiye). If you reject, nothing is recorded and the site works the same.",
+    body: "The pages you view, where you came from and your approximate location are recorded in my own statistics system (servers outside Türkiye). Turn it off to stop recording and delete the statistics data in your browser; the site works the same.",
     more: "Details",
-    accept: "Accept",
-    reject: "Reject",
+    accept: "Keep on",
+    reject: "Turn off",
   },
   footer: { privacy: "Privacy", cookies: "Cookie settings" },
   formNote: {

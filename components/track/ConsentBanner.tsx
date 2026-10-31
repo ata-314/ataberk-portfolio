@@ -1,29 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import { privacy, privacyPath } from "@/content/privacy";
-import { CONSENT_OPEN_EVENT, openConsent, setConsent, useConsent, type Consent } from "@/lib/track/consent";
+import { CONSENT_OPEN_EVENT, openConsent, setConsent, type Consent } from "@/lib/track/consent";
 
-// Asks once for statistics consent, bottom left, until the visitor chooses. Accept
-// and reject sit side by side in the same style (the KVKK cookie guideline wants
-// refusing to be as easy as accepting). Opens again from the footer and the
-// privacy page. The owner's browser (signed in to /stats) is never asked.
-const noSubscribe = () => () => {};
-function isOwner() {
-  try {
-    return !!localStorage.getItem("ab_notrack");
-  } catch {
-    return false;
-  }
-}
-
+// Statistics settings, bottom left: never shown by itself, only when opened from
+// the footer or the privacy page. Turn off / keep on side by side.
 export function ConsentBanner({ locale }: { locale: Locale }) {
   const t = privacy[locale].banner;
-  const consent = useConsent();
-  // Hidden on the server; the browser decides once it hydrates.
-  const owner = useSyncExternalStore(noSubscribe, isOwner, () => true);
   const [reopened, setReopened] = useState(false);
 
   useEffect(() => {
@@ -32,7 +18,7 @@ export function ConsentBanner({ locale }: { locale: Locale }) {
     return () => removeEventListener(CONSENT_OPEN_EVENT, reopen);
   }, []);
 
-  if (!reopened && (owner || consent)) return null;
+  if (!reopened) return null;
   const choose = (value: Consent) => {
     setConsent(value);
     setReopened(false);

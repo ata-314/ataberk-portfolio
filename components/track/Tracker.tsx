@@ -4,8 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { readConsent, useConsent } from "@/lib/track/consent";
 
-// Runs only after the visitor accepts statistics in the consent banner
-// (lib/track/consent.ts); until then nothing is sent or stored.
+// Off only for a visitor who turned statistics off (lib/track/consent.ts).
 //
 // Personal-link tracking. A link like /?ref=ahmet-x1y2 tags this browser as that
 // recipient (kept in localStorage, so later visits count too); every page view is
@@ -40,7 +39,7 @@ function send(body: object) {
 }
 
 let firstView = true;
-// A personal link's ?ref= waits here, in memory only, until the visitor decides.
+// A personal link's ?ref=, taken off the address before the view is recorded.
 let pendingRef: string | null = null;
 let firstId: string | null = null;
 let lcp = 0;
@@ -54,7 +53,7 @@ type EventData = Record<string, string | number | boolean>;
 // flat object, e.g. { film: "piyes-levent" }.
 export function trackEvent(name: string, data?: EventData) {
   const visitor = read("ab_visitor");
-  if (!visitor || readConsent() !== "granted" || read("ab_notrack") || navigator.webdriver) return;
+  if (!visitor || readConsent() === "denied" || read("ab_notrack") || navigator.webdriver) return;
   send({ event: name, visitor, ref: read("ab_ref"), path: window.location.pathname, data });
 }
 
@@ -121,7 +120,7 @@ const label = (el: Element) =>
 
 export function Tracker() {
   const pathname = usePathname();
-  const allowed = useConsent() === "granted";
+  const allowed = useConsent() !== "denied";
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -134,7 +133,8 @@ export function Tracker() {
   }, []);
 
   useEffect(() => {
-    if (!allowed || read("ab_notrack") || navigator.webdriver) return;
+    // Read the choice directly too: the hydration pass still sees the server's null.
+    if (!allowed || readConsent() === "denied" || read("ab_notrack") || navigator.webdriver) return;
     const url = new URL(window.location.href);
     if (pendingRef) {
       write("ab_ref", pendingRef);
@@ -216,8 +216,8 @@ export function Tracker() {
     let since = document.visibilityState === "visible" ? Date.now() : 0;
     let hiddenAt = 0;
     const report = () => {
-      // Withdrawn meanwhile: nothing more is sent or stored.
-      if (readConsent() !== "granted") return;
+      // Turned off meanwhile: nothing more is sent or stored.
+      if (readConsent() === "denied") return;
       if (since) visible += Date.now() - since;
       since = 0;
       write("ab_seen", String(Date.now()));
