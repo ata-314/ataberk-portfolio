@@ -46,7 +46,7 @@ export default async function Home({
               locale === "tr"
                 ? "Ataberk Soylu: yapay zeka uzmanı, web ve grafik tasarımcı"
                 : "Ataberk Soylu: AI specialist, web and graphic designer",
-            title: t.title,
+            title: t.roles,
             tagline: t.tagline,
             ctaContact: contactPage[locale].cta,
             contactHref: contactPath(locale),

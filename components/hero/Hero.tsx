@@ -108,7 +108,7 @@ export function Hero({ t }: { t: HeroStrings }) {
               className="hero-enter pointer-events-auto flex flex-col gap-6 md:col-span-4 md:col-start-9 md:items-end md:text-right"
               style={{ ["--d" as string]: "0.25s" }}
             >
-              <p lang="en" className="text-sm leading-snug text-bone-dim md:text-[15px]">
+              <p className="text-sm leading-snug text-bone-dim md:text-[15px]">
                 {roleA}
                 {roleB ? (
                   <>

@@ -8,6 +8,8 @@ export type SiteContent = {
   name: string;
   title: string;
   tagline: string;
+  // The hero's two role lines, split on " & "; says what a client can hire.
+  roles: string;
   nav: { work: string; capabilities: string; about: string; lab: string; contact: string; menu: string; close: string };
   manifesto: { line: string; sub: string };
   capabilities: {
@@ -96,7 +98,8 @@ const capabilitiesShared = [
 const tr: SiteContent = {
   name: "Ataberk",
   title: "Creative Technologist & Multi Designer",
-  tagline: "Yapay zekâ, motion, 3D ve web arasında akıllı dijital deneyimler tasarlıyorum.",
+  tagline: "Markalar için sinematik web siteleri, yapay zekâ filmleri ve AI agent'lar kuruyorum.",
+  roles: "Web tasarım ve geliştirme & AI film, AI agent, marka tasarımı",
   nav: { work: "İşler", capabilities: "Yetenekler", about: "Hakkında", lab: "Lab", contact: "İletişim", menu: "Menü", close: "Kapat" },
   manifesto: {
     line: "Fikirleri akıllı görsel sistemlere dönüştürüyorum.",
@@ -199,7 +202,8 @@ const tr: SiteContent = {
 const en: SiteContent = {
   name: "Ataberk",
   title: "Creative Technologist & Multi Designer",
-  tagline: "Designing intelligent digital experiences across AI, motion, 3D and the web.",
+  tagline: "I build cinematic websites, AI films and AI agents for brands.",
+  roles: "Web design and development & AI film, AI agents, brand design",
   nav: { work: "Work", capabilities: "Capabilities", about: "About", lab: "Lab", contact: "Contact", menu: "Menu", close: "Close" },
   manifesto: {
     line: "I turn ideas into intelligent visual systems.",
