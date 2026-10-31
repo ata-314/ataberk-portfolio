@@ -15,6 +15,7 @@ import { Strip } from "@/components/sections/Strip";
 import { Voyage } from "@/components/sections/Voyage";
 import { AISystems } from "@/components/sections/AISystems";
 import { FlightGap } from "@/components/sections/FlightGap";
+import { InlineCta } from "@/components/sections/InlineCta";
 import {
   AboutPreview,
   ContactFinale,
@@ -57,11 +58,13 @@ export default async function Home({
         <Strip locale={locale} />
         <Voyage locale={locale} />
         <Services locale={locale} />
+        <InlineCta locale={locale} after="services" />
         <ClientStrip locale={locale} />
         <FlightGap />
         <AboutPreview locale={locale} t={t.aboutPreview} about={t.about} />
         <FlightGap />
         <WorkSection locale={locale} />
+        <InlineCta locale={locale} after="work" />
         <FlightGap size="lg" />
         <Manifesto line={t.manifesto.line} sub={t.manifesto.sub} />
         <FlightGap size="lg" />

@@ -281,11 +281,12 @@ export function MessageBody({ m }: { m: Message }) {
   return (
     <div className="mt-3 text-sm">
       <p className="text-xs text-bone-dim">
-        <a href={`mailto:${m.email}`} className="text-bone underline underline-offset-2">{m.email}</a>
+        {/* Since 2026-11-01 either the email or the phone may be missing. */}
+        {m.email && <a href={`mailto:${m.email}`} className="text-bone underline underline-offset-2">{m.email}</a>}
         {m.company && ` · ${m.company}`}
         {m.phone && (
           <>
-            {" · "}
+            {m.email && " · "}
             <a href={`tel:${m.phone}`} className="text-bone underline underline-offset-2">{m.phone}</a>
           </>
         )}

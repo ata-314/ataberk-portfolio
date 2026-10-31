@@ -13,6 +13,11 @@ export function PageMotion() {
   useEffect(() => {
     const html = document.documentElement;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Blocks already on screen stay as painted: hiding them to rise again would
+    // blink the first view and push LCP back to whenever the rise ran.
+    document.querySelectorAll<HTMLElement>("[data-rise]").forEach((el) => {
+      if (el.getBoundingClientRect().top < innerHeight) el.dataset.in = "";
+    });
     html.dataset.rise = "ready";
     const io = new IntersectionObserver(
       (entries) =>

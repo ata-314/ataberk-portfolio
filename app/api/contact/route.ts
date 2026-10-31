@@ -32,7 +32,11 @@ export async function POST(request: Request) {
   const intent = field(body.intent, 80) || null;
   const message = field(body.message, 5000);
   const locale = field(body.locale, 5) || null;
-  if (!name || !EMAIL.test(email) || message.length < 2) return Response.json({ error: "invalid" }, { status: 400 });
+  // A name and one way back (email or a phone of 7+ digits); the message is optional.
+  const emailOk = EMAIL.test(email);
+  if (!name || (email && !emailOk) || (!emailOk && (phone?.replace(/\D/g, "").length ?? 0) < 7)) {
+    return Response.json({ error: "invalid" }, { status: 400 });
+  }
   const ref = typeof body.ref === "string" && REF.test(body.ref) ? body.ref : null;
   const visitor = typeof body.visitor === "string" && UUID.test(body.visitor) ? body.visitor : null;
 
@@ -58,7 +62,7 @@ export async function POST(request: Request) {
     ? (((await sql()`select label from links where slug = ${ref}`) as { label: string }[])[0]?.label ?? ref)
     : null;
   const lines: (string | null)[] = [
-    `${name} <${email}>`,
+    email ? `${name} <${email}>` : name,
     company && `Şirket / site: ${company}`,
     phone && `Telefon: ${phone}`,
     intent && `Konu: ${intent}`,
@@ -75,7 +79,7 @@ export async function POST(request: Request) {
     await sendMail({
       subject: `Portfolyo formu: ${intent ?? "Mesaj"} — ${name}`,
       text: lines.filter((l) => l !== null).join("\n"),
-      replyTo: email,
+      replyTo: email || undefined,
     });
     await sql()`update messages set emailed = true where id = ${id}`;
   } catch (e) {

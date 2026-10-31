@@ -148,8 +148,15 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
-        {/* Windows takes the lite glass before first paint (see components/gl/perf.ts). */}
-        <script dangerouslySetInnerHTML={{ __html: `if(/Windows/i.test(navigator.userAgent))document.documentElement.dataset.perf="lite"` }} />
+        {/* Windows takes the lite glass before first paint (see components/gl/perf.ts).
+            Pages without the home stage have no opening to wait for: marking the
+            intro done before first paint keeps their <header> (nav, page hero with
+            the h1) visible from the first frame, so search engines and LCP see it. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if(/Windows/i.test(navigator.userAgent))document.documentElement.dataset.perf="lite";if(location.pathname.split("/").filter(Boolean).length>1)document.documentElement.dataset.stageIntro="done"`,
+          }}
+        />
       </head>
       <body
         className={`${archivo.variable} ${audiowide.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}

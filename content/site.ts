@@ -55,6 +55,8 @@ export type SiteContent = {
       phone: string;
       message: string;
       messageHint: string;
+      reach: string;
+      needReach: string;
       send: string;
       sending: string;
       sentTitle: string;
@@ -171,14 +173,16 @@ const tr: SiteContent = {
       intent: "Konu",
       name: "Adın",
       email: "E-posta",
-      company: "Şirket / web sitesi",
-      phone: "Telefon (isteğe bağlı)",
-      message: "Mesajın",
-      messageHint: "Ne üretmek istiyorsun, ne zamana, hangi hedefle?",
+      company: "Şirket / web sitesi (isteğe bağlı)",
+      phone: "Telefon / WhatsApp",
+      message: "Mesajın (isteğe bağlı)",
+      messageHint: "Ne üretmek istiyorsun, ne zamana, hangi hedefle? İki satır yeter.",
+      reach: "E-posta ya da telefon: biri yeterli.",
+      needReach: "Sana nasıl ulaşayım? Bir e-posta ya da telefon yaz.",
       send: "Gönder",
       sending: "Gönderiliyor",
       sentTitle: "Mesajın ulaştı.",
-      sentBody: "Okuyup e-posta ile dönüş yapacağım.",
+      sentBody: "Okuyup e-postayla ya da telefonla dönüş yapacağım.",
       again: "Yeni mesaj",
       error: "Gönderilemedi. Tekrar dene ya da doğrudan e-posta at.",
       tooFast: "Biraz yavaş: birkaç saniye sonra tekrar dene.",
@@ -272,14 +276,16 @@ const en: SiteContent = {
       intent: "Topic",
       name: "Your name",
       email: "Email",
-      company: "Company / website",
-      phone: "Phone (optional)",
-      message: "Your message",
-      messageHint: "What do you want to make, by when, and to what end?",
+      company: "Company / website (optional)",
+      phone: "Phone / WhatsApp",
+      message: "Your message (optional)",
+      messageHint: "What do you want to make, by when, and to what end? Two lines will do.",
+      reach: "Email or phone: either is enough.",
+      needReach: "How should I reach you? Add an email or a phone number.",
       send: "Send",
       sending: "Sending",
       sentTitle: "Your message is in.",
-      sentBody: "I'll read it and reply by email.",
+      sentBody: "I'll read it and get back to you by email or phone.",
       again: "New message",
       error: "It didn't go through. Try again or email me directly.",
       tooFast: "A little too quick: try again in a few seconds.",

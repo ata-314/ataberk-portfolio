@@ -112,7 +112,7 @@ export function Strip({ locale }: { locale: Locale }) {
         </div>
         <div className="strip-hit" aria-hidden onPointerMove={onHitMove} onPointerLeave={onHitLeave} onClick={onHitClick} />
         <div data-strip-block className="strip-block">
-          <h3 className="strip-heading" aria-label={stripFilms[active].title}>
+          <h2 className="strip-heading" aria-label={stripFilms[active].title}>
             {stripFilms.map((f, i) => (
               <span key={f.slug} aria-hidden className="strip-heading-line" data-active={i === active ? "true" : undefined} data-past={i < active ? "true" : undefined}>
                 {Array.from(f.title, (ch, k) => (
@@ -120,7 +120,7 @@ export function Strip({ locale }: { locale: Locale }) {
                 ))}
               </span>
             ))}
-          </h3>
+          </h2>
           <div className="strip-index">
             <span className="strip-kind">{t.kind}</span>
             <ol>

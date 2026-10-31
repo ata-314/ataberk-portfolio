@@ -23,7 +23,7 @@ const read = (key: string) => {
   }
 };
 
-type Status = "idle" | "sending" | "sent" | "error" | "fast";
+type Status = "idle" | "sending" | "sent" | "error" | "fast" | "reach";
 type T = SiteContent["contact"]["form"];
 // `initial` preselects a topic, e.g. "Web sitesi" on the web design page.
 type Props = { locale: Locale; intents: string[]; t: T; initial?: string };
@@ -40,6 +40,11 @@ function useContactForm(locale: Locale, first: string) {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.currentTarget));
+    // Either way to reach back is enough; the browser checks the email's shape.
+    if (!String(data.email ?? "").trim() && !String(data.phone ?? "").trim()) {
+      setStatus("reach");
+      return;
+    }
     const linked = readConsent() !== "denied";
     setStatus("sending");
     try {
@@ -150,9 +155,9 @@ function SendRow({ t, status, i, wide }: { t: T; status: Status; i: number; wide
         {status === "sending" ? `${t.sending}…` : t.send}
         <span aria-hidden className="transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1">↗</span>
       </button>
-      {(status === "error" || status === "fast") && (
+      {(status === "error" || status === "fast" || status === "reach") && (
         <p role="alert" className="text-sm text-bone-dim">
-          {status === "fast" ? t.tooFast : t.error}
+          {status === "fast" ? t.tooFast : status === "reach" ? t.needReach : t.error}
         </p>
       )}
     </div>
@@ -260,22 +265,24 @@ export function ContactForm({ locale, intents, t, initial }: Props) {
             </label>
             <label data-a style={order(4)} className="cf-well">
               <span className="cf-label">{t.email}</span>
-              <input name="email" type="email" required maxLength={200} autoComplete="email" className="cf-input" />
+              <input name="email" type="email" maxLength={200} autoComplete="email" className="cf-input" />
             </label>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
+            {/* Phone right after the email (on phones too): either one is enough. */}
             <label data-a style={order(5)} className="cf-well">
-              <span className="cf-label">{t.company}</span>
-              <input name="company" maxLength={200} autoComplete="organization" className="cf-input" />
-            </label>
-            <label data-a style={order(6)} className="cf-well">
               <span className="cf-label">{t.phone}</span>
               <input name="phone" type="tel" maxLength={40} autoComplete="tel" className="cf-input" />
             </label>
+            <label data-a style={order(6)} className="cf-well">
+              <span className="cf-label">{t.company}</span>
+              <input name="company" maxLength={200} autoComplete="organization" className="cf-input" />
+            </label>
           </div>
+          <p data-a style={order(6)} className="-mt-2 text-center text-xs text-bone-dim">{t.reach}</p>
           <label data-a style={order(7)} className="cf-well">
             <span className="cf-label">{t.message}</span>
-            <textarea name="message" required rows={4} maxLength={5000} placeholder={t.messageHint} data-lenis-prevent className="cf-input resize-none" />
+            <textarea name="message" rows={4} maxLength={5000} placeholder={t.messageHint} data-lenis-prevent className="cf-input resize-none" />
           </label>
           <Honeypot />
           <SendRow t={t} status={status} i={8} wide />
