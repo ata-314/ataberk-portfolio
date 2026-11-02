@@ -12,7 +12,7 @@ const tr: Guide[] = [
     slug: "web-sitesi-yaptirirken-dikkat-edilmesi-gerekenler",
     title: "Web Sitesi Yaptırırken Nelere Dikkat Edilmeli?",
     description:
-      "Web sitesi yaptırmadan önce ve yaptırırken bakılacaklar: sitenin amacı, kiminle çalışılacağı, alan adı ve kodun sahipliği, içerik, telefon hızı, SEO, KVKK ve teklifte yazması gerekenler. Kontrol listesiyle.",
+      "Web sitesi yaptırırken dikkat edilmesi gerekenler: kiminle çalışılacağı, alan adı ve kod sahipliği, içerik, hız, SEO, KVKK ve teklifte yazmalı olanlar.",
     h1: "Web sitesi yaptırırken nelere dikkat edilmeli?",
     lead: "Bir web sitesi yaptırmak, birkaç ekran tasarlatmaktan fazlası: alan adından form mesajlarının kime düştüğüne kadar sonradan değiştirmesi zor kararlar içerir. Aşağıda iş başlamadan ve sürerken bakılacakları, yaptığım projelerden örneklerle sıraladım.",
     published: "2026-11-01",
@@ -129,7 +129,7 @@ const tr: Guide[] = [
     slug: "web-sitesi-ne-kadar-surede-yapilir",
     title: "Web Sitesi Ne Kadar Sürede Yapılır?",
     description:
-      "Bir web sitesinin yapım süresini neler belirler: aşamalar, sayfa sayısı, özel tasarım, video ve animasyon, dil sayısı, içerik ve onaylar. Süreyi uzatan ve kısaltan şeyler, gerçek projelerden örneklerle.",
+      "Web sitesi ne kadar sürede yapılır? Aşamalar, sayfa sayısı, özel tasarım, animasyon, dil, içerik ve onaylar. Süreyi uzatan ve kısaltan şeyler, örneklerle.",
     h1: "Web sitesi ne kadar sürede yapılır?",
     lead: "Kısa cevap: kapsama göre değişir ve net takvim, kapsam konuşulduktan sonra teklifte yazılır. Ama süreyi neyin belirlediğini bilmek, hem gerçekçi bir tarih koymanızı hem de işi hızlandırmanızı sağlar. Aşağıda bir sitenin aşamalarını ve süreyi etkileyen şeyleri anlattım.",
     published: "2026-11-01",
@@ -223,7 +223,7 @@ const en: Guide[] = [
     slug: "hiring-someone-to-build-a-website",
     title: "Hiring Someone to Build a Website: What to Check",
     description:
-      "What to check before and while you hire someone to build your website: its job, who to work with, who owns the domain and code, content, phone speed, SEO, privacy and what the proposal should say. With a checklist.",
+      "Hiring someone to build your website: who to work with, who owns the domain and code, content, speed, SEO, privacy and what the proposal must say. Checklist.",
     h1: "Hiring someone to build a website: what to check",
     lead: "Having a website built is more than getting a few screens designed: from the domain to where form messages land, it involves decisions that are hard to change later. Below are the things to check before and during the work, with examples from projects I've built.",
     published: "2026-11-01",
@@ -338,7 +338,7 @@ const en: Guide[] = [
     slug: "how-long-does-a-website-take",
     title: "How Long Does It Take to Build a Website?",
     description:
-      "What decides how long a website takes: the stages, page count, custom design, video and animation, languages, content and approvals. What slows it down and what speeds it up, with examples from real projects.",
+      "How long does a website take? Stages, page count, custom design, animation, languages, content and approvals: what slows it down and what speeds it up.",
     h1: "How long does it take to build a website?",
     lead: "The short answer: it depends on the scope, and a firm timeline is written in the proposal once the scope is agreed. But knowing what drives the time helps you set a realistic date and speed the work up. Below are a site's stages and the things that affect how long it takes.",
     published: "2026-11-01",

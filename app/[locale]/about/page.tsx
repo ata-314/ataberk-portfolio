@@ -20,7 +20,7 @@ const meta = {
   tr: {
     title: "Ataberk Soylu Kimdir? Creative Technologist ve Yapay Zeka Uzmanı",
     description:
-      "Ataberk Soylu: İstanbul'da tasarım, motion, yapay zekâ ve web geliştirmeyi tek üretim sürecinde birleştiren creative technologist. Oneavex'in kurucusu, ModdTeam'in geliştiricisi.",
+      "Ataberk Soylu: tasarım, motion, yapay zekâ ve web geliştirmeyi tek süreçte toplayan İstanbullu creative technologist; Oneavex kurucusu, ModdTeam geliştiricisi.",
     h1: "Ataberk Soylu hakkında",
     cta: "Birlikte bir şey kuralım: aklındakini kısaca yaz.",
     role: "Creative Technologist & Multi Designer · İstanbul",
@@ -32,7 +32,7 @@ const meta = {
   en: {
     title: "Who is Ataberk Soylu? Creative Technologist and AI Specialist",
     description:
-      "Ataberk Soylu: an Istanbul-based creative technologist joining design, motion, AI and web development in one production process. Founder of Oneavex, builder of ModdTeam.",
+      "Ataberk Soylu: Istanbul-based creative technologist joining design, motion, AI and web development in one process. Founder of Oneavex, builder of ModdTeam.",
     h1: "About Ataberk Soylu",
     cta: "Let's build something together: tell me what you have in mind.",
     role: "Creative Technologist & Multi Designer · Istanbul",

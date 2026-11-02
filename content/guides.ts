@@ -51,7 +51,7 @@ const tr: Guides = {
       slug: "konut-projesi-lansman-sitesi",
       title: "Konut Projesi Lansman Sitesi Nasıl Olmalı?",
       description:
-        "Bir konut projesinin lansman sitesinde neler olmalı: ilk ekran, proje rakamları, plan tipleri, konum, her an görünen bilgi formu, telefon hızı, yabancı alıcı ve arama motoru. Kontrol listesiyle.",
+        "Konut projesi lansman sitesinde neler olmalı: ilk ekran, proje rakamları, plan tipleri, konum, bilgi formu, telefon hızı ve yabancı alıcı. Kontrol listesiyle.",
       h1: "Konut projesi lansman sitesi nasıl olmalı?",
       lead: "Alıcı bir projeyi şantiyeden önce sitesinde görür. Lansman sitesinin işi projeyi güzel göstermekten fazlası: doğru kişiyi bilgi formuna, oradan satış ofisine götürmek. Aşağıda böyle bir sitenin parçaları ve yayından önce bakılacaklar var.",
       published: "2026-10-25",
@@ -152,7 +152,7 @@ const tr: Guides = {
       slug: "ozel-ai-agent-nedir",
       title: "Özel AI Agent Nedir, Nasıl Kurulur?",
       description:
-        "Özel AI agent ile hazır chatbot arasındaki fark, bir agent'ın parçaları, hangi işlerin yapay zekâya devredilebileceği, çok ajanlı sistemler ve küçük başlayıp büyütmenin yolu. Gerçek sistemlerden örneklerle.",
+        "Özel AI agent nedir, chatbot'tan farkı ne? Agent'ın parçaları, yapay zekâya devredilebilecek işler, çok ajanlı sistemler ve küçük başlamanın yolu.",
       h1: "Özel AI agent nedir, işletmene ne kazandırır?",
       lead: "“Yapay zekâ kullanalım” kararı çoğu zaman bir sohbet penceresiyle başlar ve orada kalır. Özel bir AI agent ise bir işi baştan sona yürütür: araçlarını kullanır, kendi çıktısını denetler ve onay gereken yerde durur. Bu yazıda farkı, parçaları ve nasıl başlanacağını anlatıyorum.",
       published: "2026-10-25",
@@ -229,7 +229,7 @@ const tr: Guides = {
       slug: "web-sitesi-fiyatlari",
       title: "Web Sitesi Fiyatları 2026: Neye Göre Değişir?",
       description:
-        "Kurumsal site, proje lansman sitesi ya da e-ticaret: bir web sitesinin fiyatını belirleyen şeyler, hazır tema ile özel tasarım farkı, gizli maliyetler ve doğru teklif için hazırlanacak brief.",
+        "Web sitesi fiyatlarını ne belirler? Kurumsal site, lansman sitesi, e-ticaret; hazır tema ile özel tasarım farkı, gizli maliyetler ve doğru teklif için brief.",
       h1: "Web sitesi fiyatları neye göre değişir?",
       lead: "“Bir web sitesi ne kadar?” sorusunun tek bir cevabı yok, çünkü “web sitesi” tek bir şey değil. Bu yazıda fiyatı neyin belirlediğini, hazır tema ile özel tasarımın farkını ve doğru teklif alabilmek için neleri hazırlaman gerektiğini anlatıyorum.",
       published: "2026-10-25",
@@ -307,7 +307,7 @@ const tr: Guides = {
       slug: "ai-reklam-filmi-nasil-uretilir",
       title: "AI Reklam Filmi Nasıl Üretilir? Adım Adım Süreç",
       description:
-        "Yapay zekâ destekli reklam ve tanıtım filmi nasıl üretilir: fikir ve senaryo, storyboard, görsel dil, üretim, kurgu ve ses. Neyin işe yaradığı, nerede dikkat edilmesi gerektiği ve marka tutarlılığı.",
+        "Yapay zekâ ile reklam ve tanıtım filmi nasıl üretilir: senaryo, storyboard, görsel dil, üretim, kurgu ve ses. Neyin işe yaradığı ve marka tutarlılığı.",
       h1: "AI reklam filmi nasıl üretilir?",
       lead: "Yapay zekâ ile film üretmek bir komut yazıp sonucu beklemek değil. İyi bir AI reklam filmi, klasik bir prodüksiyonun disipliniyle başlar: fikir, senaryo, storyboard, ışık ve kurgu. Modeller bu sürecin araçlarıdır. Bu yazıda süreci adım adım anlatıyorum.",
       published: "2026-10-25",
@@ -376,7 +376,7 @@ const tr: Guides = {
       slug: "kurumsal-web-sitesi-nasil-olmali",
       title: "Kurumsal Web Sitesi Nasıl Olmalı? Kontrol Listesi",
       description:
-        "Bir şirketin kurumsal web sitesinde neler olmalı: ilk ekran, hizmet yapısı, güven veren bölümler, telefon hızı, arama motoru ve yapay zekâ için hazırlık, yayından sonrası. Gerçek projelerden örnekler ve kontrol listesiyle.",
+        "Kurumsal web sitesinde neler olmalı: ilk ekran, hizmet yapısı, güven veren bölümler, telefon hızı, SEO ve yayından sonrası. Gerçek örnekler, kontrol listesi.",
       h1: "Kurumsal web sitesi nasıl olmalı?",
       lead: "Bir şirketle ilk tanışma çoğu zaman sitesinde olur: müşteri, yatırımcı, iş ortağı, aday çalışan. Kurumsal sitenin işi, şirketin ne yaptığını birkaç saniyede anlatmak ve doğru kişiyi iletişime geçirmek. Aşağıda böyle bir sitenin parçaları ve yayından önce bakılacaklar var.",
       published: "2026-10-25",
@@ -479,7 +479,7 @@ const tr: Guides = {
       slug: "interaktif-3d-web-sitesi",
       title: "İnteraktif ve 3D Web Sitesi: Ne Zaman İşe Yarar?",
       description:
-        "Kaydırmalı anlatım, kaydırmayla oynayan video, WebGL ve Three.js ile 3B sahneler: interaktif bir web sitesi ne zaman markaya değer katar, ne zaman yük olur? Telefon performansı, arama motoru ve doğru brief.",
+        "İnteraktif ve 3D web sitesi ne zaman değer katar, ne zaman yük olur? Kaydırmalı anlatım, WebGL ve Three.js sahneler, telefon performansı ve SEO.",
       h1: "İnteraktif ve 3D web sitesi ne zaman işe yarar?",
       lead: "Kaydırdıkça oynayan bir film, imleçle hareket eden partiküller, tarayıcıda dönen bir 3B model. İnteraktif siteler akılda kalır, ama her marka için doğru seçim değildir. Bu yazıda türlerini, ne zaman işe yaradıklarını ve dikkat edilmesi gerekenleri gerçek projelerden örneklerle anlatıyorum.",
       published: "2026-10-25",
@@ -587,7 +587,7 @@ const en: Guides = {
       slug: "real-estate-launch-website",
       title: "What a Real Estate Launch Website Needs",
       description:
-        "What belongs on a residential project's launch website: the first screen, project figures, unit types, location, an always-visible enquiry form, phone speed, foreign buyers and search. With a launch checklist.",
+        "What a residential project's launch website needs: first screen, project figures, unit types, location, enquiry form, phone speed, foreign buyers. Checklist.",
       h1: "What a real estate launch website needs",
       lead: "Buyers meet a development on its website before they see the building. A launch site has to do more than look good: it has to bring the right person to the enquiry form and on to the sales office. Here are the parts of such a site, and what to check before it goes live.",
       published: "2026-10-25",
@@ -688,7 +688,7 @@ const en: Guides = {
       slug: "what-is-a-custom-ai-agent",
       title: "What Is a Custom AI Agent? How to Start",
       description:
-        "How a custom AI agent differs from a chatbot, the parts of an agent, which work can be handed to AI, multi-agent systems and how to start small and grow. With examples from working systems.",
+        "What is a custom AI agent and how is it different from a chatbot? Its parts, which work AI can take over, multi-agent systems and how to start small.",
       h1: "What is a custom AI agent, and what can it do for your business?",
       lead: "A decision to “use AI” often starts with a chat window and stays there. A custom AI agent carries a piece of work from start to finish: it uses its tools, checks its own output and stops where approval is needed. This guide covers the difference, the parts and how to begin.",
       published: "2026-10-25",
@@ -765,7 +765,7 @@ const en: Guides = {
       slug: "website-cost",
       title: "How Much Does a Website Cost in 2026?",
       description:
-        "Corporate site, launch site or e-commerce: what sets the price of a website, template versus custom design, the costs people miss, and the brief that gets you an accurate quote.",
+        "What sets the cost of a website: corporate, launch or e-commerce, template versus custom design, the costs people miss and the brief for an accurate quote.",
       h1: "What drives the cost of a website?",
       lead: "“How much is a website?” has no single answer, because “a website” is not one thing. This guide covers what sets the price, the difference between a template and a custom design, and what to prepare to get an accurate quote.",
       published: "2026-10-25",
@@ -843,7 +843,7 @@ const en: Guides = {
       slug: "how-ai-commercials-are-made",
       title: "How Is an AI Commercial Made? The Process",
       description:
-        "How an AI-driven commercial or brand film is made: idea and script, storyboard, visual language, production, edit and sound. What works, where to be careful, and keeping a brand consistent.",
+        "How an AI commercial or brand film is made: script, storyboard, visual language, production, edit and sound. What works and how to keep a brand consistent.",
       h1: "How is an AI commercial made?",
       lead: "Making a film with AI is not typing a prompt and waiting. A good AI commercial starts with the discipline of a classic production: idea, script, storyboard, light and edit. The models are tools within that process. This guide walks through it step by step.",
       published: "2026-10-25",
@@ -912,7 +912,7 @@ const en: Guides = {
       slug: "what-a-corporate-website-needs",
       title: "What a Corporate Website Needs: A Checklist",
       description:
-        "What belongs on a company website: the first screen, how services are structured, the sections that build trust, phone speed, readiness for search engines and AI search, and life after launch. With examples from real projects and a checklist.",
+        "What a corporate website needs: first screen, service structure, sections that build trust, phone speed, SEO and life after launch. Real examples, checklist.",
       h1: "What does a corporate website need?",
       lead: "Most people meet a company on its website first: clients, investors, partners, future hires. A corporate site has to say what the company does within seconds and move the right person to get in touch. Below are the parts of such a site and what to check before launch.",
       published: "2026-10-25",
@@ -1013,7 +1013,7 @@ const en: Guides = {
       slug: "interactive-3d-website",
       title: "Interactive and 3D Websites: When Do They Work?",
       description:
-        "Scroll-told stories, video played by scrolling, 3D scenes in WebGL and Three.js: when does an interactive website add value to a brand and when does it get in the way? Phone performance, search engines and the right brief.",
+        "When does an interactive or 3D website add value, and when does it get in the way? Scroll stories, WebGL and Three.js scenes, phone performance and SEO.",
       h1: "When does an interactive or 3D website work?",
       lead: "A film that plays as you scroll, particles that follow the cursor, a 3D model turning in the browser. Interactive sites stay in mind, but they are not the right choice for every brand. This guide covers the kinds, when they work and what to watch, with examples from real projects.",
       published: "2026-10-25",

@@ -41,7 +41,10 @@ export async function generateMetadata({
   const item = getWorkItem(l, slug);
   if (!item) return {};
   // "Üçay 360 — Web Deneyimi | Vaka Çalışması": the name plus what it is, for search.
-  const title = `${item.title} — ${item.category} | ${l === "tr" ? "Vaka Çalışması" : "Case Study"}`;
+  // The case label goes when the full title (with " — Ataberk Soylu") would pass 60 characters and get cut.
+  const named = `${item.title} — ${item.category}`;
+  const labelled = `${named} | ${l === "tr" ? "Vaka Çalışması" : "Case Study"}`;
+  const title = labelled.length + 16 <= 60 ? labelled : named;
   const image = item.media && "image" in item.media ? item.media.image : item.media?.poster;
   return {
     title,

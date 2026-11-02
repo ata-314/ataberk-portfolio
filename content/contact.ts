@@ -33,7 +33,7 @@ export const clientLogos = [
 
 export const contactPage: Record<Locale, ContactPage> = {
   tr: {
-    title: "İletişim ve Proje Teklifi | Yapay Zeka, Web ve Tasarım",
+    title: "İletişim ve Proje Teklifi: Web Sitesi, AI, Tasarım",
     description:
       "Web sitesi, yapay zekâ reklam filmi, AI agent ya da marka tasarımı için projeni anlat. Ataberk Soylu kapsamı okuyup sana özel teklifle dönüyor. İstanbul ve uzaktan.",
     h1: "Projeni anlat.",

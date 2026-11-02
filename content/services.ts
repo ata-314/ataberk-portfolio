@@ -32,7 +32,7 @@ type Services = {
 const tr: Services = {
   base: "hizmetler",
   hub: {
-    title: "Hizmetler: Yapay Zeka Uzmanı, Web ve Grafik Tasarımcı",
+    title: "Hizmetler: Yapay Zeka, Web Tasarım ve Grafik Tasarım",
     description:
       "Ataberk Soylu, İstanbul'da yapay zeka uzmanı, yapay zeka artist, web tasarımcısı, web geliştiricisi, grafik ve UI/UX tasarımcısı olarak markalar için çalışıyor.",
     h1: "Yapay zeka, tasarım ve web: tek elden.",
@@ -56,7 +56,7 @@ const tr: Services = {
       name: "Yapay Zeka Uzmanı",
       title: "Yapay Zeka Uzmanı & AI Agent Geliştirme | İstanbul",
       description:
-        "İstanbul'da yapay zeka uzmanı ve yapay zeka mühendisi: özel AI agent geliştirme, çok ajanlı sistemler, iş akışı otomasyonu ve marka hafızası kuran içerik zekâsı.",
+        "İstanbul'da yapay zeka uzmanı ve mühendisi: özel AI agent geliştirme, çok ajanlı sistemler, iş akışı otomasyonu ve marka hafızası kuran içerik zekâsı.",
       h1: "Yapay zeka uzmanı ve AI agent geliştirici",
       lead: "İşini anlayan, araçlarını kullanan ve her üretimden öğrenen yapay zekâ sistemleri kuruyorum. Sohbet penceresi değil; ekibinin yanında gerçekten iş yapan ajanlar.",
       offers: [
@@ -146,7 +146,7 @@ const tr: Services = {
       name: "Web Geliştiricisi",
       title: "Web Geliştirici: Next.js, WebGL, 3D Web | İstanbul",
       description:
-        "İstanbul'da web geliştiricisi ve frontend geliştirici: Next.js ve React ile hızlı siteler, WebGL ve Three.js ile 3B ve interaktif deneyimler, web ve mobil uygulamalar.",
+        "İstanbul'da web geliştiricisi: Next.js ve React ile hızlı siteler, WebGL ve Three.js ile 3D ve interaktif deneyimler, web ve mobil uygulamalar.",
       h1: "Web geliştiricisi: Next.js, WebGL ve 3B web",
       lead: "Fikri çalışan bir ürüne döküyorum: hızlı, erişilebilir ve her cihazda akıcı. Bu sitenin kendisi, partikülleri ve 3B sahneleriyle bu işin bir örneği.",
       offers: [
@@ -259,7 +259,7 @@ const tr: Services = {
       name: "Gayrimenkul Web Sitesi",
       title: "Konut Projesi & Gayrimenkul Web Sitesi | İstanbul",
       description:
-        "Konut ve ticari projeler için lansman sitesi: kaydırdıkça anlatan proje sitesi, lead formu, e-katalog, yabancı yatırımcı için çok dilli portföy ve AI tanıtım filmi. İstanbul.",
+        "Konut ve ticari projeler için lansman sitesi: kaydırdıkça anlatan proje sitesi, lead formu, e-katalog, yabancı alıcıya çok dilli portföy ve AI tanıtım filmi.",
       h1: "Gayrimenkul ve konut projesi web siteleri",
       lead: "Bir konut projesini alıcı daha şantiyeyi görmeden sitede görür. Projeyi bir film gibi anlatan, rakamlarını net veren ve her ekranda bilgi formunu elinin altında tutan siteler kuruyorum.",
       offers: [
@@ -509,7 +509,7 @@ const en: Services = {
       name: "Real Estate Website",
       title: "Real Estate Website Design | Istanbul, Türkiye",
       description:
-        "Launch websites for residential and commercial projects: scroll-told project sites, enquiry forms, e-catalogues, multilingual portfolios for foreign investors and AI launch films.",
+        "Real estate launch websites for residential and commercial projects: scroll-told sites, enquiry forms, e-catalogues, multilingual portfolios and AI films.",
       h1: "Real estate and residential project websites",
       lead: "Buyers see a development on its website long before they see the site itself. I build sites that tell a project like a film, give its figures plainly and keep the enquiry form within reach on every screen.",
       offers: [

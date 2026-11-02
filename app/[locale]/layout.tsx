@@ -33,9 +33,9 @@ const jetbrainsMono = JetBrains_Mono({
 // Titles and descriptions carry the phrases people search for, in each language.
 const meta: Record<Locale, { title: string; description: string; jobTitle: string; knowsAbout: string[] }> = {
   tr: {
-    title: "Ataberk Soylu — Yapay Zeka Uzmanı, Web ve Grafik Tasarımcı | İstanbul",
+    title: "Ataberk Soylu — Yapay Zeka Uzmanı ve Web Tasarımcı, İstanbul",
     description:
-      "Ataberk Soylu: İstanbul'da yapay zeka uzmanı, yapay zeka artist, web tasarımcısı ve web geliştiricisi, grafik ve UI/UX tasarımcı. AI agent, AI video, sinematik web siteleri ve marka kimliği.",
+      "Ataberk Soylu: İstanbul'da yapay zeka uzmanı, web tasarımcısı ve geliştiricisi, grafik tasarımcı. Sinematik web siteleri, AI reklam filmleri, AI agent'lar.",
     jobTitle: "Creative Technologist, Yapay Zeka Uzmanı ve Multi Designer",
     knowsAbout: [
       "Yapay zeka", "Yapay zeka mühendisliği", "AI agent geliştirme", "Çok ajanlı sistemler", "Yapay zeka reklam filmi",
@@ -44,9 +44,9 @@ const meta: Record<Locale, { title: string; description: string; jobTitle: strin
     ],
   },
   en: {
-    title: "Ataberk Soylu — AI Specialist, Web and Graphic Designer | Istanbul",
+    title: "Ataberk Soylu — AI Specialist and Web Designer, Istanbul",
     description:
-      "Ataberk Soylu: AI specialist, AI artist, web designer and developer, graphic and UI/UX designer in Istanbul. AI agents, AI video, cinematic websites and brand identity.",
+      "Ataberk Soylu: AI specialist, web designer and developer, graphic designer in Istanbul. Cinematic websites, AI commercials and AI agents for brands.",
     jobTitle: "Creative Technologist, AI Specialist and Multi Designer",
     knowsAbout: [
       "Artificial intelligence", "AI engineering", "AI agents", "Multi-agent systems", "AI video production",
