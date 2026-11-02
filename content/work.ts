@@ -260,7 +260,7 @@ const tr: WorkContent = {
     {
       slug: "oneavex-ai-studio",
       title: "Oneavex AI Studio",
-      category: "AI Video & Motion",
+      category: "Yapay Zeka Video & Motion",
       year: "2025—",
       role: "Kurucu · Creative Direction",
       personal: true,
